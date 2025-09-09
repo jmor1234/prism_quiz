@@ -434,12 +434,14 @@ export const PromptInput = ({
       />
       <form
         className={cn(
-          "w-full divide-y overflow-hidden rounded-xl border bg-background shadow-sm",
+          "w-full overflow-hidden rounded-full border bg-background shadow-sm",
           className
         )}
         onSubmit={handleSubmit}
         {...props}
-      />
+      >
+        {props.children}
+      </form>
     </AttachmentsContext.Provider>
   );
 };
