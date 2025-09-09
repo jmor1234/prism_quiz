@@ -31,7 +31,7 @@ export default function ChatPage() {
           ) : (
             messages.map((message) => (
               <Message key={message.id} from={message.role}>
-                <MessageContent>
+                <MessageContent message={message}>
                   <MessageRenderer message={message} />
                 </MessageContent>
               </Message>
