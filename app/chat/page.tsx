@@ -8,6 +8,7 @@ import {
   ConversationScrollButton,
 } from "@/components/ai-elements/conversation";
 import { Message, MessageContent } from "@/components/ai-elements/message";
+import { ModeToggle } from "@/components/ui/mode-toggle";
 import { ChatComposer } from "./components/chat-composer";
 import { MessageRenderer } from "./components/message-renderer";
 
@@ -18,6 +19,11 @@ export default function ChatPage() {
 
   return (
     <div className="flex min-h-dvh flex-col">
+      {/* Dark mode toggle - positioned in top-right corner */}
+      <div className="absolute top-4 right-4 z-50">
+        <ModeToggle />
+      </div>
+
       <Conversation className="mx-auto w-full max-w-2xl">
         <ConversationContent>
           {messages.length === 0 ? (
