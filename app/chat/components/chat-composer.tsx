@@ -56,7 +56,7 @@ export function ChatComposer({ onSubmit, status, onStop, disabled }: ChatCompose
   }, [status, onStop]);
 
   return (
-    <div className="mx-auto w-full max-w-2xl border-t px-3 py-3">
+    <div className="mx-auto w-full max-w-2xl px-3 py-3">
       <PromptInput
         className="border-muted/30 bg-background/80 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-background/60"
         multiple
