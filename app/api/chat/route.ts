@@ -14,7 +14,7 @@ export async function POST(req: Request) {
     messages: convertToModelMessages(messages),
     providerOptions: {
         openai: {
-            reasoningEffort: 'high',
+            reasoningEffort: 'low',
             reasoningSummary: 'detailed',
             include: ['reasoning.encrypted_content']
         }
