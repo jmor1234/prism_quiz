@@ -8,6 +8,7 @@ import type { UIMessage } from "ai";
 import { cva, type VariantProps } from "class-variance-authority";
 import type { ComponentProps, HTMLAttributes } from "react";
 import { MessageCopyButton } from "./message-copy";
+import { MessageEditButton } from "./message-edit";
 
 export type MessageProps = HTMLAttributes<HTMLDivElement> & {
   from: UIMessage["role"];
@@ -49,6 +50,7 @@ const messageContentVariants = cva(
 export type MessageContentProps = HTMLAttributes<HTMLDivElement> &
   VariantProps<typeof messageContentVariants> & {
   message?: UIMessage;
+  onEdit?: () => void;
 };
 
 export const MessageContent = ({
@@ -56,6 +58,7 @@ export const MessageContent = ({
   className,
   variant,
   message,
+  onEdit,
   ...props
 }: MessageContentProps) => (
   <div className="relative flex items-start gap-2">
@@ -66,7 +69,10 @@ export const MessageContent = ({
       {children}
     </div>
     {message && (
-      <div className="opacity-0 transition-opacity group-hover:opacity-100 mt-2 flex-shrink-0">
+      <div className="opacity-0 transition-opacity group-hover:opacity-100 mt-2 flex-shrink-0 flex items-center gap-1">
+        {message.role === 'user' && onEdit && (
+          <MessageEditButton message={message} onEdit={onEdit} />
+        )}
         <MessageCopyButton message={message} />
       </div>
     )}

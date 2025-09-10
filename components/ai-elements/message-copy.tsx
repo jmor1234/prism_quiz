@@ -8,6 +8,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
+import { extractMessageText } from "@/lib/message-utils";
 import type { UIMessage } from "ai";
 import { CheckIcon, CopyIcon } from "lucide-react";
 import type { ComponentProps } from "react";
@@ -18,34 +19,6 @@ export type MessageCopyButtonProps = ComponentProps<typeof Button> & {
   onCopy?: () => void;
   onError?: (error: Error) => void;
   timeout?: number;
-};
-
-const extractMessageText = (message: UIMessage): string => {
-  if (!message.parts || message.parts.length === 0) {
-    return "";
-  }
-
-  if (message.role === "user") {
-    // For user messages, get all text parts (they typically only have text)
-    const textParts = message.parts
-      .filter((part) => part.type === "text")
-      .map((part) => part.text)
-      .filter(Boolean);
-    
-    return textParts.join("\n\n").trim();
-  }
-
-  if (message.role === "assistant") {
-    // For AI messages, extract only text parts (exclude reasoning)
-    const textParts = message.parts
-      .filter((part) => part.type === "text")
-      .map((part) => part.text)
-      .filter(Boolean);
-    
-    return textParts.join("\n\n").trim();
-  }
-
-  return "";
 };
 
 export const MessageCopyButton = ({
