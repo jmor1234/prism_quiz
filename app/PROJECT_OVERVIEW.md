@@ -164,6 +164,50 @@ This enables different parts to stream independently and render with specialized
 - **Smart extraction**: `lib/message-utils.ts` handles complex UIMessage part filtering
 - **Streaming safety**: Edit operations are guarded during AI responses to prevent conflicts
 
+**Message Pair Isolation (Viewport Focus)**:
+- Implemented in `app/chat/page.tsx` via a `useMessageVisibility()` hook
+- By default, only the latest user → assistant exchange is rendered; previous messages are temporarily hidden (not scrolled away)
+- The reset trigger keys off the latest user message ID (not `messages.length`) so the view resets only when a new user message is sent (avoids spurious resets during truncation, edits, or non-user updates)
+- A top-center toggle button allows users to show/hide previous messages on demand
+- Benefits: cleaner focus, predictable behavior, and no scroll hacks; also reduces render work for long histories
+
+```tsx
+// Hook signature (simplified)
+function useMessageVisibility(messages: UIMessage[]) {
+  const [showPreviousMessages, setShowPreviousMessages] = useState(false);
+
+  // Reset only when a NEW user message appears
+  const lastUserMessageId = useMemo(() => (
+    [...messages].reverse().find(m => m.role === 'user')?.id ?? null
+  ), [messages]);
+
+  useEffect(() => {
+    setShowPreviousMessages(false);
+  }, [lastUserMessageId]);
+
+  const visibleMessages = useMemo(() => {
+    if (!messages.length || showPreviousMessages) return messages;
+    const idx = messages
+      .map((m, i) => ({ m, i }))
+      .filter(x => x.m.role === 'user')
+      .pop()?.i ?? 0;
+    return messages.slice(idx);
+  }, [messages, showPreviousMessages]);
+
+  return { visibleMessages, hasPreviousMessages: messages.length > visibleMessages.length, showPreviousMessages, togglePreviousMessages: () => setShowPreviousMessages(v => !v) };
+}
+
+// Minimal usage
+const { visibleMessages, hasPreviousMessages, showPreviousMessages, togglePreviousMessages } = useMessageVisibility(messages);
+```
+
+When to extend: add a `preserveState` option only if you later support pagination/tool messages or other updates where you do not want the view to reset.
+
+**Asymmetric Message Presentation**:
+- User messages remain right-aligned bubbles (rounded, high-contrast)
+- Assistant messages render as flat, document-style text on the background (left-aligned) to emphasize knowledge delivery over chat metaphors
+- Chat container width increased to `max-w-3xl` for improved readability; composer top border removed for a seamless, modern look
+
 ## What Our Code Does
 
 ### Backend
@@ -171,7 +215,7 @@ This enables different parts to stream independently and render with specialized
 - **`/api/transcribe`**: Converts audio to text using `gpt-4o-transcribe`
 
 ### Frontend
-- **`app/chat/page.tsx`**: Main chat interface with message editing state management
+- **`app/chat/page.tsx`**: Main chat interface with message editing and message pair isolation via `useMessageVisibility`
 - **`app/chat/components/`**: Core chat components
   - `ChatComposer`: Input with attachments + voice + dark mode toggle
   - `VoiceButton`: Records audio → transcribes → inserts text
@@ -180,7 +224,7 @@ This enables different parts to stream independently and render with specialized
 - **`components/ai-elements/`**: Extended with message interaction
   - `message-copy.tsx`: Copy message text (excludes reasoning)
   - `message-edit.tsx`: Edit user messages with conversation branching
-  - `message.tsx`: Enhanced with hover-revealed action buttons
+  - `message.tsx`: Role-aware styling (user = bubble, assistant = flat) + hover-revealed actions
 - **`lib/message-utils.ts`**: Shared utilities for UIMessage text extraction
 
 ## Key Data Flows
@@ -194,6 +238,8 @@ This enables different parts to stream independently and render with specialized
 **Copy**: Hover message → copy button → `extractMessageText()` → clipboard API → user notification
 
 **Edit**: Hover user message → edit button → `MessageEditForm` → save → `stop()` + `setMessages()` + `sendMessage()` → new AI response
+
+**Viewport focus**: On submit, the view resets to the latest user message at the top-right and reserves the remaining space for the incoming assistant response; a toggle reveals earlier history when needed
 
 ## Message Format
 
@@ -216,13 +262,15 @@ Frontend: `<Reasoning>` components auto-open during streaming, auto-close when c
 ## For New Engineers
 
 **Start here**: 
-1. `app/chat/page.tsx` - See how `useChat()` + message editing orchestrates everything
+1. `app/chat/page.tsx` - See how `useChat()` + `useMessageVisibility()` + message editing orchestrate everything
 2. `app/api/chat/route.ts` - Understand the streaming backend
 3. `components/ai-elements/` - Explore the UI component library + message interactions
 4. `lib/message-utils.ts` - Understand UIMessage text extraction patterns
+5. `components/ai-elements/message.tsx` - Review asymmetric message presentation (user bubble vs assistant flat)
 
 **Key mental models**: 
 - **Streaming parts** not "complete messages" - every interaction streams in real-time
 - **Message interaction safety** - operations are guarded during streaming states
 - **Conversation branching** - editing creates new conversation paths via framework-aligned patterns
 - **Smart extraction** - reasoning vs response content are handled separately
+- **Asymmetric presentation** - user input uses bubbles; assistant responses are document-style for clarity
