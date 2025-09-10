@@ -82,7 +82,7 @@ export default function ChatPage() {
         <ModeToggle />
       </div>
 
-      <Conversation className="mx-auto w-full max-w-2xl">
+      <Conversation className="mx-auto w-full max-w-3xl">
         <ConversationContent>
           {messages.length === 0 ? (
             <ConversationEmptyState />
