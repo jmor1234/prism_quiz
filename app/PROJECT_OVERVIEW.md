@@ -65,13 +65,22 @@ const { messages, status, sendMessage, stop } = useChat({
 // The component hierarchy creates structured chat layout:
 <Conversation>                    // Provides chat container + context
   <ConversationContent>           // Manages scrolling + message layout
-    <Message from="user|assistant">   // Individual message container
-      <MessageContent>            // Message content area
-        <Response>text content</Response>           // For text parts
-        <Reasoning isStreaming={true}>             // For reasoning parts
-          <ReasoningTrigger />     // Collapsible trigger
-          <ReasoningContent />     // Reasoning text
-        </Reasoning>
+    <Message from="user|assistant">   // Individual message container + hover group
+      <MessageContent message={message} onEdit={handleEdit}>  // Content + action buttons
+        {editingMessageId === message.id ? (
+          <MessageEditForm />     // Inline editing for user messages
+        ) : (
+          <>
+            <Response>text content</Response>           // For text parts
+            <Reasoning isStreaming={true}>             // For reasoning parts
+              <ReasoningTrigger />  // Collapsible trigger
+              <ReasoningContent />  // Reasoning text
+            </Reasoning>
+          </>
+        )}
+        // Hover-revealed action buttons (edit for users, copy for all)
+        <MessageEditButton />     // User messages only
+        <MessageCopyButton />     // All messages
       </MessageContent>
     </Message>
   </ConversationContent>
@@ -82,6 +91,8 @@ const { messages, status, sendMessage, stop } = useChat({
 - `<Reasoning>` auto-opens during streaming, auto-closes when complete
 - `<Response>` updates incrementally as text streams in
 - `<PromptInput>` manages file attachments through context
+- `<MessageEditButton>` only appears when `status === 'ready'` (streaming-safe)
+- `<MessageCopyButton>` + `<MessageEditButton>` reveal on hover for clean UX
 
 **File System**: `<PromptInput>` provides attachment context that `<AttachmentButton>` consumes, creating seamless file integration without prop drilling.
 
@@ -128,6 +139,13 @@ UIMessage {
 ```
 This enables different parts to stream independently and render with specialized components.
 
+**Message Editing Architecture** (Conversation branching):
+- **Edit Detection**: Only user messages show edit button on hover (streaming-safety enforced)
+- **State Management**: Single edit state prevents multiple simultaneous edits
+- **Conversation Branching**: `stop()` → `setMessages(truncated)` → `sendMessage(editedText)` → new AI response
+- **Framework Alignment**: Uses AI SDK v5's intended pattern for message state manipulation
+- **Smart Text Extraction**: `extractMessageText()` handles complex UIMessage parts filtering
+
 **Voice Integration Pattern**:
 1. `VoiceButton` → Browser MediaRecorder → audio blob
 2. `/api/transcribe` → GPT-4o-transcribe → text
@@ -140,6 +158,12 @@ This enables different parts to stream independently and render with specialized
 - Files flow through the same streaming system as text
 - **No prop drilling** - context eliminates passing file handlers down component tree
 
+**Message Interaction System**:
+- **Copy**: `MessageCopyButton` extracts text content (excludes reasoning) for clipboard
+- **Edit**: `MessageEditButton` + `MessageEditForm` enables conversation branching
+- **Smart extraction**: `lib/message-utils.ts` handles complex UIMessage part filtering
+- **Streaming safety**: Edit operations are guarded during AI responses to prevent conflicts
+
 ## What Our Code Does
 
 ### Backend
@@ -147,12 +171,17 @@ This enables different parts to stream independently and render with specialized
 - **`/api/transcribe`**: Converts audio to text using `gpt-4o-transcribe`
 
 ### Frontend
-- **`app/chat/page.tsx`**: Main chat interface (orchestrates state only)
-- **`app/chat/components/`**: Modular components
-  - `ChatComposer`: Input with attachments + voice
+- **`app/chat/page.tsx`**: Main chat interface with message editing state management
+- **`app/chat/components/`**: Core chat components
+  - `ChatComposer`: Input with attachments + voice + dark mode toggle
   - `VoiceButton`: Records audio → transcribes → inserts text
   - `AttachmentButton`: File uploads via AI Elements context
   - `MessageRenderer`: Displays text + reasoning parts
+- **`components/ai-elements/`**: Extended with message interaction
+  - `message-copy.tsx`: Copy message text (excludes reasoning)
+  - `message-edit.tsx`: Edit user messages with conversation branching
+  - `message.tsx`: Enhanced with hover-revealed action buttons
+- **`lib/message-utils.ts`**: Shared utilities for UIMessage text extraction
 
 ## Key Data Flows
 
@@ -161,6 +190,10 @@ This enables different parts to stream independently and render with specialized
 **Voice**: Click mic → record audio → `/api/transcribe` → `gpt-4o-transcribe` → text inserted in input
 
 **Files**: Click + → file dialog → AI Elements context → included in message
+
+**Copy**: Hover message → copy button → `extractMessageText()` → clipboard API → user notification
+
+**Edit**: Hover user message → edit button → `MessageEditForm` → save → `stop()` + `setMessages()` + `sendMessage()` → new AI response
 
 ## Message Format
 
@@ -183,8 +216,13 @@ Frontend: `<Reasoning>` components auto-open during streaming, auto-close when c
 ## For New Engineers
 
 **Start here**: 
-1. `app/chat/page.tsx` - See how `useChat()` orchestrates everything
+1. `app/chat/page.tsx` - See how `useChat()` + message editing orchestrates everything
 2. `app/api/chat/route.ts` - Understand the streaming backend
-3. `components/ai-elements/` - Explore the UI component library
+3. `components/ai-elements/` - Explore the UI component library + message interactions
+4. `lib/message-utils.ts` - Understand UIMessage text extraction patterns
 
-**Key mental model**: Think "streaming parts" not "complete messages". Every interaction streams in real-time with transparent AI reasoning.
+**Key mental models**: 
+- **Streaming parts** not "complete messages" - every interaction streams in real-time
+- **Message interaction safety** - operations are guarded during streaming states
+- **Conversation branching** - editing creates new conversation paths via framework-aligned patterns
+- **Smart extraction** - reasoning vs response content are handled separately
