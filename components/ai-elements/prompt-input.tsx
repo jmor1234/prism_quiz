@@ -59,6 +59,67 @@ type AttachmentsContext = {
 
 const AttachmentsContext = createContext<AttachmentsContext | null>(null);
 
+// Compress images if they're too large for AI analysis
+async function compressImageIfNeeded(file: File): Promise<string> {
+  // Thresholds for compression
+  const MAX_SIZE_MB = 2; // Start compressing above 2MB
+  const MAX_DIMENSION = 1920; // Max width/height for AI analysis
+  const QUALITY = 0.8; // JPEG quality (0.0 to 1.0)
+  
+  const sizeInMB = file.size / (1024 * 1024);
+  
+  // Small images - use as-is
+  if (sizeInMB < MAX_SIZE_MB) {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.readAsDataURL(file);
+    });
+  }
+  
+  // Large images - compress using Canvas
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d')!;
+      
+      // Calculate dimensions preserving aspect ratio
+      let { width, height } = img;
+      const aspectRatio = width / height;
+      
+      if (width > MAX_DIMENSION) {
+        width = MAX_DIMENSION;
+        height = width / aspectRatio;
+      }
+      if (height > MAX_DIMENSION) {
+        height = MAX_DIMENSION;
+        width = height * aspectRatio;
+      }
+      
+      // Draw compressed image
+      canvas.width = width;
+      canvas.height = height;
+      ctx.drawImage(img, 0, 0, width, height);
+      
+      // Convert to data URL with compression
+      const compressedDataUrl = canvas.toDataURL('image/jpeg', QUALITY);
+      const originalSizeMB = (file.size / (1024 * 1024)).toFixed(1);
+      const compressedSizeMB = ((compressedDataUrl.length * 0.75) / (1024 * 1024)).toFixed(1);
+      
+      console.log(`Image compressed: ${originalSizeMB}MB → ${compressedSizeMB}MB (${width}x${height})`);
+      resolve(compressedDataUrl);
+    };
+    
+    // Load original image
+    const reader = new FileReader();
+    reader.onload = () => {
+      img.src = reader.result as string;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
 export const usePromptInputAttachments = () => {
   const context = useContext(AttachmentsContext);
 
@@ -305,18 +366,16 @@ export const PromptInput = ({
           };
           next.push(item);
 
-          // Convert to base64 asynchronously for server compatibility
-          const reader = new FileReader();
-          reader.onload = () => {
-            setItems((currentItems) =>
-              currentItems.map((currentItem) =>
-                currentItem.id === item.id
-                  ? { ...currentItem, url: reader.result as string }
-                  : currentItem
-              )
-            );
-          };
-          reader.readAsDataURL(file);
+      // Compress and convert to base64 for server compatibility
+      compressImageIfNeeded(file).then((compressedDataUrl) => {
+        setItems((currentItems) =>
+          currentItems.map((currentItem) =>
+            currentItem.id === item.id
+              ? { ...currentItem, url: compressedDataUrl }
+              : currentItem
+          )
+        );
+      });
         }
 
         return prev.concat(next); // ✅ Atomic state update restored
