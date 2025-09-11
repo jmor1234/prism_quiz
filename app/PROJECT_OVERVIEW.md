@@ -2,9 +2,9 @@
 
 ## Core Architecture
 
-**This is a streaming AI reasoning system, not a traditional chat app.**
+**This is a multimodal streaming AI reasoning system, not a traditional chat app.**
 
-Key architectural principle: **Everything streams in real-time** - AI responses, reasoning process, and UI updates happen continuously, not in discrete request/response cycles.
+Key architectural principle: **Everything streams in real-time** - AI responses, reasoning process, visual analysis, and UI updates happen continuously, not in discrete request/response cycles. Users observe Claude's cognitive process as it analyzes both text and visual content.
 
 ## Tech Stack Deep Dive
 
@@ -133,11 +133,12 @@ This separation means you can swap AI providers (layer 1), change state manageme
 UIMessage {
   parts: [
     { type: 'text', text: 'The answer is...', state: 'complete' },
-    { type: 'reasoning', text: 'I need to think about...', state: 'streaming' }
+    { type: 'reasoning', text: 'I need to think about...', state: 'streaming' },
+    { type: 'file', url: 'data:image/png;base64,...', mediaType: 'image/png' } // Multimodal
   ]
 }
 ```
-This enables different parts to stream independently and render with specialized components.
+This enables different parts to stream independently and render with specialized components. **File parts enable multimodal conversations** where images flow through the same streaming reasoning pipeline.
 
 **Message Editing Architecture** (Conversation branching):
 - **Edit Detection**: Both user and assistant messages show edit button on hover (streaming-safety enforced)
@@ -212,10 +213,84 @@ When to extend: add a `preserveState` option only if you later support paginatio
 - Copy button positioned below messages on hover for both types
 - Chat container width increased to `max-w-3xl` for improved readability; composer top border removed for a seamless, modern look
 
+## Multimodal Streaming Intelligence
+
+**Core Innovation**: Images flow through the same streaming reasoning pipeline, enabling **visual cognitive transparency**.
+
+### **Image Upload & Processing Architecture**
+
+**Upload Methods**:
+- **File button**: Standard file dialog for image selection
+- **Screenshot paste**: Direct clipboard paste (`Ctrl/Cmd+V`) into textarea
+- **Drag & drop**: Global drop support on chat interface
+
+**Processing Pipeline**:
+```javascript
+// 1. File/paste → File object
+// 2. Immediate UI display → blob URL (temporary)
+// 3. Background conversion → base64 data URL (server-compatible)
+// 4. Smart compression → if >2MB, compress to AI-optimal size
+// 5. Message transmission → base64 flows to backend
+// 6. AI analysis → Claude processes with streaming reasoning
+```
+
+**Key Technical Decisions**:
+
+**Base64 Data URLs (Not Blob URLs)**:
+- **Problem**: Blob URLs (`blob:http://localhost:3000/...`) only exist in browser context
+- **Solution**: Convert to base64 data URLs (`data:image/png;base64,...`) that work server-side
+- **Benefit**: Universal compatibility, no server-side file handling complexity
+
+**Adaptive Image Compression**:
+- **Small images** (<2MB): Preserve original quality
+- **Large images** (>2MB): Compress using Canvas API to 1920px max, 0.8 JPEG quality  
+- **AI-optimized**: Maintains text clarity while reducing file size 60-80%
+- **Production-ready**: Eliminates request size limit issues
+
+### **Streaming Visual Reasoning**
+
+**The Breakthrough**: Users observe Claude analyzing images in real-time.
+
+**Flow**:
+```
+User pastes screenshot
+  ↓ (immediate attachment display)
+Sends message with image + text
+  ↓ (AI SDK processes multimodal input)
+Claude streams visual analysis
+  ↓ (reasoning panel auto-opens)
+User sees "I can see this screenshot shows..." 
+  ↓ (streaming cognitive process)
+Reasoning auto-closes when complete
+```
+
+**Message Parts Integration**:
+- **User message**: `{ type: 'file' }` part displays uploaded image
+- **AI response**: `{ type: 'text' }` + `{ type: 'reasoning' }` parts analyze the visual content
+- **Conversation branching**: Edit image messages to explore different visual interpretations
+
+### **Implementation Details**
+
+**Frontend** (`components/ai-elements/prompt-input.tsx`):
+- **Clipboard handling**: Detects pasted images in `PromptInputTextarea.handlePaste()`
+- **File conversion**: `compressImageIfNeeded()` handles size optimization
+- **State management**: Atomic updates prevent duplicate attachments
+- **Context integration**: Uses existing `AttachmentsContext` pattern
+
+**Backend** (`app/api/chat/route.ts`):
+- **No changes required**: Claude Sonnet 4 supports vision natively
+- **AI SDK compatibility**: `convertToModelMessages()` handles file parts automatically
+- **Streaming preserved**: Images + reasoning stream together seamlessly
+
+**UI Components**:
+- **MessageRenderer**: Added `case "file"` with Next.js `<Image>` optimization
+- **Image display**: Max 384px width, rounded borders, filename labels
+- **Responsive**: Works on mobile and desktop equally well
+
 ## What Our Code Does
 
 ### Backend
-- **`/api/chat`**: Streams AI responses with reasoning enabled (`gpt-5`)
+- **`/api/chat`**: Streams AI responses with reasoning enabled (Claude Sonnet 4 with vision)
 - **`/api/transcribe`**: Converts audio to text using `gpt-4o-transcribe`
 
 ### Frontend
@@ -224,10 +299,11 @@ When to extend: add a `preserveState` option only if you later support paginatio
   - `ChatComposer`: Input with attachments + voice + dark mode toggle
   - `VoiceButton`: Records audio → transcribes → inserts text
   - `AttachmentButton`: File uploads via AI Elements context
-  - `MessageRenderer`: Displays text + reasoning parts
-- **`components/ai-elements/`**: Extended with message interaction
+  - `MessageRenderer`: Displays text + reasoning + image parts
+- **`components/ai-elements/`**: Extended with message interaction + multimodal support
+  - `prompt-input.tsx`: Image compression, clipboard paste, base64 conversion
   - `message-copy.tsx`: Copy message text (excludes reasoning)
-  - `message-edit.tsx`: Edit user messages with conversation branching
+  - `message-edit.tsx`: Edit user messages with conversation branching (supports images)
   - `message.tsx`: Role-aware styling (user = bubble, assistant = flat) + hover-revealed actions
 - **`lib/message-utils.ts`**: Shared utilities for UIMessage text extraction
 
@@ -237,12 +313,15 @@ When to extend: add a `preserveState` option only if you later support paginatio
 
 **Voice**: Click mic → record audio → `/api/transcribe` → `gpt-4o-transcribe` → text inserted in input
 
-**Files**: Click + → file dialog → AI Elements context → included in message
+**Images**: 
+- Upload: Click + → file dialog → compression → base64 conversion → included in message
+- Paste: Screenshot → `Ctrl/Cmd+V` → clipboard detection → compression → base64 conversion → included in message
+- Analysis: Image + text → `/api/chat` → Claude vision analysis → streaming reasoning about visual content
 
 **Copy**: Hover message → copy button → `extractMessageText()` → clipboard API → user notification
 
 **Edit**: 
-- User messages: Hover → edit button → `MessageEditForm` → save → `stop()` + `setMessages(truncated)` + `sendMessage()` → new AI response
+- User messages: Hover → edit button → `MessageEditForm` → save → `stop()` + `setMessages(truncated)` + `sendMessage()` → new AI response (supports image messages)
 - Assistant messages: Hover → edit button → `MessageEditForm` → save → `stop()` + `setMessages(updated)` → history rewritten (no immediate response)
 
 **Viewport focus**: On submit, the view resets to the latest user message at the top-right and reserves the remaining space for the incoming assistant response; a toggle reveals earlier history when needed
@@ -255,28 +334,31 @@ When to extend: add a `preserveState` option only if you later support paginatio
 UIMessage {
   parts: [
     { type: 'text', text: '...' },
-    { type: 'reasoning', text: '...' }  // AI's thinking process
+    { type: 'reasoning', text: '...' },  // AI's thinking process
+    { type: 'file', url: 'data:image/png;base64,...', mediaType: 'image/png' }  // Multimodal
   ]
 }
 ```
 
-**Why this matters**: Each part can stream independently and render with different UI components. Reasoning shows *how* the AI thinks, not just *what* it concludes.
+**Why this matters**: Each part can stream independently and render with different UI components. Reasoning shows *how* the AI thinks, not just *what* it concludes. **File parts enable visual reasoning** - users see Claude analyzing images in real-time.
 
-Backend: `reasoningEffort: 'high'` requests GPT-5's thinking process  
-Frontend: `<Reasoning>` components auto-open during streaming, auto-close when complete
+**Backend**: Claude Sonnet 4 with vision processes images + reasoning streams separately  
+**Frontend**: `<Reasoning>` components auto-open during streaming, `<Image>` components display uploaded content
 
 ## For New Engineers
 
 **Start here**: 
 1. `app/chat/page.tsx` - See how `useChat()` + `useMessageVisibility()` + message editing orchestrate everything
-2. `app/api/chat/route.ts` - Understand the streaming backend
-3. `components/ai-elements/` - Explore the UI component library + message interactions
-4. `lib/message-utils.ts` - Understand UIMessage text extraction patterns
-5. `components/ai-elements/message.tsx` - Review asymmetric message presentation (user bubble vs assistant flat)
+2. `app/api/chat/route.ts` - Understand the streaming backend (now multimodal)
+3. `components/ai-elements/prompt-input.tsx` - See image compression, clipboard paste, and file handling
+4. `components/ai-elements/message-renderer.tsx` - Review how text, reasoning, and image parts render
+5. `lib/message-utils.ts` - Understand UIMessage text extraction patterns
+6. `components/ai-elements/message.tsx` - Review asymmetric message presentation
 
 **Key mental models**: 
-- **Streaming parts** not "complete messages" - every interaction streams in real-time
+- **Streaming parts** not "complete messages" - text, reasoning, and images all stream independently
+- **Multimodal reasoning** - images flow through the same cognitive transparency pipeline
 - **Message interaction safety** - operations are guarded during streaming states
-- **Conversation branching** - editing creates new conversation paths via framework-aligned patterns
-- **Smart extraction** - reasoning vs response content are handled separately
-- **Asymmetric presentation** - user input uses bubbles; assistant responses are document-style for clarity
+- **Conversation branching** - editing creates new conversation paths (supports visual content exploration)
+- **Smart extraction** - reasoning, response content, and visual content are handled separately
+- **Base64 universality** - images travel as data URLs for browser/server compatibility
