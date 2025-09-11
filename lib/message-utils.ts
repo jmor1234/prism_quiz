@@ -14,7 +14,7 @@ export const extractMessageText = (message: UIMessage): string => {
   // Both user and assistant messages: extract only text parts (excludes reasoning for assistants)
   const textParts = message.parts
     .filter((part): part is { type: "text"; text: string } => 
-      part?.type === "text" && typeof (part as any)?.text === "string"
+      part?.type === "text" && typeof part.text === "string"
     )
     .map((part) => part.text)
     .filter(Boolean);

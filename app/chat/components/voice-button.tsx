@@ -75,12 +75,10 @@ export function VoiceButton({ onTranscriptionComplete, disabled }: VoiceButtonPr
     }
   }, [isRecording]);
 
-  const isProcessing = isRecording || isTranscribing;
-
   return (
     <PromptInputButton
       onClick={isRecording ? stopRecording : startRecording}
-      disabled={disabled || isTranscribing}
+      disabled={disabled || isRecording || isTranscribing}
       className={`h-8 w-8 ${
         isRecording 
           ? 'text-red-500 hover:text-red-600' 

@@ -27,6 +27,7 @@ import {
   XIcon,
 } from "lucide-react";
 import { nanoid } from "nanoid";
+import NextImage from "next/image";
 import {
   type ChangeEventHandler,
   Children,
@@ -89,7 +90,7 @@ export function PromptInputAttachment({
       {...props}
     >
       {data.mediaType?.startsWith("image/") && data.url ? (
-        <img
+        <NextImage
           alt={data.filename || "attachment"}
           className="size-full rounded-md object-cover"
           height={56}
