@@ -27,7 +27,7 @@ export const Message = ({ className, from, ...props }: MessageProps) => (
 );
 
 const messageContentVariants = cva(
-  "flex flex-col gap-2 overflow-hidden text-sm",
+  "flex flex-col gap-2 overflow-hidden text-[15px] leading-relaxed font-medium",
   {
     variants: {
       variant: {
@@ -64,7 +64,7 @@ export const MessageContent = ({
   onEdit,
   ...props
 }: MessageContentProps) => (
-  <div className="relative flex items-start gap-2">
+  <div className="relative flex flex-col">
     <div
       className={cn(messageContentVariants({ variant, className }))}
       {...props}
@@ -72,7 +72,7 @@ export const MessageContent = ({
       {children}
     </div>
     {message && (
-      <div className="opacity-0 transition-opacity group-hover:opacity-100 mt-2 flex-shrink-0 flex items-center gap-1">
+      <div className="opacity-0 transition-opacity group-hover:opacity-100 mt-1 flex items-center gap-1">
         {message.role === 'user' && onEdit && (
           <MessageEditButton message={message} onEdit={onEdit} />
         )}
