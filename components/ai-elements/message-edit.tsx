@@ -21,16 +21,10 @@ export type MessageEditButtonProps = ComponentProps<typeof Button> & {
 };
 
 export const MessageEditButton = ({
-  message,
   onEdit,
   className,
   ...props
 }: MessageEditButtonProps) => {
-  // Only show edit button for user messages
-  if (message.role !== "user") {
-    return null;
-  }
-
   const button = (
     <Button
       className={cn(

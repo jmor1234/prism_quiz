@@ -86,7 +86,7 @@ export default function ChatPage() {
     }
   }, [canEdit]);
 
-  // Handle saving edit (truncates conversation and triggers AI response)
+  // Handle saving edit (different behavior for user vs assistant messages)
   const handleEditSave = useCallback((messageId: string, newText: string) => {
     try {
       const trimmedText = newText.trim();
@@ -102,19 +102,34 @@ export default function ChatPage() {
       }
 
       const originalMessage = messages[messageIndex];
-      if (originalMessage.role !== 'user') {
-        console.warn('Can only edit user messages');
-        return;
-      }
 
       // Stop any in-flight AI response
       stop();
 
-      // Truncate conversation to edit point
-      setMessages(prev => prev.slice(0, messageIndex));
+      if (originalMessage.role === 'user') {
+        // User message edit: truncate and resend (triggers new AI response)
+        // Truncate conversation to edit point
+        setMessages(prev => prev.slice(0, messageIndex));
 
-      // Send edited message (triggers AI response with truncated history)
-      sendMessage({ text: trimmedText });
+        // Send edited message (triggers AI response with truncated history)
+        sendMessage({ text: trimmedText });
+      } else {
+        // Assistant message edit: update in place (no immediate AI response)
+        setMessages(prev => {
+          const updated = [...prev];
+          // Preserve the message structure but update the text content
+          updated[messageIndex] = {
+            ...updated[messageIndex],
+            parts: [
+              { 
+                type: 'text' as const, 
+                text: trimmedText
+              }
+            ]
+          } as UIMessage;
+          return updated;
+        });
+      }
 
       // Clear editing state
       setEditingMessageId(null);

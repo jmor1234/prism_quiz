@@ -33,13 +33,13 @@ const messageContentVariants = cva(
       variant: {
         contained: [
           // User messages: Keep bubble styling
-          "group-[.is-user]:max-w-[80%] group-[.is-user]:px-4 group-[.is-user]:py-3 group-[.is-user]:rounded-2xl",
+          "group-[.is-user]:px-4 group-[.is-user]:py-3 group-[.is-user]:rounded-2xl",
           "group-[.is-user]:bg-primary group-[.is-user]:text-primary-foreground",
           // Assistant messages: No background, document-style
-          "group-[.is-assistant]:bg-transparent group-[.is-assistant]:text-foreground group-[.is-assistant]:px-0 group-[.is-assistant]:py-0",
+          "group-[.is-assistant]:bg-transparent group-[.is-assistant]:text-foreground group-[.is-assistant]:pl-6 group-[.is-assistant]:pr-0 group-[.is-assistant]:py-0",
         ],
         flat: [
-          "group-[.is-user]:max-w-[80%] group-[.is-user]:bg-secondary group-[.is-user]:px-4 group-[.is-user]:py-3 group-[.is-user]:text-foreground group-[.is-user]:rounded-2xl",
+          "group-[.is-user]:bg-secondary group-[.is-user]:px-4 group-[.is-user]:py-3 group-[.is-user]:text-foreground group-[.is-user]:rounded-2xl",
           "group-[.is-assistant]:bg-transparent group-[.is-assistant]:text-foreground group-[.is-assistant]:px-0 group-[.is-assistant]:py-0",
         ],
       },
@@ -73,7 +73,7 @@ export const MessageContent = ({
     </div>
     {message && (
       <div className="opacity-0 transition-opacity group-hover:opacity-100 mt-1 flex items-center gap-1">
-        {message.role === 'user' && onEdit && (
+        {onEdit && (
           <MessageEditButton message={message} onEdit={onEdit} />
         )}
         <MessageCopyButton message={message} />
