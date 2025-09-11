@@ -27,7 +27,7 @@ export const Message = ({ className, from, ...props }: MessageProps) => (
 );
 
 const messageContentVariants = cva(
-  "flex flex-col gap-2 overflow-hidden text-[15px] leading-relaxed font-medium",
+  "flex flex-col gap-2 overflow-hidden text-[15px] leading-relaxed",
   {
     variants: {
       variant: {
