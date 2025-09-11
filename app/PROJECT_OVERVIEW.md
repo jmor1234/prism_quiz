@@ -78,8 +78,8 @@ const { messages, status, sendMessage, stop } = useChat({
             </Reasoning>
           </>
         )}
-        // Hover-revealed action buttons (edit for users, copy for all)
-        <MessageEditButton />     // User messages only
+        // Hover-revealed action buttons below message content
+        <MessageEditButton />     // Both user and assistant messages
         <MessageCopyButton />     // All messages
       </MessageContent>
     </Message>
@@ -140,9 +140,10 @@ UIMessage {
 This enables different parts to stream independently and render with specialized components.
 
 **Message Editing Architecture** (Conversation branching):
-- **Edit Detection**: Only user messages show edit button on hover (streaming-safety enforced)
+- **Edit Detection**: Both user and assistant messages show edit button on hover (streaming-safety enforced)
 - **State Management**: Single edit state prevents multiple simultaneous edits
-- **Conversation Branching**: `stop()` → `setMessages(truncated)` → `sendMessage(editedText)` → new AI response
+- **User Message Edit**: `stop()` → `setMessages(truncated)` → `sendMessage(editedText)` → new AI response (creates new branch)
+- **AI Message Edit**: `stop()` → `setMessages(updated)` → no immediate response (rewrites history in-place)
 - **Framework Alignment**: Uses AI SDK v5's intended pattern for message state manipulation
 - **Smart Text Extraction**: `extractMessageText()` handles complex UIMessage parts filtering
 
@@ -151,6 +152,7 @@ This enables different parts to stream independently and render with specialized
 2. `/api/transcribe` → GPT-4o-transcribe → text
 3. Text injection → normal chat flow
 4. **Key insight**: Voice becomes text, then follows standard streaming path
+5. **Critical fix**: Button remains clickable during recording (removed self-disabling behavior)
 
 **File Attachment Context**:
 - `<PromptInput>` creates attachment context
@@ -204,8 +206,10 @@ const { visibleMessages, hasPreviousMessages, showPreviousMessages, togglePrevio
 When to extend: add a `preserveState` option only if you later support pagination/tool messages or other updates where you do not want the view to reset.
 
 **Asymmetric Message Presentation**:
-- User messages remain right-aligned bubbles (rounded, high-contrast)
-- Assistant messages render as flat, document-style text on the background (left-aligned) to emphasize knowledge delivery over chat metaphors
+- User messages: right-aligned bubbles with full width availability, `py-2` padding, 15px medium-weight font
+- Assistant messages: flat document-style with `pl-6` left padding for proper list marker rendering
+- Both message types use full container width (`max-w-3xl`) for improved readability
+- Copy button positioned below messages on hover for both types
 - Chat container width increased to `max-w-3xl` for improved readability; composer top border removed for a seamless, modern look
 
 ## What Our Code Does
@@ -237,7 +241,9 @@ When to extend: add a `preserveState` option only if you later support paginatio
 
 **Copy**: Hover message → copy button → `extractMessageText()` → clipboard API → user notification
 
-**Edit**: Hover user message → edit button → `MessageEditForm` → save → `stop()` + `setMessages()` + `sendMessage()` → new AI response
+**Edit**: 
+- User messages: Hover → edit button → `MessageEditForm` → save → `stop()` + `setMessages(truncated)` + `sendMessage()` → new AI response
+- Assistant messages: Hover → edit button → `MessageEditForm` → save → `stop()` + `setMessages(updated)` → history rewritten (no immediate response)
 
 **Viewport focus**: On submit, the view resets to the latest user message at the top-right and reserves the remaining space for the incoming assistant response; a toggle reveals earlier history when needed
 
