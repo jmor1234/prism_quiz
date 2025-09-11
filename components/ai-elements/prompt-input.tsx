@@ -296,15 +296,30 @@ export const PromptInput = ({
         }
         const next: (FileUIPart & { id: string })[] = [];
         for (const file of capped) {
-          next.push({
+          const item = {
             id: nanoid(),
-            type: "file",
-            url: URL.createObjectURL(file),
+            type: "file" as const,
+            url: URL.createObjectURL(file), // Immediate blob URL for UI
             mediaType: file.type,
             filename: file.name,
-          });
+          };
+          next.push(item);
+
+          // Convert to base64 asynchronously for server compatibility
+          const reader = new FileReader();
+          reader.onload = () => {
+            setItems((currentItems) =>
+              currentItems.map((currentItem) =>
+                currentItem.id === item.id
+                  ? { ...currentItem, url: reader.result as string }
+                  : currentItem
+              )
+            );
+          };
+          reader.readAsDataURL(file);
         }
-        return prev.concat(next);
+
+        return prev.concat(next); // ✅ Atomic state update restored
       });
     },
     [matchesAccept, maxFiles, maxFileSize, onError]
@@ -313,7 +328,8 @@ export const PromptInput = ({
   const remove = useCallback((id: string) => {
     setItems((prev) => {
       const found = prev.find((file) => file.id === id);
-      if (found?.url) {
+      // No need to revoke data URLs (base64) - only blob URLs needed revocation
+      if (found?.url && found.url.startsWith('blob:')) {
         URL.revokeObjectURL(found.url);
       }
       return prev.filter((file) => file.id !== id);
@@ -323,7 +339,8 @@ export const PromptInput = ({
   const clear = useCallback(() => {
     setItems((prev) => {
       for (const file of prev) {
-        if (file.url) {
+        // Only revoke blob URLs, not data URLs (base64)
+        if (file.url && file.url.startsWith('blob:')) {
           URL.revokeObjectURL(file.url);
         }
       }
@@ -408,6 +425,9 @@ export const PromptInput = ({
     }));
 
     onSubmit({ text: event.currentTarget.message.value, files }, event);
+    
+    // Clear attachments after successful submission
+    clear();
   };
 
   const ctx = useMemo<AttachmentsContext>(
@@ -464,6 +484,8 @@ export const PromptInputTextarea = ({
   placeholder = "What would you like to know?",
   ...props
 }: PromptInputTextareaProps) => {
+  const attachments = usePromptInputAttachments();
+
   const handleKeyDown: KeyboardEventHandler<HTMLTextAreaElement> = (e) => {
     if (e.key === "Enter") {
       // Don't submit if IME composition is in progress
@@ -485,6 +507,28 @@ export const PromptInputTextarea = ({
     }
   };
 
+  const handlePaste = useCallback((e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+
+    const imageFiles: File[] = [];
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      if (item.type.startsWith('image/')) {
+        const file = item.getAsFile();
+        if (file) {
+          imageFiles.push(file);
+        }
+      }
+    }
+
+    if (imageFiles.length > 0) {
+      attachments.add(imageFiles);
+      // Optionally prevent default to avoid pasting image data as text
+      e.preventDefault();
+    }
+  }, [attachments]);
+
   return (
     <Textarea
       className={cn(
@@ -499,6 +543,7 @@ export const PromptInputTextarea = ({
         onChange?.(e);
       }}
       onKeyDown={handleKeyDown}
+      onPaste={handlePaste}
       placeholder={placeholder}
       {...props}
     />
