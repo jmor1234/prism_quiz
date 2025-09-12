@@ -140,7 +140,7 @@ UIMessage {
   parts: [
     { type: 'text', text: 'The answer is...', state: 'complete' },
     { type: 'reasoning', text: 'I need to think about...', state: 'streaming' },
-    { type: 'file', url: 'data:image/png;base64,...', mediaType: 'image/png' } // Multimodal
+    { type: 'file', url: 'data:image/jpeg;base64,...', mediaType: 'image/jpeg' } // Multimodal
   ]
 }
 ```
@@ -155,8 +155,8 @@ This enables different parts to stream independently and render with specialized
 - **Smart Text Extraction**: `extractMessageText()` handles complex UIMessage parts filtering
 
 **Voice Integration Pattern**:
-1. `VoiceButton` → Browser MediaRecorder → audio blob
-2. `/api/transcribe` → GPT-4o-transcribe → text
+1. `VoiceButton` → Browser MediaRecorder (runtime MIME fallback via `isTypeSupported`) → audio blob
+2. `/api/transcribe` → validates `audio/*`, converts to ArrayBuffer → `gpt-4o-transcribe` → text
 3. Text injection → normal chat flow
 4. **Key insight**: Voice becomes text, then follows standard streaming path
 5. **Critical fix**: Button remains clickable during recording (removed self-disabling behavior)
@@ -276,7 +276,7 @@ return (
 
 **Base64 Data URLs (Not Blob URLs)**:
 - **Problem**: Blob URLs (`blob:http://localhost:3000/...`) only exist in browser context
-- **Solution**: Convert to base64 data URLs (`data:image/png;base64,...`) that work server-side
+- **Solution**: Convert to base64 data URLs (e.g., `data:image/jpeg;base64,...`) that work server-side
 - **Benefit**: Universal compatibility, no server-side file handling complexity
 
 **Adaptive Image Compression**:
@@ -321,7 +321,7 @@ Reasoning auto-closes when complete
 - **Streaming preserved**: Images + reasoning stream together seamlessly
 
 **UI Components**:
-- **MessageRenderer**: Added `case "file"` with Next.js `<Image>` optimization
+- **MessageRenderer**: Added `case "file"` with Next.js `<Image>` (set `unoptimized` for data URLs)
 - **Image display**: Max 384px width, rounded borders, filename labels
 - **Responsive**: Works on mobile and desktop equally well
 
