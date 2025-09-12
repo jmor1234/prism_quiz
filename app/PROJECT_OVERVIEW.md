@@ -99,7 +99,7 @@ const { messages, status, sendMessage, stop } = useChat({
 
 - **Local thread persistence**: Dexie/IndexedDB stores complete `UIMessage[]` snapshots per `threadId` for finalized exchanges and assistant edits.
 - **Thread shell**: shadcn/ui `SidebarProvider` + `Sidebar` (collapsible=icon) compose a persistent app shell. Open/closed state is cookie-backed.
-- **Routing**: URL-based `/chat/[threadId]` (Next.js 15 dynamic params awaited); `/chat` redirects to the latest or creates a new thread.
+- **Routing**: URL-based `/chat/[threadId]` (Next.js 15 dynamic params awaited); `/chat` redirects to the latest or creates a new thread. Root `/` redirects to `/chat` using `redirect()` in `app/page.tsx` with a matching redirect in `next.config.ts` for robustness.
 
 ### How The Three Layers Connect
 
@@ -217,6 +217,38 @@ When to extend: add a `preserveState` option only if you later support paginatio
 - Both message types use full container width (`max-w-3xl`) for improved readability
 - Copy button positioned below messages on hover for both types
 - Chat container width increased to `max-w-3xl` for improved readability; composer top border removed for a seamless, modern look
+
+**Empty/New Chat State (Hero Composer)**:
+- When there are no messages, `ConversationEmptyState` renders a centered hero with the heading “What are you working on?” and a single input. The regular bottom composer is hidden until there is at least one message.
+- Vertical centering uses a min viewport height grid (`min-h-[60svh] grid place-items-center`).
+- Widths are widened in empty state for a welcoming feel: outer container `max-w-[58rem]`, inner hero composer `max-w-[52rem]`.
+- `ChatComposer` supports a `variant="hero"` that adjusts placeholder, sizing, and theming.
+  - Light mode: subtle border (`border-black/15`) with `shadow-md`; submit button is black with white icon/text.
+  - Dark mode: softer treatment (`border-white/10` + `ring-1 ring-inset ring-white/5`) and `shadow-sm`; submit button flips to white with black icon/text.
+- Only one input is shown at a time: the hero input in empty state, or the bottom composer once messages exist.
+
+Minimal structure (simplified):
+```tsx
+return (
+  <Conversation className={empty ? "max-w-[58rem]" : "max-w-3xl"}>
+    <ConversationContent>
+      {empty ? (
+        <ConversationEmptyState>
+          <div className="min-h-[60svh] grid place-items-center text-center">
+            <h1>What are you working on?</h1>
+            <ChatComposer variant="hero" ... />
+          </div>
+        </ConversationEmptyState>
+      ) : (
+        /* normal message rendering */
+      )}
+    </ConversationContent>
+  </Conversation>
+
+  {/* bottom composer only after first message */}
+  {!empty && <ChatComposer ... />}
+)
+```
 
 ## Multimodal Streaming Intelligence
 
