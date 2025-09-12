@@ -366,12 +366,19 @@ export const PromptInput = ({
           };
           next.push(item);
 
-      // Compress and convert to base64 for server compatibility
+      // Compress and convert to base64 for server compatibility.
+      // Also align mediaType with the resulting data URL (e.g., image/jpeg after compression).
       compressImageIfNeeded(file).then((compressedDataUrl) => {
+        const match = /^data:([^;]+);/.exec(compressedDataUrl || "");
+        const derivedMediaType = match?.[1];
         setItems((currentItems) =>
           currentItems.map((currentItem) =>
             currentItem.id === item.id
-              ? { ...currentItem, url: compressedDataUrl }
+              ? {
+                  ...currentItem,
+                  url: compressedDataUrl,
+                  mediaType: derivedMediaType || currentItem.mediaType,
+                }
               : currentItem
           )
         );

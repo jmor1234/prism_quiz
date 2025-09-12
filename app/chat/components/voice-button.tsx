@@ -15,11 +15,11 @@ export function VoiceButton({ onTranscriptionComplete, disabled }: VoiceButtonPr
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
 
-  const transcribeAudio = useCallback(async (audioBlob: Blob) => {
+  const transcribeAudio = useCallback(async (audioBlob: Blob, filename: string) => {
     setIsTranscribing(true);
     try {
       const formData = new FormData();
-      formData.append('audio', audioBlob, 'recording.webm');
+      formData.append('audio', audioBlob, filename);
 
       const response = await fetch('/api/transcribe', {
         method: 'POST',
@@ -45,7 +45,21 @@ export function VoiceButton({ onTranscriptionComplete, disabled }: VoiceButtonPr
   const startRecording = useCallback(async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mediaRecorder = new MediaRecorder(stream);
+      // Choose a supported MIME type for cross-browser compatibility
+      const preferredTypes = [
+        'audio/webm;codecs=opus',
+        'audio/webm',
+        'audio/mp4',
+        'audio/mpeg',
+      ];
+      const selectedType = preferredTypes.find((t) => (
+        typeof MediaRecorder !== 'undefined' &&
+        typeof MediaRecorder.isTypeSupported === 'function' &&
+        MediaRecorder.isTypeSupported(t)
+      )) || '';
+      const mediaRecorder = selectedType
+        ? new MediaRecorder(stream, { mimeType: selectedType })
+        : new MediaRecorder(stream);
       mediaRecorderRef.current = mediaRecorder;
       chunksRef.current = [];
 
@@ -56,8 +70,10 @@ export function VoiceButton({ onTranscriptionComplete, disabled }: VoiceButtonPr
       };
 
       mediaRecorder.onstop = async () => {
-        const audioBlob = new Blob(chunksRef.current, { type: 'audio/webm' });
-        await transcribeAudio(audioBlob);
+        const mimeType = mediaRecorder.mimeType || selectedType || 'audio/webm';
+        const extension = mimeType.includes('mpeg') ? 'mp3' : mimeType.includes('mp4') ? 'm4a' : 'webm';
+        const audioBlob = new Blob(chunksRef.current, { type: mimeType });
+        await transcribeAudio(audioBlob, `recording.${extension}`);
         stream.getTracks().forEach(track => track.stop());
       };
 

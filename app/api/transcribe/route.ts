@@ -14,7 +14,11 @@ export async function POST(req: Request) {
       return Response.json({ error: 'No audio file provided' }, { status: 400 });
     }
 
-    // Convert File to ArrayBuffer for AI SDK
+    if (!audioFile.type || !audioFile.type.startsWith('audio/')) {
+      return Response.json({ error: 'Invalid audio file type' }, { status: 400 });
+    }
+
+    // Convert File to ArrayBuffer for AI SDK (server-side types expect ArrayBuffer)
     const audioBuffer = await audioFile.arrayBuffer();
 
     const result = await transcribe({
