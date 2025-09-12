@@ -17,15 +17,14 @@ Key architectural principle: **Everything streams in real-time** - AI responses,
 // 1. Sends request to AI provider (OpenAI, Anthropic, etc.)
 // 2. Receives response as stream of tokens
 // 3. Processes each token and yields it immediately
-// 4. Handles provider differences behind unified API
+// 4. Handles provider differences behind a unified API
 
 const result = streamText({
-  model: openai('gpt-5'),
+  model: anthropic('claude-sonnet-4-20250514'),
   messages: [...],
   providerOptions: {
-    openai: {
-      reasoningEffort: 'high',        // Request AI's thinking process
-      include: ['reasoning.encrypted_content']  // Include reasoning in stream
+    anthropic: {
+      thinking: { type: 'enabled', budgetTokens: 16000 } // Expose thinking process
     }
   }
 });
@@ -96,6 +95,12 @@ const { messages, status, sendMessage, stop } = useChat({
 
 **File System**: `<PromptInput>` provides attachment context that `<AttachmentButton>` consumes, creating seamless file integration without prop drilling.
 
+### Layer 4: Client Persistence & Shell (v1)
+
+- **Local thread persistence**: Dexie/IndexedDB stores complete `UIMessage[]` snapshots per `threadId` for finalized exchanges and assistant edits.
+- **Thread shell**: shadcn/ui `SidebarProvider` + `Sidebar` (collapsible=icon) compose a persistent app shell. Open/closed state is cookie-backed.
+- **Routing**: URL-based `/chat/[threadId]` (Next.js 15 dynamic params awaited); `/chat` redirects to the latest or creates a new thread.
+
 ### How The Three Layers Connect
 
 **The Data Flow**:
@@ -121,7 +126,7 @@ This separation means you can swap AI providers (layer 1), change state manageme
 ### Critical Implementation Details
 
 **Reasoning System** (The app's key differentiator):
-- **Backend**: `reasoningEffort: 'high'` tells GPT-5 to expose its thinking process
+- **Backend**: `thinking: { type: 'enabled', budgetTokens: 16000 }` tells Claude Sonnet 4 to expose its thinking
 - **Streaming**: Reasoning streams as a separate message part alongside the response
 - **Frontend**: `<Reasoning>` components auto-manage UX (open while streaming, close with delay)
 - **Result**: Users see *how* the AI thinks, not just *what* it concludes
@@ -168,7 +173,7 @@ This enables different parts to stream independently and render with specialized
 - **Streaming safety**: Edit operations are guarded during AI responses to prevent conflicts
 
 **Message Pair Isolation (Viewport Focus)**:
-- Implemented in `app/chat/page.tsx` via a `useMessageVisibility()` hook
+- Implemented in `app/chat/thread-chat.tsx` via a `useMessageVisibility()` hook
 - By default, only the latest user → assistant exchange is rendered; previous messages are temporarily hidden (not scrolled away)
 - The reset trigger keys off the latest user message ID (not `messages.length`) so the view resets only when a new user message is sent (avoids spurious resets during truncation, edits, or non-user updates)
 - A top-center toggle button allows users to show/hide previous messages on demand
@@ -294,7 +299,9 @@ Reasoning auto-closes when complete
 - **`/api/transcribe`**: Converts audio to text using `gpt-4o-transcribe`
 
 ### Frontend
-- **`app/chat/page.tsx`**: Main chat interface with message editing and message pair isolation via `useMessageVisibility`
+- **`app/chat/layout.tsx`**: App shell with `SidebarProvider`, `AppSidebar`, `SidebarTrigger`, and `SidebarInset`
+- **`app/chat/[threadId]/page.tsx`**: Dynamic route that renders a client chat pane for a given `threadId`
+- **`app/chat/thread-chat.tsx`**: Main chat pane with message editing, pair isolation, and local persistence hydration
 - **`app/chat/components/`**: Core chat components
   - `ChatComposer`: Input with attachments + voice + dark mode toggle
   - `VoiceButton`: Records audio → transcribes → inserts text
@@ -306,10 +313,14 @@ Reasoning auto-closes when complete
   - `message-edit.tsx`: Edit user messages with conversation branching (supports images)
   - `message.tsx`: Role-aware styling (user = bubble, assistant = flat) + hover-revealed actions
 - **`lib/message-utils.ts`**: Shared utilities for UIMessage text extraction
+- **`components/app-sidebar.tsx`**: Thread list with New, Rename, Delete actions
+- **`lib/thread-store.ts`**: Dexie-powered local persistence (create/list/load/save/rename/delete)
 
 ## Key Data Flows
 
 **Chat**: User input → `useChat.sendMessage()` → `/api/chat` → `streamText()` → streaming UI updates
+  - After completion (`status === 'ready'`), `UIMessage[]` snapshot is saved to IndexedDB (per `threadId`)
+  - On load/switch, hydrate messages from IndexedDB to `useChat` state
 
 **Voice**: Click mic → record audio → `/api/transcribe` → `gpt-4o-transcribe` → text inserted in input
 
@@ -348,12 +359,13 @@ UIMessage {
 ## For New Engineers
 
 **Start here**: 
-1. `app/chat/page.tsx` - See how `useChat()` + `useMessageVisibility()` + message editing orchestrate everything
-2. `app/api/chat/route.ts` - Understand the streaming backend (now multimodal)
-3. `components/ai-elements/prompt-input.tsx` - See image compression, clipboard paste, and file handling
-4. `components/ai-elements/message-renderer.tsx` - Review how text, reasoning, and image parts render
-5. `lib/message-utils.ts` - Understand UIMessage text extraction patterns
-6. `components/ai-elements/message.tsx` - Review asymmetric message presentation
+1. `app/chat/thread-chat.tsx` - `useChat()` + `useMessageVisibility()` + local persistence orchestration
+2. `app/chat/layout.tsx` / `components/app-sidebar.tsx` - App shell + threads UI
+3. `app/api/chat/route.ts` - Streaming backend (multimodal)
+4. `components/ai-elements/prompt-input.tsx` - Image compression, clipboard paste, file handling
+5. `components/ai-elements/message-renderer.tsx` - Rendering text, reasoning, image parts
+6. `lib/message-utils.ts` - UIMessage text extraction patterns
+7. `lib/thread-store.ts` - Dexie/IndexedDB persistence interface
 
 **Key mental models**: 
 - **Streaming parts** not "complete messages" - text, reasoning, and images all stream independently
@@ -362,3 +374,7 @@ UIMessage {
 - **Conversation branching** - editing creates new conversation paths (supports visual content exploration)
 - **Smart extraction** - reasoning, response content, and visual content are handled separately
 - **Base64 universality** - images travel as data URLs for browser/server compatibility
+
+### Persistence v1 (Local) → v2 (Server) Upgrade Path
+- v1 stores full `UIMessage[]` snapshots in IndexedDB (per-device). No cross-device sync; subject to browser quota.
+- v2 will mirror the same interface on the server using AI SDK v5 `toUIMessageStreamResponse({ onFinish, generateMessageId })` and `consumeStream` to finish responses on disconnect.
