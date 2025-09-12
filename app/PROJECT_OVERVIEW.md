@@ -100,6 +100,7 @@ const { messages, status, sendMessage, stop } = useChat({
 - **Local thread persistence**: Dexie/IndexedDB stores complete `UIMessage[]` snapshots per `threadId` for finalized exchanges and assistant edits.
 - **Thread shell**: shadcn/ui `SidebarProvider` + `Sidebar` (collapsible=icon) compose a persistent app shell. Open/closed state is cookie-backed.
 - **Routing**: URL-based `/chat/[threadId]` (Next.js 15 dynamic params awaited); `/chat` redirects to the latest or creates a new thread. Root `/` redirects to `/chat` using `redirect()` in `app/page.tsx` with a matching redirect in `next.config.ts` for robustness.
+ - **Global actions**: The sidebar plus button opens a menu with "New chat" and a destructive "Delete all chats" action; clearing creates a fresh thread and navigates to it.
 
 ### How The Three Layers Connect
 
@@ -345,8 +346,8 @@ Reasoning auto-closes when complete
   - `message-edit.tsx`: Edit user messages with conversation branching (supports images)
   - `message.tsx`: Role-aware styling (user = bubble, assistant = flat) + hover-revealed actions
 - **`lib/message-utils.ts`**: Shared utilities for UIMessage text extraction
-- **`components/app-sidebar.tsx`**: Thread list with New, Rename, Delete actions
-- **`lib/thread-store.ts`**: Dexie-powered local persistence (create/list/load/save/rename/delete)
+- **`components/app-sidebar.tsx`**: Thread list with New, Rename, Delete, and Delete all (actions menu)
+- **`lib/thread-store.ts`**: Dexie-powered local persistence (create/list/load/save/rename/delete/deleteAll)
 
 ## Key Data Flows
 
