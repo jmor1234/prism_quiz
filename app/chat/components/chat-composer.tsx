@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback } from "react";
+import { cn } from "@/lib/utils";
 import type { ChatStatus, FileUIPart } from "ai";
 import {
   PromptInput,
@@ -17,9 +18,10 @@ interface ChatComposerProps {
   status: ChatStatus;
   onStop: () => void;
   disabled?: boolean;
+  variant?: "default" | "hero";
 }
 
-export function ChatComposer({ onSubmit, status, onStop, disabled }: ChatComposerProps) {
+export function ChatComposer({ onSubmit, status, onStop, disabled, variant = "default" }: ChatComposerProps) {
   const handleTranscription = useCallback((text: string) => {
     // Find the textarea within this component's form
     const textarea = document.querySelector('textarea[name="message"]') as HTMLTextAreaElement;
@@ -55,10 +57,21 @@ export function ChatComposer({ onSubmit, status, onStop, disabled }: ChatCompose
     }
   }, [status, onStop]);
 
+  const isHero = variant === "hero";
+
+  const containerClasses = isHero
+    ? "mx-auto w-full max-w-[52rem] px-3 py-0"
+    : "mx-auto w-full max-w-3xl px-3 py-3";
+
   return (
-    <div className="mx-auto w-full max-w-3xl px-3 py-3">
+    <div className={containerClasses}>
       <PromptInput
-        className="border-muted/30 bg-background/80 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-background/60"
+        className={cn(
+          "border bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60",
+          isHero
+            ? "border-black/15 shadow-md dark:border-white/10 dark:shadow-sm dark:ring-1 dark:ring-inset dark:ring-white/5"
+            : "border-border/60 shadow-sm"
+        )}
         multiple
         accept="image/*,application/pdf,text/*"
         onSubmit={handleSubmit}
@@ -72,8 +85,8 @@ export function ChatComposer({ onSubmit, status, onStop, disabled }: ChatCompose
           <AttachmentButton disabled={disabled} />
           <div className="flex-1">
             <PromptInputTextarea
-              className="min-h-0 resize-none border-0 bg-transparent p-0 text-base placeholder:text-muted-foreground/70 focus-visible:ring-0 md:text-sm"
-              placeholder="Message..."
+              className="min-h-0 resize-none border-0 bg-transparent p-0 text-base placeholder:text-muted-foreground/70 focus-visible:ring-0 md:text-base"
+              placeholder={isHero ? "Ask anything" : "Message..."}
               rows={1}
             />
           </div>
@@ -82,7 +95,12 @@ export function ChatComposer({ onSubmit, status, onStop, disabled }: ChatCompose
             disabled={disabled}
           />
           <PromptInputSubmit
-            className="bg-foreground text-background hover:bg-foreground/90"
+            className={
+              isHero
+                ? "bg-black text-white hover:bg-black/90 dark:bg-white dark:text-black dark:hover:bg-white/90"
+                : "bg-foreground text-background hover:bg-foreground/90"
+            }
+            variant="default"
             status={status}
             onClick={handleStopClick}
           />

@@ -152,12 +152,28 @@ export function ThreadChat({ threadId, initialMessages }: { threadId: string; in
     prevStatusRef.current = status;
   }, [status, messages, threadId]);
 
+  const emptyState = (messages as UIMessage[]).length === 0;
+
   return (
     <div className="flex flex-1 min-h-0 flex-col">
-      <Conversation className="mx-auto w-full max-w-3xl flex-1 min-h-0">
+      <Conversation className={`mx-auto w-full ${emptyState ? "max-w-[58rem]" : "max-w-3xl"} flex-1 min-h-0`}>
         <ConversationContent>
           {messages.length === 0 ? (
-            <ConversationEmptyState />
+            <ConversationEmptyState>
+              <div className="mx-auto w-full max-w-[58rem] min-h-[60svh] grid place-items-center text-center px-3">
+                <div className="w-full">
+                  <h1 className="text-2xl md:text-3xl font-medium">What are you working on?</h1>
+                  <div className="mt-6 md:mt-8">
+                    <ChatComposer
+                      onSubmit={sendMessage}
+                      status={status}
+                      onStop={stop}
+                      variant="hero"
+                    />
+                  </div>
+                </div>
+              </div>
+            </ConversationEmptyState>
           ) : (
             <>
               {hasPreviousMessages && (
@@ -210,11 +226,13 @@ export function ThreadChat({ threadId, initialMessages }: { threadId: string; in
         <ConversationScrollButton />
       </Conversation>
 
-      <ChatComposer
-        onSubmit={sendMessage}
-        status={status}
-        onStop={stop}
-      />
+      {messages.length > 0 && (
+        <ChatComposer
+          onSubmit={sendMessage}
+          status={status}
+          onStop={stop}
+        />
+      )}
 
       {error ? (
         <div className="p-2 text-center text-xs text-red-600">{error.message}</div>
