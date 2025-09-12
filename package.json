@@ -25,6 +25,7 @@
     "ai": "^5.0.39",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "dexie": "^4.2.0",
     "embla-carousel-react": "^8.6.0",
     "lucide-react": "^0.543.0",
     "nanoid": "^5.1.5",
