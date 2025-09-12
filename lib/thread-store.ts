@@ -90,6 +90,14 @@ export async function deleteThread(threadId: string): Promise<void> {
 	});
 }
 
+export async function deleteAllThreads(): Promise<void> {
+	if (!db) return;
+	await db.transaction("rw", db.threads, db.messages, async () => {
+		await db.threads.clear();
+		await db.messages.clear();
+	});
+}
+
 export async function renameThread(threadId: string, title: string): Promise<void> {
 	if (!db) return;
 	const row = await db.threads.get(threadId);
@@ -104,6 +112,7 @@ export type ThreadStore = {
 	listThreads: typeof listThreads;
 	deleteThread: typeof deleteThread;
 	renameThread: typeof renameThread;
+	deleteAllThreads: typeof deleteAllThreads;
 };
 
 export const threadStore: ThreadStore = {
@@ -113,6 +122,7 @@ export const threadStore: ThreadStore = {
 	listThreads,
 	deleteThread,
 	renameThread,
+	deleteAllThreads,
 };
 
 

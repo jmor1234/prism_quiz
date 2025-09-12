@@ -21,7 +21,7 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { ModeToggle } from "@/components/ui/mode-toggle";
 import type { ThreadMeta } from "@/lib/thread-store";
-import { createThread, listThreads, renameThread, deleteThread } from "@/lib/thread-store";
+import { createThread, listThreads, renameThread, deleteThread, deleteAllThreads } from "@/lib/thread-store";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -82,6 +82,16 @@ export function AppSidebar() {
     }
   }
 
+  async function handleDeleteAll() {
+    const confirmDelete = window.confirm("Delete ALL chats? This cannot be undone.");
+    if (!confirmDelete) return;
+    await deleteAllThreads();
+    const newId = await createThread();
+    const updated = await listThreads();
+    setThreads(updated);
+    router.push(`/chat/${newId}`);
+  }
+
   return (
     <Sidebar side="left" variant="sidebar" collapsible="icon" className="border-0">
       <SidebarHeader>
@@ -94,9 +104,36 @@ export function AppSidebar() {
           <SidebarGroupLabel className="flex items-center gap-2">
             <MessageSquare className="opacity-70" /> Threads
           </SidebarGroupLabel>
-          <SidebarGroupAction title="New chat" onClick={handleNewChat}>
-            <Plus />
-          </SidebarGroupAction>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <SidebarGroupAction
+                title="Actions"
+                className="right-2 top-2 h-6 w-6 rounded-full border border-sidebar-border/40 bg-transparent text-muted-foreground hover:border-sidebar-border/60 hover:bg-transparent hover:text-foreground focus-visible:ring-0"
+              >
+                <Plus className="h-3.5 w-3.5" />
+              </SidebarGroupAction>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent side="right" align="start">
+              <DropdownMenuItem
+                onSelect={(e) => {
+                  e.preventDefault();
+                  void handleNewChat();
+                }}
+              >
+                New chat
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                className="text-red-600 focus:text-red-600"
+                onSelect={(e) => {
+                  e.preventDefault();
+                  void handleDeleteAll();
+                }}
+              >
+                Delete all chats
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
           <SidebarGroupContent>
             <ScrollArea className="h-[calc(100svh-10rem)] pr-1">
               <SidebarMenu>
