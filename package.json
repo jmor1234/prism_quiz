@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^2.0.15",
+    "@ai-sdk/google": "^2.0.14",
     "@ai-sdk/openai": "^2.0.27",
     "@ai-sdk/react": "^2.0.39",
     "@radix-ui/react-avatar": "^1.1.10",
@@ -29,6 +30,7 @@
     "clsx": "^2.1.1",
     "dexie": "^4.2.0",
     "embla-carousel-react": "^8.6.0",
+    "exa-js": "^1.9.3",
     "lucide-react": "^0.543.0",
     "nanoid": "^5.1.5",
     "next": "15.5.2",
