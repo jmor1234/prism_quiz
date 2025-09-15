@@ -4,7 +4,7 @@
 
 **This is a multimodal streaming AI reasoning system, not a traditional chat app.**
 
-Key architectural principle: **Everything streams in real-time** - AI responses, reasoning process, visual analysis, and UI updates happen continuously, not in discrete request/response cycles. Users observe Claude's cognitive process as it analyzes both text and visual content.
+Key architectural principle: **Everything streams in real-time** - AI responses, reasoning process, visual analysis, and UI updates happen continuously, not in discrete request/response cycles. Users observe the model’s cognitive process as it analyzes both text and visual content.
 
 ## Tech Stack Deep Dive
 
@@ -20,7 +20,7 @@ Key architectural principle: **Everything streams in real-time** - AI responses,
 // 4. Handles provider differences behind a unified API
 
 const result = streamText({
-  model: anthropic('claude-sonnet-4-20250514'),
+  model: provider('model-id-here'),
   messages: [...],
   providerOptions: {
     anthropic: {
@@ -102,6 +102,13 @@ const { messages, status, sendMessage, stop } = useChat({
 - **Routing**: URL-based `/chat/[threadId]` (Next.js 15 dynamic params awaited); `/chat` redirects to the latest or creates a new thread. Root `/` redirects to `/chat` using `redirect()` in `app/page.tsx` with a matching redirect in `next.config.ts` for robustness.
  - **Global actions**: The sidebar plus button opens a menu with "New chat" and a destructive "Delete all chats" action; clearing creates a fresh thread and navigates to it.
 
+**Tracing & Observability (TraceLogger)**:
+- **Location**: `app/api/chat/lib/traceLogger.ts`
+- **Purpose**: Structured, per-request trace with step-indexed timeline across sections; supports parallel execution logging.
+- **Context storage**: Uses `AsyncLocalStorage` so tools (e.g., `thinkTool`) can log within the current request context via `getLogger()`.
+- **Captured events**: `TOOL_CALL_START`, `TOOL_INTERNAL_STEP`, `TOOL_CALL_END`, `AGENT_PLANNING`, `AGENT_SYNTHESIS_START`, plus initial messages and final response.
+- **Outputs**: Writes per-section JSON files (`trace_<requestId>_<section>.json`) and an overview file with `sectionLogFiles` list.
+
 ### How The Three Layers Connect
 
 **The Data Flow**:
@@ -127,10 +134,24 @@ This separation means you can swap AI providers (layer 1), change state manageme
 ### Critical Implementation Details
 
 **Reasoning System** (The app's key differentiator):
-- **Backend**: `thinking: { type: 'enabled', budgetTokens: 16000 }` tells Claude Sonnet 4 to expose its thinking
+- **Backend**: `thinking: { type: 'enabled', budgetTokens: 16000 }` instructs supported models to expose visible thinking
 - **Streaming**: Reasoning streams as a separate message part alongside the response
 - **Frontend**: `<Reasoning>` components auto-manage UX (open while streaming, close with delay)
 - **Result**: Users see *how* the AI thinks, not just *what* it concludes
+
+**Agentic Tooling (Think Tool)**:
+- **Purpose**: A side-effect-free scratchpad for mid-trajectory reflection after tool outputs and before actions. Improves sequential decision-making and policy adherence.
+- **Definition**: Implemented at `app/api/chat/tools/thinkTool/think-tool.ts` using the AI SDK Tool API with Zod `inputSchema`.
+- **Registration**: Registered in `app/api/chat/route.ts` as `tools: { thinkTool }` for `streamText(...)` with Anthropic Sonnet 4; system prompt briefly instructs when to use it.
+- **Behavior**: Accepts `{ thought: string }`, returns `{ acknowledged: true }`. No external effects. Private by default (not rendered in UI), complementing `sendReasoning: true`.
+- **Usage guidance**: Use after receiving tool results or when planning multi-step actions to verify policies, check missing info, and outline next steps.
+
+**Agentic Tooling (Research Memory Tool)**:
+- **Purpose**: Persistent knowledge accumulation within a conversation. Builds cumulative understanding and tracks key insights discovered through retrieval and reasoning.
+- **Definition**: Implemented at `app/api/chat/tools/researchMemoryTool/researchMemoryTool.ts` using the AI SDK Tool API with Zod `inputSchema`.
+- **Registration**: Registered in `app/api/chat/route.ts` as `tools: { researchMemoryTool }` alongside `thinkTool`.
+- **Behavior**: Accepts `{ note: string }`, appends to an in-memory list, returns `{ acknowledged, totalNotes, currentMemory }`. Private by default (not rendered in UI).
+- **Scope**: In-memory per server instance. For durability across instances/devices, back with a datastore keyed by `threadId`.
 
 **Message Parts Architecture**:
 ```javascript
@@ -140,7 +161,10 @@ UIMessage {
   parts: [
     { type: 'text', text: 'The answer is...', state: 'complete' },
     { type: 'reasoning', text: 'I need to think about...', state: 'streaming' },
-    { type: 'file', url: 'data:image/jpeg;base64,...', mediaType: 'image/jpeg' } // Multimodal
+    { type: 'file', url: 'data:image/jpeg;base64,...', mediaType: 'image/jpeg' }, // Multimodal
+    // Tool parts (not user-visible by default)
+    // { type: 'tool', toolName: 'thinkTool', state: 'output-available', input: { thought: '...' }, output: { acknowledged: true } }
+    // { type: 'tool', toolName: 'researchMemoryTool', state: 'output-available', input: { note: '...' }, output: { acknowledged: true, totalNotes: 3, currentMemory: '...' } }
   ]
 }
 ```
@@ -269,7 +293,7 @@ return (
 // 3. Background conversion → base64 data URL (server-compatible)
 // 4. Smart compression → if >2MB, compress to AI-optimal size
 // 5. Message transmission → base64 flows to backend
-// 6. AI analysis → Claude processes with streaming reasoning
+// 6. AI analysis → the model processes with streaming reasoning
 ```
 
 **Key Technical Decisions**:
@@ -287,7 +311,7 @@ return (
 
 ### **Streaming Visual Reasoning**
 
-**The Breakthrough**: Users observe Claude analyzing images in real-time.
+**The Breakthrough**: Users observe the model analyzing images in real-time.
 
 **Flow**:
 ```
@@ -295,7 +319,7 @@ User pastes screenshot
   ↓ (immediate attachment display)
 Sends message with image + text
   ↓ (AI SDK processes multimodal input)
-Claude streams visual analysis
+The model streams visual analysis
   ↓ (reasoning panel auto-opens)
 User sees "I can see this screenshot shows..." 
   ↓ (streaming cognitive process)
@@ -316,9 +340,9 @@ Reasoning auto-closes when complete
 - **Context integration**: Uses existing `AttachmentsContext` pattern
 
 **Backend** (`app/api/chat/route.ts`):
-- **No changes required**: Claude Sonnet 4 supports vision natively
-- **AI SDK compatibility**: `convertToModelMessages()` handles file parts automatically
-- **Streaming preserved**: Images + reasoning stream together seamlessly
+- **Vision**: Vision-capable models are supported; `convertToModelMessages()` handles file parts automatically
+- **Think tool**: `tools: { thinkTool }` registered in `streamText()`; system prompt nudges usage after tool results or during planning
+- **Streaming preserved**: Images + reasoning + tool invocations stream together seamlessly
 
 **UI Components**:
 - **MessageRenderer**: Added `case "file"` with Next.js `<Image>` (set `unoptimized` for data URLs)
@@ -328,7 +352,7 @@ Reasoning auto-closes when complete
 ## What Our Code Does
 
 ### Backend
-- **`/api/chat`**: Streams AI responses with reasoning enabled (Claude Sonnet 4 with vision)
+- **`/api/chat`**: Streams AI responses with visible reasoning (for models that support it) and exposes `thinkTool`/`researchMemoryTool` via `tools` in `streamText()`
 - **`/api/transcribe`**: Converts audio to text using `gpt-4o-transcribe`
 
 ### Frontend
@@ -360,7 +384,7 @@ Reasoning auto-closes when complete
 **Images**: 
 - Upload: Click + → file dialog → compression → base64 conversion → included in message
 - Paste: Screenshot → `Ctrl/Cmd+V` → clipboard detection → compression → base64 conversion → included in message
-- Analysis: Image + text → `/api/chat` → Claude vision analysis → streaming reasoning about visual content
+- Analysis: Image + text → `/api/chat` → vision-capable model analysis → streaming reasoning about visual content
 
 **Copy**: Hover message → copy button → `extractMessageText()` → clipboard API → user notification
 
@@ -384,9 +408,9 @@ UIMessage {
 }
 ```
 
-**Why this matters**: Each part can stream independently and render with different UI components. Reasoning shows *how* the AI thinks, not just *what* it concludes. **File parts enable visual reasoning** - users see Claude analyzing images in real-time.
+**Why this matters**: Each part can stream independently and render with different UI components. Reasoning shows *how* the model thinks, not just *what* it concludes. **File parts enable visual reasoning** - users see the model analyzing images in real-time.
 
-**Backend**: Claude Sonnet 4 with vision processes images + reasoning streams separately  
+**Backend**: Vision-capable models process images + reasoning streams separately  
 **Frontend**: `<Reasoning>` components auto-open during streaming, `<Image>` components display uploaded content
 
 ## For New Engineers
@@ -394,7 +418,7 @@ UIMessage {
 **Start here**: 
 1. `app/chat/thread-chat.tsx` - `useChat()` + `useMessageVisibility()` + local persistence orchestration
 2. `app/chat/layout.tsx` / `components/app-sidebar.tsx` - App shell + threads UI
-3. `app/api/chat/route.ts` - Streaming backend (multimodal)
+3. `app/api/chat/route.ts` - Streaming backend (multimodal) with `thinkTool` registration and Anthropic `thinking` enabled
 4. `components/ai-elements/prompt-input.tsx` - Image compression, clipboard paste, file handling
 5. `components/ai-elements/message-renderer.tsx` - Rendering text, reasoning, image parts
 6. `lib/message-utils.ts` - UIMessage text extraction patterns
@@ -407,6 +431,7 @@ UIMessage {
 - **Conversation branching** - editing creates new conversation paths (supports visual content exploration)
 - **Smart extraction** - reasoning, response content, and visual content are handled separately
 - **Base64 universality** - images travel as data URLs for browser/server compatibility
+ - **Private tool reflection** - `thinkTool` is a private, side-effect-free reflection step; its outputs are logged but not surfaced in UI
 
 ### Persistence v1 (Local) → v2 (Server) Upgrade Path
 - v1 stores full `UIMessage[]` snapshots in IndexedDB (per-device). No cross-device sync; subject to browser quota.
