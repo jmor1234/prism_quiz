@@ -8,6 +8,13 @@ Key architectural principle: **Everything streams in real-time** - AI responses,
 
 ## Tech Stack Deep Dive
 
+### Recent updates (Sep 2025)
+
+- **AI SDK v5 agentic controls**: Dynamic tool choice (no forced tools); `stopWhen: stepCountIs(50)`; visible reasoning preserved.
+- **Targeted Extraction Tool**: Exa content retrieval + Gemini structured extraction with consolidation and strict schema.
+- **System prompt modularization**: `app/api/chat/systemPrompt.ts` with `buildSystemPrompt(date)`.
+- **Token visibility**: Per‑step and run‑total token usage printed in server logs.
+
 ### Layer 1: Vercel AI SDK v5 (The Streaming Engine)
 
 **Core Concept**: Converts AI model responses into real-time streams of data chunks.
@@ -152,6 +159,14 @@ This separation means you can swap AI providers (layer 1), change state manageme
 - **Registration**: Registered in `app/api/chat/route.ts` as `tools: { researchMemoryTool }` alongside `thinkTool`.
 - **Behavior**: Accepts `{ note: string }`, appends to an in-memory list, returns `{ acknowledged, totalNotes, currentMemory }`. Private by default (not rendered in UI).
 - **Scope**: In-memory per server instance. For durability across instances/devices, back with a datastore keyed by `threadId`.
+
+**Agentic Tooling (Targeted Extraction Tool)**:
+- **Purpose**: High‑signal extraction from specific URLs with optional subpage crawl; consolidates findings with evidence.
+- **Definition**: `app/api/chat/tools/targetedExtractionTool/targetedExtractionTool.ts` (Zod input, private by default).
+- **Retrieval**: Exa SDK `getContents` with rate limiting and crawl options (`liveCrawl`, `subpages`, `subpageTargets`). Client in `app/api/chat/tools/researchOrchestratorTool/exaSearch/exaClient.ts`.
+- **Extraction**: `generateObject()` with `@ai-sdk/google` (`gemini-2.5-flash-lite`) and strict `extractionOutputSchema` + focused prompt.
+- **Safety**: Enforces `MAX_CONTENT_LENGTH` before extraction; requires `EXA_API_KEY`.
+- **Observability**: Logs retrieval/extraction/consolidation phases and summary stats via `TraceLogger`.
 
 **Message Parts Architecture**:
 ```javascript
@@ -341,8 +356,8 @@ Reasoning auto-closes when complete
 
 **Backend** (`app/api/chat/route.ts`):
 - **Vision**: Vision-capable models are supported; `convertToModelMessages()` handles file parts automatically
-- **Think tool**: `tools: { thinkTool }` registered in `streamText()`; system prompt nudges usage after tool results or during planning
-- **Streaming preserved**: Images + reasoning + tool invocations stream together seamlessly
+- **Tools**: `thinkTool`, `researchMemoryTool`, `targetedExtractionTool` registered in `streamText()`; tool choice is dynamic with `stopWhen: stepCountIs(50)`.
+- **Streaming preserved**: Images + reasoning + tool invocations stream together seamlessly; per-step and run-total token usage printed in server logs.
 
 **UI Components**:
 - **MessageRenderer**: Added `case "file"` with Next.js `<Image>` (set `unoptimized` for data URLs)
@@ -352,8 +367,9 @@ Reasoning auto-closes when complete
 ## What Our Code Does
 
 ### Backend
-- **`/api/chat`**: Streams AI responses with visible reasoning (for models that support it) and exposes `thinkTool`/`researchMemoryTool` via `tools` in `streamText()`
+- **`/api/chat`**: Streams AI responses with visible reasoning (for models that support it) and exposes `thinkTool`/`researchMemoryTool`/`targetedExtractionTool` via `tools` in `streamText()`
 - **`/api/transcribe`**: Converts audio to text using `gpt-4o-transcribe`
+- **System prompt**: `app/api/chat/systemPrompt.ts` exports a base prompt and `buildSystemPrompt()` for date‑aware prompts.
 
 ### Frontend
 - **`app/chat/layout.tsx`**: App shell with `SidebarProvider`, `AppSidebar`, `SidebarTrigger`, and `SidebarInset`
