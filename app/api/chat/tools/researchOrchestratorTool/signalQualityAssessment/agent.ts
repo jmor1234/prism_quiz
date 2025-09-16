@@ -4,6 +4,8 @@ import { getLogger } from '@/app/api/chat/lib/traceLogger';
 import { SQAInput, SQAOutput } from './types';
 import { sqaAssessmentSchema, SqaAssessment } from './schema';
 import { getSignalQualityAssessmentPrompt } from './prompt';
+import { withRetry } from '@/app/api/chat/lib/llmRetry';
+import { getPhaseTimeoutMs } from '@/app/api/chat/lib/retryConfig';
 
 const SQA_AGENT_TOOL_NAME = 'signalQualityAssessmentAgent';
 const LLM_MODEL_NAME = 'gemini-2.5-flash-lite';
@@ -25,11 +27,16 @@ export async function assessSignalQuality(input: SQAInput): Promise<SQAOutput> {
       fullTextLength: input.fullText.length,
     });
 
-    const { object: assessmentData, usage } = await generateObject({
-      model: google(LLM_MODEL_NAME),
-      schema: sqaAssessmentSchema,
-      prompt: getSignalQualityAssessmentPrompt(input),
-    });
+    const { object: assessmentData, usage } = await withRetry(
+      (signal) =>
+        generateObject({
+          model: google(LLM_MODEL_NAME),
+          schema: sqaAssessmentSchema,
+          prompt: getSignalQualityAssessmentPrompt(input),
+          abortSignal: signal,
+        }),
+      { phase: 'sqa', timeoutMs: getPhaseTimeoutMs('sqa') }
+    );
     assessmentResult = assessmentData as SqaAssessment;
 
     logger?.logToolInternalStep(SQA_AGENT_TOOL_NAME, 'LLM_CALL_SUCCESS', {

@@ -4,6 +4,8 @@ import { getLogger } from '@/app/api/chat/lib/traceLogger';
 import { ResearchConsolidationAgentInput } from './types';
 import { consolidatedDocumentSchema, ConsolidatedDocument } from './schema';
 import { getResearchConsolidationPrompt } from './prompt';
+import { withRetry } from '@/app/api/chat/lib/llmRetry';
+import { getPhaseTimeoutMs } from '@/app/api/chat/lib/retryConfig';
 
 const TOOL_NAME = 'researchConsolidationAgent';
 const LLM_MODEL_NAME = 'gemini-2.5-flash-lite';
@@ -27,11 +29,16 @@ export async function consolidateDocument(
 
   try {
     console.log(`[${TOOL_NAME}] Consolidating document: ${analyzedDocument.url}`);
-    const { object: consolidatedResult, usage } = await generateObject({
-      model: google(LLM_MODEL_NAME),
-      schema: consolidatedDocumentSchema,
-      prompt: getResearchConsolidationPrompt(input),
-    });
+    const { object: consolidatedResult, usage } = await withRetry(
+      (signal) =>
+        generateObject({
+          model: google(LLM_MODEL_NAME),
+          schema: consolidatedDocumentSchema,
+          prompt: getResearchConsolidationPrompt(input),
+          abortSignal: signal,
+        }),
+      { phase: 'consolidation', timeoutMs: getPhaseTimeoutMs('consolidation') }
+    );
 
     llmOutput = consolidatedResult as ConsolidatedDocument;
 

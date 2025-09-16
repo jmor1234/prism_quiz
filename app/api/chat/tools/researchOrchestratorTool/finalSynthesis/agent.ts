@@ -4,6 +4,8 @@ import { getLogger } from '@/app/api/chat/lib/traceLogger';
 import { FinalSynthesisAgentInput } from './types';
 import { finalSynthesisAgentOutputSchema, FinalSynthesisAgentOutput } from './schema';
 import { getFinalSynthesisPrompt } from './prompt';
+import { withRetry } from '@/app/api/chat/lib/llmRetry';
+import { getPhaseTimeoutMs } from '@/app/api/chat/lib/retryConfig';
 
 const TOOL_NAME = 'finalSynthesisAgent';
 const LLM_MODEL_NAME = 'gemini-2.5-flash';
@@ -21,11 +23,16 @@ export async function generateFinalReport(
   });
 
   try {
-    const { object: synthesisResult, usage } = await generateObject({
-      model: google(LLM_MODEL_NAME),
-      schema: finalSynthesisAgentOutputSchema,
-      prompt: getFinalSynthesisPrompt(input),
-    });
+    const { object: synthesisResult, usage } = await withRetry(
+      (signal) =>
+        generateObject({
+          model: google(LLM_MODEL_NAME),
+          schema: finalSynthesisAgentOutputSchema,
+          prompt: getFinalSynthesisPrompt(input),
+          abortSignal: signal,
+        }),
+      { phase: 'finalSynthesis', timeoutMs: getPhaseTimeoutMs('finalSynthesis') }
+    );
     llmOutput = synthesisResult as FinalSynthesisAgentOutput;
 
     logger?.logToolInternalStep(TOOL_NAME, 'LLM_CALL_SUCCESS', {

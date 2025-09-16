@@ -4,6 +4,8 @@ import { getLogger } from '@/app/api/chat/lib/traceLogger';
 import { QueryGenerationPromptInput } from './types';
 import { queryGenerationOutputSchema, QueryGenerationOutput } from './schema';
 import { getQueryGenerationPrompt } from './prompt';
+import { withRetry } from '@/app/api/chat/lib/llmRetry';
+import { getPhaseTimeoutMs } from '@/app/api/chat/lib/retryConfig';
 
 const TOOL_NAME = 'queryGenerationTool';
 
@@ -38,11 +40,16 @@ Focused Objective: ${input.focusedObjective}
 Focus Areas: ${input.focusAreas.length} areas defined
 `);
 
-    const { object: result, usage } = await generateObject({
-      model: anthropic('claude-sonnet-4-20250514'),
-      schema: queryGenerationOutputSchema,
-      prompt: getQueryGenerationPrompt(inputWithDefaults),
-    });
+    const { object: result, usage } = await withRetry(
+      (signal) =>
+        generateObject({
+          model: anthropic('claude-sonnet-4-20250514'),
+          schema: queryGenerationOutputSchema,
+          prompt: getQueryGenerationPrompt(inputWithDefaults),
+          abortSignal: signal,
+        }),
+      { phase: 'queryGen', timeoutMs: getPhaseTimeoutMs('queryGen') }
+    );
 
     queryResult = result as QueryGenerationOutput;
     logger?.logToolInternalStep(TOOL_NAME, 'GENERATE_QUERIES_SUCCESS', {

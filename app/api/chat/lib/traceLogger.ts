@@ -33,6 +33,7 @@ interface TraceLog {
     totalDurationSeconds?: number;
     error?: unknown;
     sectionLogFiles?: string[]; // Added to list section log files
+    retryMetrics?: Record<string, { attempts?: number; retries?: number; timeouts?: number; maxAttemptsExhausted?: number }>; // Aggregated retry stats
 }
 
 // Interface for a typical message structure with parts
@@ -117,6 +118,9 @@ export class TraceLogger {
     private currentExecutionIndex?: number;
     
     private sectionLogFileNames: Set<string> = new Set();
+
+    // Aggregated retry metrics per logical phase (e.g., 'sqa', 'contentAnalysis')
+    private retryMetrics: Record<string, { attempts?: number; retries?: number; timeouts?: number; maxAttemptsExhausted?: number }> = {};
 
     constructor(requestId?: string) {
         this._requestId = requestId || `req_${Date.now()}_${randomBytes(4).toString('hex')}`;
@@ -208,6 +212,13 @@ export class TraceLogger {
         this.addStep(stepData as Omit<LogStep, 'stepIndex' | 'timestamp'>);
     }
 
+    // Retry metrics aggregation (minimal API)
+    incrementRetryStat(phase: string, stat: 'attempts' | 'retries' | 'timeouts' | 'maxAttemptsExhausted'): void {
+        if (!this.isEnabled) return;
+        const entry = (this.retryMetrics[phase] ||= {});
+        entry[stat] = (entry[stat] ?? 0) + 1;
+    }
+
     // Specific log method for the mandatory planning step via thinkTool
     logAgentPlanning(thought: string): void {
         // This captures the *input* to the thinkTool, representing the agent's plan
@@ -293,6 +304,20 @@ export class TraceLogger {
 
         // Finalize the list of written files for the overview log
         this.overviewLogData.sectionLogFiles = writtenSectionFiles.sort();
+        // Attach aggregated retry metrics (if any)
+        if (Object.keys(this.retryMetrics).length > 0) {
+            (this.overviewLogData as TraceLog).retryMetrics = this.retryMetrics;
+            // Console summary (minimal)
+            console.log(`\n====================== RETRY METRICS =======================`);
+            for (const [phase, m] of Object.entries(this.retryMetrics)) {
+                const attempts = m.attempts ?? 0;
+                const retries = m.retries ?? 0;
+                const timeouts = m.timeouts ?? 0;
+                const exhausted = m.maxAttemptsExhausted ?? 0;
+                console.log(`${phase}: attempts=${attempts}, retries=${retries}, timeouts=${timeouts}, max_exhausted=${exhausted}`);
+            }
+            console.log(`===========================================================`);
+        }
         
         // Write Overview Log
         const overviewLogFilePath = path.join(logsDir, `trace_${this._requestId}_overview.json`);

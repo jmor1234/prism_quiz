@@ -4,6 +4,8 @@ import { getLogger } from '@/app/api/chat/lib/traceLogger';
 import { ContentAnalysisAgentInput, ContentAnalysisAgentOutput, AnalyzedDocument } from './types';
 import { contentAnalysisAgentOutputSchema } from './schema';
 import { getContentAnalysisPrompt } from './prompt';
+import { withRetry } from '@/app/api/chat/lib/llmRetry';
+import { getPhaseTimeoutMs } from '@/app/api/chat/lib/retryConfig';
 
 const TOOL_NAME = 'contentAnalysisAgent';
 const LLM_MODEL_NAME = 'gpt-4.1-mini';
@@ -24,11 +26,16 @@ export async function analyzeDocument(input: ContentAnalysisAgentInput): Promise
 
   try {
     console.log(`[${TOOL_NAME}] Calling LLM (${LLM_MODEL_NAME}) for URL: ${url}`);
-    const { object: rawAnalysisResult, usage } = await generateObject({
-      model: openai(LLM_MODEL_NAME),
-      schema: contentAnalysisAgentOutputSchema,
-      prompt: getContentAnalysisPrompt(input),
-    });
+    const { object: rawAnalysisResult, usage } = await withRetry(
+      (signal) =>
+        generateObject({
+          model: openai(LLM_MODEL_NAME),
+          schema: contentAnalysisAgentOutputSchema,
+          prompt: getContentAnalysisPrompt(input),
+          abortSignal: signal,
+        }),
+      { phase: 'contentAnalysis', timeoutMs: getPhaseTimeoutMs('contentAnalysis') }
+    );
 
     llmOutput = rawAnalysisResult as ContentAnalysisAgentOutput;
     logger?.logToolInternalStep(TOOL_NAME, 'LLM_CALL_SUCCESS', {
