@@ -1,5 +1,5 @@
 import { generateObject } from 'ai';
-import { openai } from '@ai-sdk/openai';
+import { google } from '@ai-sdk/google';
 import { getLogger } from '@/app/api/chat/lib/traceLogger';
 import { ContentAnalysisAgentInput, ContentAnalysisAgentOutput, AnalyzedDocument } from './types';
 import { contentAnalysisAgentOutputSchema } from './schema';
@@ -8,7 +8,7 @@ import { withRetry } from '@/app/api/chat/lib/llmRetry';
 import { getPhaseTimeoutMs } from '@/app/api/chat/lib/retryConfig';
 
 const TOOL_NAME = 'contentAnalysisAgent';
-const LLM_MODEL_NAME = 'gpt-4.1-mini';
+const LLM_MODEL_NAME = 'gemini-2.5-flash-lite';
 
 export async function analyzeDocument(input: ContentAnalysisAgentInput): Promise<AnalyzedDocument> {
   const logger = getLogger();
@@ -29,7 +29,7 @@ export async function analyzeDocument(input: ContentAnalysisAgentInput): Promise
     const { object: rawAnalysisResult, usage } = await withRetry(
       (signal) =>
         generateObject({
-          model: openai(LLM_MODEL_NAME),
+          model: google(LLM_MODEL_NAME),
           schema: contentAnalysisAgentOutputSchema,
           prompt: getContentAnalysisPrompt(input),
           abortSignal: signal,
