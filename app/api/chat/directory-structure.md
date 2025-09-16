@@ -16,10 +16,18 @@ app/api/chat/
 │                               # - Response style and citation expectations
 │
 ├── lib/
-│   └── traceLogger.ts          # Structured per-request tracing (AsyncLocalStorage)
-│                               # - Sectioned logs with step-indexed events
-│                               # - Phase summaries + timing metrics per pipeline stage
-│                               # - Writes section files + overview file in /logs
+│   ├── traceLogger.ts          # Structured per-request tracing (AsyncLocalStorage)
+│   │                           # - Sectioned logs with step-indexed events
+│   │                           # - Phase summaries + timing metrics per pipeline stage
+│   │                           # - Aggregated retry metrics per phase
+│   │                           # - Writes section files + overview file in /logs
+│   ├── llmRetry.ts             # Timeout + retry wrapper for LLM calls
+│   │                           # - Per-phase timeouts with AbortSignal cancellation
+│   │                           # - Exponential backoff with jitter; respects Retry-After
+│   │                           # - Error classification (retryable vs non-retryable)
+│   └── retryConfig.ts          # Environment-driven retry/timeout configuration
+│                               # - Per-phase timeout defaults with env overrides
+│                               # - Max attempts and backoff settings
 │
 └── tools/                      # Tools callable by the primary agent
     │
@@ -68,7 +76,7 @@ app/api/chat/
         │   └── schema.ts           # ResearchPlan schema (focusedObjective, focusAreas, etc.)
         │
         ├── queryGeneration/
-        │   ├── agent.ts            # Anthropic (Sonnet 4) → keyword + neural queries
+        │   ├── agent.ts            # Anthropic (Claude) → keyword + neural queries
         │   ├── prompt.ts           # Query strategy guidance
         │   ├── schema.ts           # QueryGenerationOutput schema
         │   └── types.ts
@@ -80,7 +88,7 @@ app/api/chat/
         │   └── types.ts            # SQAInput (with fullText) / SQAOutput
         │
         ├── contentAnalysis/
-        │   ├── agent.ts            # OpenAI gpt-4.1-mini → findings + evidence + summary
+        │   ├── agent.ts            # Gemini 2.5 flash-lite → findings + evidence + summary
         │   ├── constants.ts        # Concurrency limits and batch delays
         │   ├── prompt.ts           # Analysis policy (evidence discipline; concision)
         │   ├── schema.ts           # Structured analysis output schema
@@ -108,6 +116,8 @@ app/api/chat/
 5) Final synthesis returns Markdown report → route streams to client (reasoning included)
 
 Notes:
+- All LLM phases wrapped with timeout + retry (withRetry): per-phase timeouts, exponential backoff, error classification.
+- Retry metrics aggregated per phase and logged in console summaries and trace files.
 - Exa crawl options (livecrawl/subpages) are handled by targetedExtractionTool, not the orchestrator pipeline.
 - URL canonicalization is applied before dedup and for final citations; original URLs are used for fetching.
 - Rate limiting for Exa is ~12.5 QPS (80 ms queue); batching is used across phases for throughput.
