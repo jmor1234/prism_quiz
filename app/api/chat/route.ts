@@ -5,6 +5,7 @@ import { convertToModelMessages, streamText, UIMessage, stepCountIs } from 'ai';
 import { thinkTool } from './tools/thinkTool/think-tool';
 import { researchMemoryTool } from './tools/researchMemoryTool/researchMemoryTool';
 import { targetedExtractionTool } from './tools/targetedExtractionTool/targetedExtractionTool';
+import { executeResearchPlanTool } from './tools/executeResearchPlanTool/executeResearchPlanTool';
 import { TraceLogger, asyncLocalStorage } from './lib/traceLogger';
 import { buildSystemPrompt } from './systemPrompt';
 
@@ -37,6 +38,7 @@ export async function POST(req: Request) {
         thinkTool: thinkTool,
         researchMemoryTool: researchMemoryTool,
         targetedExtractionTool: targetedExtractionTool,
+        executeResearchPlanTool: executeResearchPlanTool,
       },
       // No forced tool gating; allow the model to choose dynamically
       // Agentic controls (v5): limit sequential steps to prevent runaway loops

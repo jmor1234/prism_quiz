@@ -1,5 +1,7 @@
 import Exa from 'exa-js';
 import { getLogger } from '@/app/api/chat/lib/traceLogger';
+import type { ExaCategory } from '../constants';
+import type { ExaSearchConfig, ExaSearchHit } from './types';
 
 // --- Start of Rate Limiter Implementation ---
 
@@ -49,6 +51,70 @@ if (!exaApiKey) {
 }
 
 const exa = new Exa(exaApiKey);
+
+// Options type for the Exa SDK search() call (URL-only search)
+interface ExaSDKSearchOptions {
+  numResults?: number;
+  includeDomains?: string[];
+  excludeDomains?: string[];
+  startCrawlDate?: string;
+  endCrawlDate?: string;
+  startPublishedDate?: string;
+  endPublishedDate?: string;
+  useAutoprompt?: boolean;
+  type?: 'keyword' | 'neural' | 'auto';
+  category?: ExaCategory;
+}
+
+/**
+ * Executes a search query using the Exa SDK and returns processed results (URL-only search).
+ */
+export async function searchExa(
+  config: ExaSearchConfig,
+  useAutopromptFlag: boolean
+): Promise<ExaSearchHit[]> {
+  const logger = getLogger();
+  const toolName = 'ExaSearchClient';
+
+  const sdkOptions: ExaSDKSearchOptions = {
+    numResults: config.numResults,
+    type: config.type,
+    useAutoprompt: useAutopromptFlag,
+  };
+  if (config.category) sdkOptions.category = config.category;
+  if (config.startPublishedDate) sdkOptions.startPublishedDate = config.startPublishedDate;
+  if (config.endPublishedDate) sdkOptions.endPublishedDate = config.endPublishedDate;
+
+  logger?.logToolInternalStep(toolName, 'EXA_SEARCH_API_CALL_START', {
+    query: config.query,
+    options: sdkOptions,
+  });
+
+  try {
+    const response = await exaRateLimiter.execute(() =>
+      exa.search(config.query, sdkOptions as Parameters<typeof exa.search>[1])
+    );
+
+    logger?.logToolInternalStep(toolName, 'EXA_SEARCH_API_CALL_SUCCESS', {
+      query: config.query,
+      resultsCount: response.results?.length || 0,
+    });
+
+    return (response.results || []).map((hit) => ({
+      url: hit.url,
+      title: hit.title,
+      publishedDate: hit.publishedDate,
+      author: hit.author,
+      exaScore: hit.score,
+    }));
+  } catch (error: unknown) {
+    logger?.logToolInternalStep(toolName, 'EXA_SEARCH_API_CALL_ERROR', {
+      query: config.query,
+      error: error instanceof Error ? { message: error.message, name: error.name } : String(error),
+    });
+    throw error;
+  }
+}
 
 /**
  * Fetches the full textual content for a batch of URLs using Exa's getContents API.
