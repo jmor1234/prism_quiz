@@ -7,8 +7,9 @@ A real‑time, multimodal AI reasoning application. Inputs (text, images, voice�
 - Everything streams: provider → state machine → UI.
 - Visible reasoning: when supported, thinking is streamed separately from answer text.
 - Deterministic tools: tool interfaces are schema‑validated and side‑effects are explicit.
-- Private tool outputs: tools inform decisions; the user sees only what’s decision‑relevant (text/citations), not tool traces.
-- Monotone persistence: only finalized exchanges are stored client‑side; partial streams aren’t.
+- Private tool outputs: tools inform decisions; the user sees only what's decision‑relevant (text/citations), not tool traces.
+- Monotone persistence: only finalized exchanges are stored client‑side; partial streams aren't.
+- Three‑tier caching: tool schemas, system prompts, and conversation history are cached at provider level for 60‑80% cost reduction and 2‑3x speed improvement.
 
 ## Layered architecture
 - Engine (AI SDK v5): unifies providers, tool calling, and streaming; supports agentic controls (e.g., bounded steps).
@@ -24,6 +25,14 @@ A real‑time, multimodal AI reasoning application. Inputs (text, images, voice�
 - Parallelism is capability: spawn independent objectives; cap sequential loops.
 - Prompts are part of the program: system and tool descriptions steer behavior; keep them concise and policy‑focused.
 - State and errors compound: design for resumability, idempotency, and instructive error surfaces.
+
+## Caching architecture
+- Provider‑level prompt caching (Anthropic): caches static context at 90% cost discount and 2‑3x speed improvement.
+- Three‑tier strategy: tools (1h TTL) → system prompts (1h TTL for stable, fresh for dynamic) → conversation history (5m TTL).
+- Tool order determinism: consistent schema ordering with cache breakpoint on final tool to cache entire toolset.
+- System prompt split: stable instructions cached across sessions; only date/context marked fresh.
+- History breakpoints: dynamic cache markers on conversation state, maintained across multi‑step agent loops.
+- Real‑time cost tracking: USD calculations using actual provider pricing, session‑level accumulation.
 
 ## Data flow (high level)
 1) User composes input (optionally with attachments or voice).
@@ -41,6 +50,8 @@ A real‑time, multimodal AI reasoning application. Inputs (text, images, voice�
 - Per‑request tracing with sectioned, step‑indexed logs.
 - Phase summaries include duration and compact stats.
 - Never log raw long content; sample sparsely; prefer counts and sizes.
+- Real‑time cache performance metrics: efficiency percentages, cost savings in USD, session‑level accumulation.
+- Token economics visibility: fresh vs cached token breakdown, conversation context tracking, provider pricing integration.
 
 ## UX principles
 - Lead with the direct answer; support with minimal citations.
