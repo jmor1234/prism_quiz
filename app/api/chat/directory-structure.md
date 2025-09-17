@@ -2,23 +2,35 @@
 
 app/api/chat/
 │
-├── route.ts                    # Main API route (POST)
-│                               # - Streams responses via Vercel AI SDK v5 (streamText)
-│                               # - Registers tools: thinkTool, researchMemoryTool,
-│                               #   targetedExtractionTool, executeResearchPlanTool
-│                               # - Three-tier Anthropic prompt caching: tools (1h) + system (split stable/dynamic) + history (5m)
-│                               # - Real-time cost tracking: USD calculations, cache efficiency metrics, session accumulation  
-│                               # - Agentic controls: stopWhen(stepCountIs(50))
-│                               # - Provider options: Anthropic thinking (visible reasoning)
+├── route.ts                    # Main API route (POST) - CLEAN ORCHESTRATION (~76 lines)
+│                               # - Initializes services (Logger, CacheManager, TokenEconomics)
+│                               # - Prepares cached components via CacheManager
+│                               # - Creates stream callbacks via dependency injection
+│                               # - Configures streamText with tools and Anthropic options
 │                               # - Returns toUIMessageStreamResponse({ sendReasoning: true })
 │
-├── systemPrompt.ts             # Primary agent instructions (concise, non-prescriptive)  
+├── systemPrompt.ts             # Primary agent instructions (concise, non-prescriptive)
 │                               # - Iterative/parallel research guidance
 │                               # - Decision/stop criteria, source quality heuristics
 │                               # - Response style and citation expectations
 │                               # - Split architecture: stable instructions (cached 1h) + dynamic context (fresh)
 │
 ├── lib/
+│   ├── cacheManager.ts         # Three-tier Anthropic caching orchestration
+│   │                           # - Tool schema caching with 1h TTL
+│   │                           # - System prompt split (stable cached/dynamic fresh)
+│   │                           # - Conversation history caching with 5m TTL
+│   │                           # - Cache breakpoint management for multi-step loops
+│   ├── tokenEconomics.ts       # Session-level token tracking and cost analysis
+│   │                           # - Singleton pattern for session persistence
+│   │                           # - Real-time USD cost calculations with cache discounts
+│   │                           # - Cache efficiency metrics (multiplier, true efficiency)
+│   │                           # - Console formatting for token/cost visibility
+│   ├── streamCallbacks.ts      # Stream event handlers with dependency injection
+│   │                           # - onStepFinish: step logging and token tracking
+│   │                           # - onFinish: cache metrics and final response
+│   │                           # - onError/onAbort: proper log finalization
+│   │                           # - prepareStep: cache breakpoint maintenance
 │   ├── traceLogger.ts          # Structured per-request tracing (AsyncLocalStorage)
 │   │                           # - Sectioned logs with step-indexed events
 │   │                           # - Phase summaries + timing metrics per pipeline stage
