@@ -298,7 +298,7 @@ export async function orchestrateResearchExecution(
   return {
     researchPlan,
     finalSynthesisReport: {
-      reportOutline: finalReportOutput.reportOutline,
+      thinking: finalReportOutput.thinking,
       finalDocument: finalReportOutput.finalDocument,
     },
   };

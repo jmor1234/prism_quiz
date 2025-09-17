@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 export const finalSynthesisAgentOutputSchema = z.object({
-  reportOutline: z.string(),
+  thinking: z.string(),
   finalDocument: z.string(),
 });
 

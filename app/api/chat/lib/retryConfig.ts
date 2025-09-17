@@ -13,11 +13,11 @@ function readNumberEnv(name: string, fallback: number): number {
 }
 
 const DEFAULT_TIMEOUTS: Record<RetryPhase, number> = {
-  queryGen: 10_000,
+  queryGen: 20_000,
   sqa: 10_000,
-  contentAnalysis: 15_000,
-  consolidation: 10_000,
-  finalSynthesis: 30_000,
+  contentAnalysis: 25_000,
+  consolidation: 15_000,
+  finalSynthesis: 45_000, // Increased for complex synthesis
 };
 
 const PHASE_TIMEOUT_ENV: Record<RetryPhase, string> = {

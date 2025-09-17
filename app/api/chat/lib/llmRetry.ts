@@ -56,9 +56,15 @@ function defaultIsRetryable(error: unknown): boolean {
     if (status >= 500 && status < 600) return true;
     if (status >= 400 && status < 500 && status !== 408 && status !== 429) return false;
   }
+
+  // Check for AbortError specifically (from AbortSignal timeouts)
+  if (error instanceof Error && error.name === 'AbortError') {
+    return true;
+  }
+
   const message = (error instanceof Error ? error.message : String(error)).toLowerCase();
   // Common transient/network signals
-  return (
+  const isTransientError = (
     message.includes("timeout") ||
     message.includes("abort") ||
     message.includes("etimedout") ||
@@ -66,8 +72,20 @@ function defaultIsRetryable(error: unknown): boolean {
     message.includes("socket hang up") ||
     message.includes(" temporarily unavailable") ||
     message.includes("rate limit") ||
-    message.includes("server error")
+    message.includes("server error") ||
+    message.includes("operation was aborted") // Specific AbortSignal message
   );
+  // Schema/validation errors from LLMs (often transient - model didn't follow schema properly)
+  const isSchemaError = (
+    message.includes("schema") ||
+    message.includes("validation") ||
+    message.includes("parse") ||
+    message.includes("json") ||
+    message.includes("invalid format") ||
+    message.includes("expected") ||
+    message.includes("required")
+  );
+  return isTransientError || isSchemaError;
 }
 
 /**
@@ -87,16 +105,18 @@ export async function withRetry<T>(
   let lastError: unknown;
 
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    const timeoutMs = cfg.timeoutMs ?? getPhaseTimeoutMs(cfg.phase);
+    console.log(`[withRetry] ${cfg.phase} attempt ${attempt}/${maxAttempts}, timeout: ${timeoutMs}ms`);
+    
     // Prefer native AbortSignal.timeout when available; fallback to AbortController
     let signal: AbortSignal;
     let timeoutHandle: NodeJS.Timeout | undefined = undefined;
     const AbortSignalWithTimeout = AbortSignal as unknown as { timeout?: (ms: number) => AbortSignal };
     if (typeof AbortSignalWithTimeout?.timeout === "function") {
-      signal = AbortSignalWithTimeout.timeout(cfg.timeoutMs ?? getPhaseTimeoutMs(cfg.phase));
+      signal = AbortSignalWithTimeout.timeout(timeoutMs);
     } else {
       const ac = new AbortController();
-      const t = cfg.timeoutMs ?? getPhaseTimeoutMs(cfg.phase);
-      timeoutHandle = setTimeout(() => ac.abort(), t);
+      timeoutHandle = setTimeout(() => ac.abort(), timeoutMs);
       signal = ac.signal;
     }
 
@@ -167,6 +187,9 @@ export async function withRetry<T>(
       if (attempt === maxAttempts || !retryable) {
         if (attempt === maxAttempts && retryable) {
           logger?.incrementRetryStat(cfg.phase, 'maxAttemptsExhausted');
+          console.log(`[withRetry] ${cfg.phase} exhausted max attempts (${maxAttempts}), giving up`);
+        } else if (!retryable) {
+          console.log(`[withRetry] ${cfg.phase} error not retryable, giving up`);
         }
         break;
       }
@@ -175,6 +198,7 @@ export async function withRetry<T>(
       const rawBackoff = Math.min(maxBackoffMs, baseBackoffMs * Math.pow(2, attempt - 1));
       const backoffBase = retryAfterMs ?? rawBackoff;
       const waitMs = Math.floor(Math.random() * backoffBase);
+      console.log(`[withRetry] ${cfg.phase} retrying in ${waitMs}ms...`);
       await sleep(waitMs);
     }
   }

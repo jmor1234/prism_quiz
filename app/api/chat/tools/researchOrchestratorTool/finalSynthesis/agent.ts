@@ -38,7 +38,7 @@ export async function generateFinalReport(
     logger?.logToolInternalStep(TOOL_NAME, 'LLM_CALL_SUCCESS', {
       usage,
       outputSummary: {
-        reportOutlineLength: llmOutput.reportOutline?.length || 0,
+        thinkingLength: llmOutput.thinking?.length || 0,
         finalDocumentLength: llmOutput.finalDocument.length,
       },
     });

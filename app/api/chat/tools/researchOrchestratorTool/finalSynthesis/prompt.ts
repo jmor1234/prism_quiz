@@ -46,7 +46,7 @@ Synthesis policy:
 - When recency matters, surface the most recent credible evidence.
 
 Output format:
-- First, output a concise outline.
+- First, brief thinking: analyze the key themes, identify strongest evidence, plan document structure.
 - Then output the final Markdown document with [Title](URL) citations.
 `;
 };

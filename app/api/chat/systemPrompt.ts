@@ -151,10 +151,17 @@ Remember: Each research objective you craft directly impacts the quality of resu
 
 `
 
-// Helper to compose a time-aware system prompt while keeping the editable base separate.
-export function buildSystemPrompt(formattedDate: string): string {
-  const timeAware = `It is CRITICAL that you factor in the current date; time awareness is CRITICAL for research quality. For up to date information, consider specifying the year 2025 in objectives. Current date: ${formattedDate}`;
-  return `${timeAware}\n\n${SYSTEM_PROMPT_BASE}`;
+// Split system prompt for optimal caching
+export function buildSystemPrompt(formattedDate: string): { stable: string; dynamic: string } {
+  const stable = SYSTEM_PROMPT_BASE; // Cacheable - never changes
+  const dynamic = `It is CRITICAL that you factor in the current date; time awareness is CRITICAL for research quality. For up to date information, consider specifying the year 2025 in objectives. Current date: ${formattedDate}`; // Dynamic - changes daily
+  return { stable, dynamic };
+}
+
+// Legacy helper for backward compatibility (if needed elsewhere)
+export function buildSystemPromptLegacy(formattedDate: string): string {
+  const { stable, dynamic } = buildSystemPrompt(formattedDate);
+  return `${dynamic}\n\n${stable}`;
 }
 
 
