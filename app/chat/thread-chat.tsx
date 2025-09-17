@@ -1,3 +1,6 @@
+// app/chat/thread-chat.tsx
+
+
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
