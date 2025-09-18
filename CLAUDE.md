@@ -20,3 +20,8 @@ i like to work and converse with you piece by piece iteratively. not everything 
 iterative building and understanding and unraveling.
 
 I would also like to use to use our intuition and explore curiosities together.
+
+
+---
+
+After you implement new code *DO NOT DO an npm run build* it takes way too long, just do a linter and type check please.
