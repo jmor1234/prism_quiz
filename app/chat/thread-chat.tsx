@@ -19,6 +19,18 @@ import { MessageRenderer } from "./components/message-renderer";
 import { Button } from "@/components/ui/button";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { saveThread, loadThread } from "@/lib/thread-store";
+import { ResearchProgress } from "@/components/research-progress";
+import { ExtractionProgress } from "@/components/extraction-progress";
+import { ToolStatus } from "@/components/tool-status";
+import type {
+  ResearchState,
+  ResearchSessionData,
+  ResearchObjectiveData,
+  ResearchPhaseData,
+  ResearchOperationData,
+  SearchProgressData,
+  ResearchErrorData,
+} from "@/lib/streaming-types";
 
 function useMessageVisibility(messages: UIMessage[]) {
   const [showPreviousMessages, setShowPreviousMessages] = useState(false);
@@ -57,9 +69,117 @@ function useMessageVisibility(messages: UIMessage[]) {
 }
 
 export function ThreadChat({ threadId, initialMessages }: { threadId: string; initialMessages: UIMessage[] }) {
+  // Research progress state
+  const [researchState, setResearchState] = useState<ResearchState>({
+    session: null,
+    objectives: {},
+    phases: {},
+    currentOperation: null,
+    searchProgress: null,
+    lastError: null,
+    currentToolStatus: null,
+    extractionSession: null,
+    extractionUrls: {},
+  });
+
   const { messages, status, sendMessage, stop, error, setMessages } = useChat({
     id: threadId,
     experimental_throttle: 50,
+    onData: ({ data, type, id }) => {
+      // Handle research progress data parts
+      switch (type) {
+        case 'data-research-session':
+          setResearchState((prev) => ({
+            ...prev,
+            session: data as ResearchSessionData,
+          }));
+          break;
+        case 'data-research-objective':
+          if (id) {
+            setResearchState((prev) => ({
+              ...prev,
+              objectives: {
+                ...prev.objectives,
+                [id]: data as ResearchObjectiveData,
+              },
+            }));
+          }
+          break;
+        case 'data-research-phase':
+          if (id) {
+            setResearchState((prev) => ({
+              ...prev,
+              phases: {
+                ...prev.phases,
+                [id]: data as ResearchPhaseData,
+              },
+            }));
+          }
+          break;
+        case 'data-research-operation':
+          setResearchState((prev) => ({
+            ...prev,
+            currentOperation: data as ResearchOperationData,
+          }));
+          // Auto-clear after 3 seconds
+          setTimeout(() => {
+            setResearchState((prev) => ({
+              ...prev,
+              currentOperation: null,
+            }));
+          }, 3000);
+          break;
+        case 'data-search-progress':
+          setResearchState((prev) => ({
+            ...prev,
+            searchProgress: data as SearchProgressData,
+          }));
+          break;
+        case 'data-research-error':
+          setResearchState((prev) => ({
+            ...prev,
+            lastError: data as ResearchErrorData,
+          }));
+          // Auto-clear after 5 seconds
+          setTimeout(() => {
+            setResearchState((prev) => ({
+              ...prev,
+              lastError: null,
+            }));
+          }, 5000);
+          break;
+        case 'data-tool-status':
+          setResearchState((prev) => ({
+            ...prev,
+            currentToolStatus: data as import('@/lib/streaming-types').ToolStatusData,
+          }));
+          // Auto-clear after 2 seconds
+          setTimeout(() => {
+            setResearchState((prev) => ({
+              ...prev,
+              currentToolStatus: null,
+            }));
+          }, 2000);
+          break;
+        case 'data-extraction-session':
+          setResearchState((prev) => ({
+            ...prev,
+            extractionSession: data as import('@/lib/streaming-types').ExtractionSessionData,
+          }));
+          break;
+        case 'data-extraction-url':
+          if (id) {
+            setResearchState((prev) => ({
+              ...prev,
+              extractionUrls: {
+                ...prev.extractionUrls,
+                [id]: data as import('@/lib/streaming-types').ExtractionUrlData,
+              },
+            }));
+          }
+          break;
+      }
+    },
   });
 
   // Hydrate messages on mount/thread change from local store
@@ -144,6 +264,23 @@ export function ThreadChat({ threadId, initialMessages }: { threadId: string; in
     setEditingMessageId(null);
   }, []);
 
+  // Reset research state when a new message starts
+  useEffect(() => {
+    if (status === 'streaming') {
+      setResearchState({
+        session: null,
+        objectives: {},
+        phases: {},
+        currentOperation: null,
+        searchProgress: null,
+        lastError: null,
+        currentToolStatus: null,
+        extractionSession: null,
+        extractionUrls: {},
+      });
+    }
+  }, [status]);
+
   // Persist finalized snapshots when streaming completes
   const prevStatusRef = useRef(status);
   useEffect(() => {
@@ -223,6 +360,29 @@ export function ThreadChat({ threadId, initialMessages }: { threadId: string; in
                   </MessageContent>
                 </Message>
               ))}
+
+              {/* Progress Displays */}
+              {status === 'streaming' && (
+                <>
+                  {/* Research Progress for executeResearchPlanTool */}
+                  {researchState.session && (
+                    <ResearchProgress state={researchState} />
+                  )}
+
+                  {/* Extraction Progress for targetedExtractionTool */}
+                  {researchState.extractionSession && (
+                    <ExtractionProgress
+                      session={researchState.extractionSession}
+                      urls={researchState.extractionUrls}
+                    />
+                  )}
+
+                  {/* Tool Status for simple tools */}
+                  {researchState.currentToolStatus && (
+                    <ToolStatus status={researchState.currentToolStatus} />
+                  )}
+                </>
+              )}
             </>
           )}
         </ConversationContent>

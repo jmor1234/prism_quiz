@@ -48,6 +48,22 @@ export const targetedExtractionTool = tool({
     const logger = getLogger();
     logger?.logToolCallStart(TOOL_NAME, args);
 
+    // Emit extraction session starting
+    logger?.emitExtractionSession({
+      status: 'starting',
+      totalUrls: args.extractionTargets.length,
+      completedUrls: 0,
+    });
+
+    // Initialize all URLs as pending
+    args.extractionTargets.forEach((target, index) => {
+      logger?.emitExtractionUrl(`url-${index}`, {
+        url: target.url,
+        status: 'pending',
+        progress: 0,
+      });
+    });
+
     // Start log section for the entire extraction flow
     logger?.startLogSection('targeted_extraction_flow');
 
@@ -94,6 +110,13 @@ export const targetedExtractionTool = tool({
     let result: ExtractionSummary | null = null;
 
     try {
+      // Update session to active
+      logger?.emitExtractionSession({
+        status: 'active',
+        totalUrls: args.extractionTargets.length,
+        completedUrls: 0,
+      });
+
       const extraction = await orchestrateTargetedExtraction(args);
       result = extraction;
 
@@ -116,6 +139,13 @@ export const targetedExtractionTool = tool({
       console.log(`  ✗ Failed extractions: ${extraction.failedExtractions}`);
       console.log(`  📊 Total findings: ${totalFindings}`);
 
+      // Emit completion status
+      logger?.emitExtractionSession({
+        status: 'complete',
+        totalUrls: extraction.totalUrls,
+        completedUrls: extraction.successfulExtractions,
+      });
+
       // Log successful extractions with key findings
       if (extraction.successfulExtractions > 0) {
         console.log(`\n  Key findings by URL:`);
@@ -136,6 +166,14 @@ export const targetedExtractionTool = tool({
       console.log('');
     } catch (e) {
       error = e;
+
+      // Emit error status
+      logger?.emitExtractionSession({
+        status: 'error',
+        totalUrls: args.extractionTargets.length,
+        completedUrls: 0,
+        error: e instanceof Error ? e.message : String(e),
+      });
 
       // Log error details
       logger?.logToolInternalStep(TOOL_NAME, 'EXTRACTION_ERROR', {

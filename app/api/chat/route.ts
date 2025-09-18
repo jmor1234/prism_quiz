@@ -1,7 +1,14 @@
 // app/api/chat/route.ts
 
 import { anthropic } from '@ai-sdk/anthropic';
-import { convertToModelMessages, streamText, UIMessage, stepCountIs } from 'ai';
+import {
+  convertToModelMessages,
+  streamText,
+  UIMessage,
+  stepCountIs,
+  createUIMessageStream,
+  createUIMessageStreamResponse
+} from 'ai';
 import { thinkTool } from './tools/thinkTool/think-tool';
 import { researchMemoryTool } from './tools/researchMemoryTool/researchMemoryTool';
 import { targetedExtractionTool } from './tools/targetedExtractionTool/targetedExtractionTool';
@@ -10,6 +17,7 @@ import { TraceLogger, asyncLocalStorage } from './lib/traceLogger';
 import { CacheManager } from './lib/cacheManager';
 import { TokenEconomics } from './lib/tokenEconomics';
 import { createStreamCallbacks } from './lib/streamCallbacks';
+import type { ResearchUIMessage } from '@/lib/streaming-types';
 
 export const maxDuration = 300;
 
@@ -62,20 +70,33 @@ export async function POST(req: Request) {
       stepIndexRef,
     });
 
-    // Stream with clean configuration
-    const result = streamText({
-      model: anthropic('claude-sonnet-4-20250514'),
-      messages: initialMessages,
-      tools: cachedTools,
-      stopWhen: stepCountIs(50),
-      ...callbacks,
-      providerOptions: {
-        anthropic: {
-          thinking: { type: 'enabled', budgetTokens: 16000 },
-        },
+    // Create UI message stream with research progress capabilities
+    const stream = createUIMessageStream<ResearchUIMessage>({
+      execute: async ({ writer }) => {
+        // Inject stream writer into logger for progress updates
+        logger.setStreamWriter({
+          write: (data: unknown) => writer.write(data as Parameters<typeof writer.write>[0])
+        });
+
+        // Stream with clean configuration (preserving all existing config)
+        const result = streamText({
+          model: anthropic('claude-sonnet-4-20250514'),
+          messages: initialMessages,
+          tools: cachedTools,
+          stopWhen: stepCountIs(50),
+          ...callbacks,
+          providerOptions: {
+            anthropic: {
+              thinking: { type: 'enabled', budgetTokens: 16000 },
+            },
+          },
+        });
+
+        // Merge model stream into UI message stream
+        writer.merge(result.toUIMessageStream());
       },
     });
 
-    return result.toUIMessageStreamResponse({ sendReasoning: true });
+    return createUIMessageStreamResponse({ stream });
   });
 }

@@ -2,12 +2,14 @@
 
 app/api/chat/
 │
-├── route.ts                    # Main API route (POST) - CLEAN ORCHESTRATION (~76 lines)
+├── route.ts                    # Main API route (POST) - CLEAN ORCHESTRATION
 │                               # - Initializes services (Logger, CacheManager, TokenEconomics)
 │                               # - Prepares cached components via CacheManager
 │                               # - Creates stream callbacks via dependency injection
+│                               # - **Wraps streamText with createUIMessageStream for progress streaming**
+│                               # - **Injects stream writer into TraceLogger for tool progress emissions**
 │                               # - Configures streamText with tools and Anthropic options
-│                               # - Returns toUIMessageStreamResponse({ sendReasoning: true })
+│                               # - Returns createUIMessageStreamResponse({ stream })
 │
 ├── systemPrompt.ts             # Primary agent instructions (concise, non-prescriptive)
 │                               # - Iterative/parallel research guidance
@@ -34,6 +36,12 @@ app/api/chat/
 │   ├── traceLogger.ts          # Structured per-request tracing (AsyncLocalStorage)
 │   │                           # - Sectioned logs with step-indexed events
 │   │                           # - Phase summaries + timing metrics per pipeline stage
+│   │                           # - **Stream writer injection for real-time progress emissions**
+│   │                           # - **Comprehensive emission methods:**
+│   │                           #   • Research: emitSessionProgress, emitObjectiveProgress, emitPhaseProgress
+│   │                           #   • Extraction: emitExtractionSession, emitExtractionUrl
+│   │                           #   • Tools: emitToolStatus for think/memory tools
+│   │                           #   • Operations: emitOperation, emitSearchProgress, emitError
 │   │                           # - Aggregated retry metrics per phase
 │   │                           # - Writes section files + overview file in /logs
 │   ├── llmRetry.ts             # Timeout + retry wrapper for LLM calls
@@ -49,24 +57,30 @@ app/api/chat/
     ├── executeResearchPlanTool/
     │   └── executeResearchPlanTool.ts  # Entry tool for executing research plans
     │                                    # - Accepts an array of research objectives
+    │                                    # - **Emits session-level progress (starting/active/complete)**
+    │                                    # - **Emits individual objective progress updates**
     │                                    # - Runs each objective in parallel (Promise.allSettled)
     │                                    # - Calls researchOrchestrator per objective
     │                                    # - Merges per-objective Markdown reports (lists failures)
     │
     ├── thinkTool/
     │   └── think-tool.ts        # Private reasoning/scratchpad tool (side-effect-free)
+    │                            # - **Emits transient status during thinking**
     │
     ├── researchMemoryTool/
     │   └── researchMemoryTool.ts # In-memory per-instance notes (durable only if later backed)
+    │                             # - **Emits transient status when recording notes**
     │
     ├── targetedExtractionTool/   # Targeted depth on specific URLs (separate from discovery)
-    │   ├── targetedExtractionTool.ts
+    │   ├── targetedExtractionTool.ts # **Emits extraction session and per-URL progress**
     │   ├── types.ts
     │   ├── constants.ts
     │   ├── retrieval/
     │   │   └── executor.ts       # Exa content retrieval with optional live crawl/subpages
+    │   │                         # - **Emits retrieval progress per URL**
     │   └── extraction/
     │       ├── agent.ts          # Gemini structured extraction
+    │       │                     # - **Emits extraction progress per URL**
     │       ├── prompt.ts
     │       ├── schema.ts
     │       └── types.ts
@@ -76,6 +90,8 @@ app/api/chat/
         │                            #   Query gen → Exa search → canonicalized dedup →
         │                            #   Exa full-text (batched, rate-limited) → SQA (full text) →
         │                            #   Content analysis → Consolidation → Final synthesis
+        │                            # - **Emits phase progress updates at boundaries**
+        │                            # - **Emits operation messages for user feedback**
         │                            # - Phase summaries with duration_ms + compact stats
         │                            # - Deterministic errors + partial successes
         │
@@ -124,12 +140,16 @@ app/api/chat/
 ---
 
 ## Execution flow (high level)
-1) Client → POST /api/chat/route.ts (UIMessage parts) → streamText
+1) Client → POST /api/chat/route.ts (UIMessage parts) → createUIMessageStream wrapper → streamText
 2) Route applies three-tier caching: tools (cached 1h) + system (stable cached, dynamic fresh) + conversation history (cached 5m)
-3) Primary agent plans tool usage; tools run with per-request TraceLogger context; cache performance tracked in real-time
-4) executeResearchPlanTool runs objectives in parallel → researchOrchestrator per objective
-5) Orchestrator phases log summaries (duration_ms, counts, sample URLs)
-6) Final synthesis returns Markdown report → route streams to client (reasoning included) + cache metrics (USD costs, efficiency)
+3) **Stream writer injected into TraceLogger via AsyncLocalStorage context**
+4) Primary agent plans tool usage; tools run with per-request TraceLogger context; cache performance tracked in real-time
+5) **Tools emit real-time progress via logger's stream writer → data parts stream to frontend**
+6) executeResearchPlanTool runs objectives in parallel → researchOrchestrator per objective
+7) **Each research phase emits progress updates (query-gen, searching, analyzing, etc.)**
+8) Orchestrator phases log summaries (duration_ms, counts, sample URLs)
+9) Final synthesis returns Markdown report → route streams to client (reasoning included) + cache metrics (USD costs, efficiency)
+10) **Frontend onData callback updates ResearchState → ResearchProgress component renders**
 
 Notes:
 - All LLM phases wrapped with timeout + retry (withRetry): per-phase timeouts, exponential backoff, error classification.

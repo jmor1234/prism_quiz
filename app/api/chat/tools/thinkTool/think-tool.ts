@@ -18,6 +18,12 @@ export const thinkTool = tool({
     const logger = getLogger();
     logger?.logToolCallStart(TOOL_NAME, { thought });
 
+    // Emit tool status for UI feedback
+    logger?.emitToolStatus({
+      toolName: 'thinkTool',
+      action: 'Thinking about research strategy...'
+    });
+
     console.log(`\n🤔 [${TOOL_NAME}] Reasoning: ${thought}\n`);
 
     const result = { acknowledged: true } as const;

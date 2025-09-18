@@ -111,16 +111,21 @@ export class TraceLogger {
     private stepCounter: number = 0;
     private startTime: number;
     private overviewLogData: Partial<TraceLog> = {};
-    
+
     // Store an array of step arrays for each section to handle parallel executions
     private sectionLogEntries: Map<string, LogStep[][]> = new Map();
     private currentSectionName: string = DEFAULT_SECTION_NAME;
     private currentExecutionIndex?: number;
-    
+
     private sectionLogFileNames: Set<string> = new Set();
 
     // Aggregated retry metrics per logical phase (e.g., 'sqa', 'contentAnalysis')
     private retryMetrics: Record<string, { attempts?: number; retries?: number; timeouts?: number; maxAttemptsExhausted?: number }> = {};
+
+    // Stream writer for progress updates
+    private streamWriter?: {
+        write: (data: unknown) => void;
+    };
 
     constructor(requestId?: string) {
         this._requestId = requestId || `req_${Date.now()}_${randomBytes(4).toString('hex')}`;
@@ -238,6 +243,173 @@ export class TraceLogger {
     logFinalResponse(response: { text: string; finishReason?: string; usage?: unknown }): void {
         if (!this.isEnabled) return;
         this.overviewLogData.finalResponse = response;
+    }
+
+    // Stream writer methods for progress updates
+    setStreamWriter(writer: { write: (data: unknown) => void }): void {
+        this.streamWriter = writer;
+    }
+
+    // Emit research session progress
+    emitSessionProgress(data: {
+        status: 'starting' | 'active' | 'complete' | 'error';
+        totalObjectives: number;
+        completedObjectives: number;
+        error?: string;
+    }): void {
+        if (!this.streamWriter) return;
+        this.streamWriter.write({
+            type: 'data-research-session',
+            id: 'current-session',
+            data: {
+                ...data,
+                startTime: this.startTime,
+            },
+        });
+    }
+
+    // Emit individual objective progress
+    emitObjectiveProgress(objectiveId: string, data: {
+        objective: string;
+        status: 'pending' | 'active' | 'complete' | 'failed';
+        phase?: string;
+        progress: number;
+        sourcesFound?: number;
+        sourcesAnalyzed?: number;
+        error?: string;
+    }): void {
+        if (!this.streamWriter) return;
+        this.streamWriter.write({
+            type: 'data-research-objective',
+            id: objectiveId,
+            data: {
+                ...data,
+                startTime: Date.now(),
+            },
+        });
+    }
+
+    // Emit phase progress
+    emitPhaseProgress(phaseId: string, data: {
+        objective: string;
+        phase: string;
+        status: 'starting' | 'active' | 'complete' | 'error';
+        progress: number;
+        details?: {
+            current?: number;
+            total?: number;
+            description?: string;
+        };
+    }): void {
+        if (!this.streamWriter) return;
+        this.streamWriter.write({
+            type: 'data-research-phase',
+            id: phaseId,
+            data: {
+                ...data,
+                startTime: Date.now(),
+            },
+        });
+    }
+
+    // Emit transient operation updates
+    emitOperation(message: string, metadata?: { phase?: string; objective?: string }): void {
+        if (!this.streamWriter) return;
+        this.streamWriter.write({
+            type: 'data-research-operation',
+            data: {
+                message,
+                ...metadata,
+                timestamp: Date.now(),
+            },
+            transient: true,
+        });
+    }
+
+    // Emit search progress
+    emitSearchProgress(data: {
+        query: string;
+        objective: string;
+        completed: number;
+        total: number;
+        resultsFound?: number;
+    }): void {
+        if (!this.streamWriter) return;
+        this.streamWriter.write({
+            type: 'data-search-progress',
+            data,
+            transient: true,
+        });
+    }
+
+    // Emit error notifications
+    emitError(message: string, metadata?: {
+        phase?: string;
+        objective?: string;
+        retryable?: boolean;
+        retryIn?: number;
+    }): void {
+        if (!this.streamWriter) return;
+        this.streamWriter.write({
+            type: 'data-research-error',
+            data: {
+                message,
+                retryable: metadata?.retryable ?? false,
+                ...metadata,
+                timestamp: Date.now(),
+            },
+            transient: true,
+        });
+    }
+
+    // Emit simple tool status (for think, memory tools)
+    emitToolStatus(data: {
+        toolName: 'thinkTool' | 'researchMemoryTool';
+        action: string;
+    }): void {
+        if (!this.streamWriter) return;
+        this.streamWriter.write({
+            type: 'data-tool-status',
+            data: {
+                ...data,
+                timestamp: Date.now(),
+            },
+            transient: true,
+        });
+    }
+
+    // Emit extraction session progress
+    emitExtractionSession(data: {
+        status: 'starting' | 'active' | 'complete' | 'error';
+        totalUrls: number;
+        completedUrls: number;
+        error?: string;
+    }): void {
+        if (!this.streamWriter) return;
+        this.streamWriter.write({
+            type: 'data-extraction-session',
+            id: 'current-extraction',
+            data: {
+                ...data,
+                startTime: this.startTime,
+            },
+        });
+    }
+
+    // Emit individual URL extraction progress
+    emitExtractionUrl(urlId: string, data: {
+        url: string;
+        status: 'pending' | 'retrieving' | 'extracting' | 'complete' | 'failed';
+        phase?: 'retrieval' | 'extraction';
+        progress: number;
+        error?: string;
+    }): void {
+        if (!this.streamWriter) return;
+        this.streamWriter.write({
+            type: 'data-extraction-url',
+            id: urlId,
+            data,
+        });
     }
 
     async finalizeAndWriteLog(finalError?: unknown): Promise<void> {

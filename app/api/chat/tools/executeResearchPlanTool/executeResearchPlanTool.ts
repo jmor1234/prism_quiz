@@ -62,6 +62,13 @@ export const executeResearchPlanTool = tool({
     const logger = getLogger();
     logger?.logToolCallStart(TOOL_NAME, { planSize: researchPlan.length });
 
+    // Emit session starting status
+    logger?.emitSessionProgress({
+      status: 'starting',
+      totalObjectives: researchPlan.length,
+      completedObjectives: 0,
+    });
+
     const currentDate = new Date();
     const formattedDate = currentDate.toLocaleDateString("en-US", {
       year: "numeric",
@@ -77,9 +84,20 @@ export const executeResearchPlanTool = tool({
     let finalReport = "";
     const failedObjectives: { objective: string; error: string }[] = [];
     let error: unknown = null;
+    let completedCount = 0;
 
     try {
+      // Emit initial objective statuses
+      researchPlan.forEach((objective, index) => {
+        const objectiveId = `objective-${index}`;
+        logger?.emitObjectiveProgress(objectiveId, {
+          objective: objective.focusedObjective,
+          status: 'pending',
+          progress: 0,
+        });
+      });
       const researchPromises = researchPlan.map((objective, index) => {
+        const objectiveId = `objective-${index}`;
         const singleResearchPlan: ResearchPlan = {
           focusedObjective: objective.focusedObjective,
           focusAreas: objective.focusAreas,
@@ -96,7 +114,21 @@ export const executeResearchPlanTool = tool({
           objective: objective.focusedObjective,
         });
 
-        return orchestrateResearchExecution(singleResearchPlan, formattedDate, index);
+        // Emit objective starting status
+        logger?.emitObjectiveProgress(objectiveId, {
+          objective: objective.focusedObjective,
+          status: 'active',
+          progress: 0.1,
+        });
+
+        // Update session to active
+        logger?.emitSessionProgress({
+          status: 'active',
+          totalObjectives: researchPlan.length,
+          completedObjectives: completedCount,
+        });
+
+        return orchestrateResearchExecution(singleResearchPlan, formattedDate, index, objectiveId);
       });
 
       const results = await Promise.allSettled(researchPromises);
@@ -107,12 +139,21 @@ export const executeResearchPlanTool = tool({
 
       results.forEach((result, index) => {
         const objective = researchPlan[index].focusedObjective;
+        const objectiveId = `objective-${index}`;
 
         if (result.status === "fulfilled") {
           const value = result.value as ResearchExecutionResult;
           const report = value.finalSynthesisReport.finalDocument;
 
           reportParts.push(`## Research Report for Objective: "${objective}"\n\n${report}`);
+
+          // Emit objective completion
+          completedCount++;
+          logger?.emitObjectiveProgress(objectiveId, {
+            objective: objective,
+            status: 'complete',
+            progress: 1,
+          });
 
           console.log(
             `  ✅ Report for objective "${objective.substring(0, 50)}..." is ${report.length} chars.`
@@ -127,6 +168,14 @@ export const executeResearchPlanTool = tool({
             result.reason instanceof Error ? result.reason.message : String(result.reason);
           failedObjectives.push({ objective, error: errorMessage });
 
+          // Emit objective failure
+          logger?.emitObjectiveProgress(objectiveId, {
+            objective: objective,
+            status: 'failed',
+            progress: 0,
+            error: errorMessage,
+          });
+
           console.log(
             `  ❌ Failed objective "${objective.substring(0, 50)}...": ${errorMessage}`
           );
@@ -136,6 +185,13 @@ export const executeResearchPlanTool = tool({
             status: "failed",
           });
         }
+
+        // Update session progress
+        logger?.emitSessionProgress({
+          status: 'active',
+          totalObjectives: researchPlan.length,
+          completedObjectives: completedCount,
+        });
       });
 
       if (reportParts.length > 0) {
@@ -159,12 +215,34 @@ export const executeResearchPlanTool = tool({
       console.log(
         `[${TOOL_NAME}] Consolidation complete. Successful: ${researchPlan.length - failedObjectives.length}, Failed: ${failedObjectives.length}`
       );
+
+      // Emit final session status
+      logger?.emitSessionProgress({
+        status: failedObjectives.length === researchPlan.length ? 'error' : 'complete',
+        totalObjectives: researchPlan.length,
+        completedObjectives: completedCount,
+        error: failedObjectives.length > 0 ? `${failedObjectives.length} objectives failed` : undefined,
+      });
     } catch (e) {
       error = e;
       console.error(`[${TOOL_NAME}] Unexpected error during execution:`, e);
       finalReport = `## Unexpected Error During Research Plan Execution\n\nAn unexpected error occurred: ${
         e instanceof Error ? e.message : String(e)
       }\n\nThis typically indicates a system issue rather than a problem with your research objectives.`;
+
+      // Emit error session status
+      logger?.emitSessionProgress({
+        status: 'error',
+        totalObjectives: researchPlan.length,
+        completedObjectives: completedCount,
+        error: e instanceof Error ? e.message : String(e),
+      });
+
+      // Emit error notification
+      logger?.emitError(e instanceof Error ? e.message : String(e), {
+        phase: 'research-execution',
+        retryable: false,
+      });
     } finally {
       logger?.logToolCallEnd(
         TOOL_NAME,

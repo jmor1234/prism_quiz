@@ -22,6 +22,12 @@ export const researchMemoryTool = tool({
     const logger = getLogger();
     logger?.logToolCallStart(TOOL_NAME, { note });
 
+    // Emit tool status for UI feedback
+    logger?.emitToolStatus({
+      toolName: 'researchMemoryTool',
+      action: 'Recording research note...'
+    });
+
     const timestamp = new Date().toISOString();
     researchMemory.push({ timestamp, content: note });
 

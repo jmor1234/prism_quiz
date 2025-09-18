@@ -39,6 +39,16 @@ export async function orchestrateTargetedExtraction(
 
   for (let i = 0; i < extractionTargets.length; i++) {
     const target = extractionTargets[i];
+    const urlId = `url-${i}`;
+
+    // Update URL to retrieving status
+    logger?.emitExtractionUrl(urlId, {
+      url: target.url,
+      status: 'retrieving',
+      phase: 'retrieval',
+      progress: 0.3,
+    });
+
     console.log(`\n  [${i + 1}/${extractionTargets.length}] Fetching: ${
       target.url.substring(0, 60)
     }...`);
@@ -79,6 +89,15 @@ export async function orchestrateTargetedExtraction(
         });
       }
     } catch (error) {
+      // Update URL to failed status
+      logger?.emitExtractionUrl(urlId, {
+        url: target.url,
+        status: 'failed',
+        phase: 'retrieval',
+        progress: 0.5,
+        error: error instanceof Error ? error.message : String(error),
+      });
+
       logger?.logToolInternalStep(TOOL_NAME, 'TARGET_RETRIEVAL_ERROR', {
         target: target.url,
         objective: target.objective,
@@ -143,11 +162,21 @@ export async function orchestrateTargetedExtraction(
 
   const extractionResults: ExtractionResult[] = [];
 
+  let completedUrls = 0;
   for (let i = 0; i < contentResults.length; i++) {
     const content = contentResults[i];
+    const urlId = `url-${i}`;
 
     if (content.success && content.fullText) {
       const urlObjective = content.objective;
+
+      // Update URL to extracting status
+      logger?.emitExtractionUrl(urlId, {
+        url: content.url,
+        status: 'extracting',
+        phase: 'extraction',
+        progress: 0.7,
+      });
 
       console.log(
         `\n  📄 [${i + 1}/${contentResults.length}] Processing: ${content.url.substring(0, 60)}...`
@@ -180,10 +209,35 @@ export async function orchestrateTargetedExtraction(
           extractedData,
         });
 
+        // Update URL to complete status
+        completedUrls++;
+        logger?.emitExtractionUrl(urlId, {
+          url: content.url,
+          status: 'complete',
+          phase: 'extraction',
+          progress: 1,
+        });
+
+        // Update session progress
+        logger?.emitExtractionSession({
+          status: 'active',
+          totalUrls: extractionTargets.length,
+          completedUrls,
+        });
+
         console.log(
           `     ✓ Extraction successful: ${extractedData.findings.length} findings`
         );
       } catch (error) {
+        // Update URL to failed status
+        logger?.emitExtractionUrl(urlId, {
+          url: content.url,
+          status: 'failed',
+          phase: 'extraction',
+          progress: 0.7,
+          error: error instanceof Error ? error.message : String(error),
+        });
+
         logger?.logToolInternalStep(TOOL_NAME, 'DOCUMENT_EXTRACTION_ERROR', {
           url: content.url,
           error: error instanceof Error ? error.message : String(error),

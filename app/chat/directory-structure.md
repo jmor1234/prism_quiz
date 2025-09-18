@@ -21,6 +21,8 @@ app/chat/
 │
 ├── thread-chat.tsx             # Main chat orchestrator (client component)
 │                               # - useChat() from AI SDK UI (streaming state machine)
+│                               # - onData callback handles research progress data parts
+│                               # - ResearchState management for real-time progress tracking
 │                               # - useMessageVisibility(): latest user→assistant pair focus
 │                               # - Message editing & branching (user + assistant)
 │                               # - Saves UIMessage[] snapshots to Dexie on completion
@@ -49,6 +51,21 @@ components/
 │   ├── sources.tsx             # Citations rendering
 │   └── … (others)              # actions, artifact, branch, image, etc.
 │
+├── research-progress.tsx       # Real-time research progress display component
+│                               # - Shows session overview with objective count
+│                               # - Individual objective progress bars with phases
+│                               # - Transient operation messages
+│                               # - Only visible during active research
+│
+├── extraction-progress.tsx     # URL extraction progress display component
+│                               # - Shows extraction session (X/Y URLs)
+│                               # - Individual URL status (retrieving/extracting)
+│                               # - Progress bars per URL
+│
+├── tool-status.tsx             # Simple tool status display component
+│                               # - Shows thinking/memory recording status
+│                               # - Transient messages that auto-clear
+│
 ├── app-sidebar.tsx             # Thread list + actions (New, Rename, Delete, Delete all)
 └── ui/                         # shadcn/ui primitives (button, input, sheet, sidebar, etc.)
 
@@ -61,6 +78,14 @@ lib/
 ├── thread-store.ts             # Dexie/IndexedDB persistence for UIMessage[] per threadId
 │                               # - create/list/load/save/rename/delete/deleteAll
 │                               # - Snapshots saved after status==='ready'
+│
+├── streaming-types.ts          # TypeScript types for all tool progress streaming
+│                               # - Research types: ResearchSessionData, ResearchObjectiveData, ResearchPhaseData
+│                               # - Extraction types: ExtractionSessionData, ExtractionUrlData
+│                               # - Tool status types: ToolStatusData for simple tools
+│                               # - Transient types: ResearchOperationData, SearchProgressData, ResearchErrorData
+│                               # - ResearchUIMessage type with complete data part schemas
+│                               # - ResearchState for comprehensive frontend state management
 │
 ├── message-utils.ts            # UIMessage text extraction (excludes reasoning where needed)
 └── utils.ts                    # Generic helpers

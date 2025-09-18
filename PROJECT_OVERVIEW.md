@@ -6,6 +6,7 @@ A real‑time, multimodal AI reasoning application. Inputs (text, images, voice�
 ## Core invariants
 - Everything streams: provider → state machine → UI.
 - Visible reasoning: when supported, thinking is streamed separately from answer text.
+- **Progressive research visibility**: long-running research operations stream real-time progress updates via typed data parts.
 - Deterministic tools: tool interfaces are schema‑validated and side‑effects are explicit.
 - Private tool outputs: tools inform decisions; the user sees only what's decision‑relevant (text/citations), not tool traces.
 - Monotone persistence: only finalized exchanges are stored client‑side; partial streams aren't.
@@ -14,7 +15,8 @@ A real‑time, multimodal AI reasoning application. Inputs (text, images, voice�
 ## Layered architecture
 - Engine (AI SDK v5): unifies providers, tool calling, and streaming; supports agentic controls (e.g., bounded steps).
 - State/UI (AI SDK UI + React): `useChat()` orchestrates streaming state; AI Elements render typed parts (text, reasoning, files) and keep UX streaming‑safe.
-- Tools: domain actions invoked by the agent; inputs/outputs are Zod‑typed; logging captured per request.
+- **Streaming infrastructure**: `createUIMessageStream` wrapper enables real-time progress updates; AsyncLocalStorage maintains context through tool execution.
+- Tools: domain actions invoked by the agent; inputs/outputs are Zod‑typed; logging captured per request; **progress emissions via TraceLogger's stream writer**.
 
 ## Agentic principles
 - Two‑world contract: stochastic planner, deterministic tools.
@@ -37,14 +39,15 @@ A real‑time, multimodal AI reasoning application. Inputs (text, images, voice�
 ## Data flow (high level)
 1) User composes input (optionally with attachments or voice).
 2) Frontend sends to `/api/chat`; backend streams response parts (text/reasoning) and may call tools.
-3) React UI renders parts as they arrive; editing and branching are guarded during streaming.
-4) On completion, a snapshot is persisted locally; users can edit/branch subsequent interactions.
+3) **Real-time research progress** streams via data parts - objectives, phases, and operations visible during long-running research.
+4) React UI renders parts as they arrive; editing and branching are guarded during streaming.
+5) On completion, a snapshot is persisted locally; users can edit/branch subsequent interactions.
 
 ## Tooling at a glance
-- Think: private reflection to plan next steps and verify policies.
-- Research memory: optional per‑session notes aggregation (in‑memory by default).
-- Targeted extraction: depth on specific URLs with controlled crawl (separate from discovery).
-- Research orchestrator: breadth→filter→depth→distill→synthesize pipeline for focused objectives.
+- **Think**: private reflection to plan next steps and verify policies; **streams status messages during reflection**.
+- **Research memory**: optional per‑session notes aggregation (in‑memory by default); **streams recording status**.
+- **Targeted extraction**: depth on specific URLs with controlled crawl (separate from discovery); **streams per-URL progress**.
+- **Research orchestrator**: breadth→filter→depth→distill→synthesize pipeline for focused objectives; **streams multi-objective progress with phase visibility**.
 
 ## Observability principles
 - Per‑request tracing with sectioned, step‑indexed logs.
@@ -56,6 +59,7 @@ A real‑time, multimodal AI reasoning application. Inputs (text, images, voice�
 ## UX principles
 - Lead with the direct answer; support with minimal citations.
 - Reasoning is visible but not copied by default.
+- **Tool operations are transparent**: all tools stream real-time progress, no silent waiting.
 - Editing is safe and predictable; only one edit at a time; guard during streaming.
 - Multimodal is first‑class: images and transcribed voice flow through the same pipeline.
 

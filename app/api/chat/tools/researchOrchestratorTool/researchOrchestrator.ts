@@ -63,7 +63,8 @@ export interface ResearchExecutionResult {
 export async function orchestrateResearchExecution(
   researchPlan: ResearchPlan,
   currentDate: string,
-  executionIndex?: number
+  executionIndex?: number,
+  objectiveId?: string
 ): Promise<ResearchExecutionResult> {
   const logger = getLogger();
   logger?.logToolInternalStep("ResearchOrchestrator", "START_RESEARCH_EXECUTION_PIPELINE", {
@@ -71,9 +72,33 @@ export async function orchestrateResearchExecution(
     focusAreasCount: researchPlan.focusAreas.length,
   });
 
+  // Helper function to emit phase progress
+  const emitPhaseProgress = (phase: string, status: 'starting' | 'active' | 'complete' | 'error', progress: number, details?: unknown) => {
+    if (!objectiveId) return;
+    const phaseId = `${objectiveId}-${phase}`;
+    logger?.emitPhaseProgress(phaseId, {
+      objective: researchPlan.focusedObjective,
+      phase,
+      status,
+      progress,
+      details: details as { current?: number; total?: number; description?: string },
+    });
+
+    // Also update objective progress
+    logger?.emitObjectiveProgress(objectiveId, {
+      objective: researchPlan.focusedObjective,
+      status: 'active',
+      phase: phase as "query-generation" | "searching" | "deduplicating" | "analyzing" | "consolidating" | "synthesizing",
+      progress,
+    });
+  };
+
   // Phase 1: Query Generation
   logger?.startLogSection('query_generation_phase', executionIndex);
   console.log(`\n🔄 [ResearchOrchestrator] Generating queries for focused objective: "${researchPlan.focusedObjective.substring(0, 70)}..."`);
+  emitPhaseProgress('query-generation', 'starting', 0.1);
+  logger?.emitOperation('Generating search queries...', { phase: 'query-generation', objective: researchPlan.focusedObjective });
+
   const generatedQueries: QueryGenerationOutput = await generateQueriesForObjective({
     focusedObjective: researchPlan.focusedObjective,
     focusAreas: researchPlan.focusAreas,
@@ -91,21 +116,31 @@ export async function orchestrateResearchExecution(
 
   if (!generatedQueries || (generatedQueries.keywordQueries.length === 0 && generatedQueries.neuralQueries.length === 0)) {
     logger?.logToolInternalStep('ResearchOrchestrator', 'EMPTY_QUERY_GENERATION', {});
+    emitPhaseProgress('query-generation', 'error', 0.1);
     throw new Error('No queries generated for the research objective');
   }
-  // (summary logs removed to match prior logging style)
+  emitPhaseProgress('query-generation', 'complete', 0.2);
+  const totalQueries = generatedQueries.keywordQueries.length + generatedQueries.neuralQueries.length;
+  logger?.emitOperation(`Generated ${totalQueries} search queries`, { phase: 'query-generation' });
 
   // Phase 2: Initial Exa Search
   logger?.startLogSection('exa_initial_search_phase', executionIndex);
   console.log(`\n🔄 [ResearchOrchestrator] Starting ExaInitialSearchPhase for research objective. Concurrency: ${CONCURRENT_CONTENT_ANALYSIS_CALLS_LIMIT} calls per batch.`);
+  emitPhaseProgress('searching', 'starting', 0.2);
+  logger?.emitOperation(`Searching ${totalQueries} queries...`, { phase: 'searching', objective: researchPlan.focusedObjective });
+
   const exaSearchOutcomes: SingleExaQueryOutcome[] = await orchestrateInitialExaSearch({
     generatedQueries,
     researchPlan,
   });
   // (summary logs removed to match prior logging style)
 
+  emitPhaseProgress('searching', 'complete', 0.3);
+  logger?.emitOperation(`Search completed, processing results...`, { phase: 'searching' });
+
   // Phase 2.5: Deduplicate URLs (canonicalize for key, preserve original for fetch)
   logger?.startLogSection('url_deduplication_phase', executionIndex);
+  emitPhaseProgress('deduplicating', 'starting', 0.3);
   const urlMap = new Map<string, { canonicalUrl: string; originalUrl: string; title?: string | null; publishedDate?: string }>();
   let totalUrls = 0;
   for (const outcome of exaSearchOutcomes) {
@@ -134,16 +169,28 @@ export async function orchestrateResearchExecution(
   }
   const deduplicated = Array.from(urlMap.values());
   console.log(`🔄 [ResearchOrchestrator] URL Deduplication complete. ${deduplicated.length} unique URLs from ${totalUrls} total results.`);
-  // (summary logs removed to match prior logging style)
+  emitPhaseProgress('deduplicating', 'complete', 0.35);
+  logger?.emitOperation(`Found ${deduplicated.length} unique URLs from ${totalUrls} results`, { phase: 'deduplicating' });
 
   if (deduplicated.length === 0) {
+    emitPhaseProgress('deduplicating', 'error', 0.35);
     throw new Error('No URLs remaining after deduplication');
   }
 
   // Phase 2.6: Retrieve full text contents in batch
   logger?.startLogSection('initial_full_text_retrieval_phase', executionIndex);
   console.log(`\n🔄 [ResearchOrchestrator] Starting InitialFullTextRetrievalPhase for ${deduplicated.length} unique URLs...`);
+  emitPhaseProgress('analyzing', 'starting', 0.4);
+  logger?.emitOperation(`Fetching full content for ${deduplicated.length} URLs...`, { phase: 'analyzing', objective: researchPlan.focusedObjective });
+
   const contentResults = await fetchFullTextContents(deduplicated.map((d) => d.originalUrl));
+
+  // Update progress after fetching
+  emitPhaseProgress('analyzing', 'active', 0.5, {
+    description: `Fetched content from ${deduplicated.length} sources`
+  });
+  logger?.emitOperation(`Processing ${deduplicated.length} sources...`, { phase: 'analyzing' });
+
   const urlsWithFullText = contentResults.map((r) => {
     // Map by original URL; find its canonical record
     // Build a reverse index on first access
@@ -186,6 +233,13 @@ export async function orchestrateResearchExecution(
   // Phase 3: SQA on full text (batched)
   logger?.startLogSection('sqa_phase', executionIndex);
   console.log(`\n🔄 [ResearchOrchestrator] Starting FullTextSignalQualityAssessmentPhase for ${validContent.length} URLs with valid content...`);
+
+  // Update to signal quality assessment phase
+  emitPhaseProgress('analyzing', 'active', 0.55, {
+    description: `Assessing quality of ${validContent.length} sources`
+  });
+  logger?.emitOperation(`Assessing signal quality for ${validContent.length} sources...`, { phase: 'analyzing' });
+
   const sqaInputs: SQAInput[] = validContent.map((it) => ({
     url: it.url,
     fullText: it.fullText!,
@@ -201,12 +255,22 @@ export async function orchestrateResearchExecution(
   const BATCH = 100;
   for (let i = 0; i < sqaInputs.length; i += BATCH) {
     const batch = sqaInputs.slice(i, i + BATCH);
+    const batchNumber = Math.floor(i / BATCH) + 1;
+    const totalBatches = Math.ceil(sqaInputs.length / BATCH);
+
+    // Update progress for each batch
+    logger?.emitOperation(`Assessing quality batch ${batchNumber}/${totalBatches}...`, { phase: 'analyzing' });
+
     const results = await Promise.all(
       batch.map((inp) => assessSignalQuality(inp).catch(() => null))
     );
     results.forEach((r) => {
       if (r) allSqa.push(r);
     });
+
+    // Update progress based on completion
+    const progressIncrement = 0.55 + (0.1 * (i + batch.length) / sqaInputs.length);
+    emitPhaseProgress('analyzing', 'active', progressIncrement);
   }
 
   const highSignal = allSqa.filter((o) => o.isHighSignal);
@@ -219,6 +283,12 @@ export async function orchestrateResearchExecution(
   // Phase 4: Content Analysis (batched)
   logger?.startLogSection('content_analysis_phase', executionIndex);
   console.log(`\n🔄 [ResearchOrchestrator] Starting ContentAnalysisPhase for ${highSignal.length} documents.`);
+
+  // Update to content analysis phase
+  emitPhaseProgress('analyzing', 'active', 0.65, {
+    description: `Analyzing ${highSignal.length} high-signal documents`
+  });
+  logger?.emitOperation(`Deep analysis of ${highSignal.length} documents...`, { phase: 'analyzing' });
   const analysisInputs: ContentAnalysisAgentInput[] = highSignal.map((h) => ({
     url: h.url,
     fullText: h.fullText,
@@ -231,12 +301,25 @@ export async function orchestrateResearchExecution(
   const analyzedDocuments: AnalyzedDocument[] = [];
   for (let i = 0; i < analysisInputs.length; i += CONCURRENT_CONTENT_ANALYSIS_CALLS_LIMIT) {
     const batch = analysisInputs.slice(i, i + CONCURRENT_CONTENT_ANALYSIS_CALLS_LIMIT);
-    console.log(`  🌀 [ContentAnalysisPhase] Processing batch ${Math.floor(i / CONCURRENT_CONTENT_ANALYSIS_CALLS_LIMIT) + 1}/${Math.ceil(analysisInputs.length / CONCURRENT_CONTENT_ANALYSIS_CALLS_LIMIT)}. Analyzing ${batch.length} documents.`);
+    const batchNumber = Math.floor(i / CONCURRENT_CONTENT_ANALYSIS_CALLS_LIMIT) + 1;
+    const totalBatches = Math.ceil(analysisInputs.length / CONCURRENT_CONTENT_ANALYSIS_CALLS_LIMIT);
+
+    console.log(`  🌀 [ContentAnalysisPhase] Processing batch ${batchNumber}/${totalBatches}. Analyzing ${batch.length} documents.`);
+
+    // Update progress for each batch
+    logger?.emitOperation(`Analyzing documents (batch ${batchNumber}/${totalBatches})...`, { phase: 'analyzing' });
+
     const results = await Promise.all(
       batch.map((inp) => analyzeDocument(inp).catch(() => null))
     );
     results.forEach((r) => {
       if (r) analyzedDocuments.push(r);
+    });
+
+    // Update progress based on completion (0.65 to 0.8 range)
+    const progressIncrement = 0.65 + (0.15 * (i + batch.length) / analysisInputs.length);
+    emitPhaseProgress('analyzing', 'active', progressIncrement, {
+      description: `Analyzed ${i + batch.length} of ${analysisInputs.length} documents`
     });
     if (i + CONCURRENT_CONTENT_ANALYSIS_CALLS_LIMIT < analysisInputs.length && DELAY_BETWEEN_CONTENT_ANALYSIS_BATCHES_MS > 0) {
       console.log(`    ⏱️ [ContentAnalysisPhase] Batch ${Math.floor(i / CONCURRENT_CONTENT_ANALYSIS_CALLS_LIMIT) + 1} processed. Waiting ${DELAY_BETWEEN_CONTENT_ANALYSIS_BATCHES_MS}ms...`);
@@ -251,6 +334,11 @@ export async function orchestrateResearchExecution(
   // Phase 6.5: Research Consolidation (batched)
   logger?.startLogSection('research_consolidation_phase', executionIndex);
   console.log(`\n🔄 [ResearchOrchestrator] Starting ResearchConsolidationPhase for ${analyzedDocuments.length} documents.`);
+
+  // Update to consolidation phase
+  emitPhaseProgress('consolidating', 'starting', 0.8);
+  logger?.emitOperation(`Consolidating findings from ${analyzedDocuments.length} documents...`, { phase: 'consolidating', objective: researchPlan.focusedObjective });
+
   const consolidationInputs: ResearchConsolidationAgentInput[] = analyzedDocuments.map((doc) => ({
     analyzedDocument: doc,
     focusedObjective: researchPlan.focusedObjective,
@@ -262,15 +350,29 @@ export async function orchestrateResearchExecution(
   const CONS_BATCH = 100;
   for (let i = 0; i < consolidationInputs.length; i += CONS_BATCH) {
     const batch = consolidationInputs.slice(i, i + CONS_BATCH);
-    console.log(`  🌀 [ResearchConsolidationPhase] Processing batch ${Math.floor(i / 100) + 1}/${Math.ceil(consolidationInputs.length / 100)}. Consolidating ${batch.length} documents.`);
+    const batchNumber = Math.floor(i / CONS_BATCH) + 1;
+    const totalBatches = Math.ceil(consolidationInputs.length / CONS_BATCH);
+
+    console.log(`  🌀 [ResearchConsolidationPhase] Processing batch ${batchNumber}/${totalBatches}. Consolidating ${batch.length} documents.`);
+
+    // Update progress for each batch
+    logger?.emitOperation(`Consolidating batch ${batchNumber}/${totalBatches}...`, { phase: 'consolidating' });
+
     const results = await Promise.all(
       batch.map((inp) => consolidateDocument(inp).catch(() => null))
     );
     results.forEach((r) => {
       if (r) consolidatedDocuments.push(r);
     });
+
+    // Update progress based on completion (0.8 to 0.9 range)
+    const progressIncrement = 0.8 + (0.1 * (i + batch.length) / consolidationInputs.length);
+    emitPhaseProgress('consolidating', 'active', progressIncrement, {
+      description: `Consolidated ${i + batch.length} of ${consolidationInputs.length} documents`
+    });
+
     if (i + CONS_BATCH < consolidationInputs.length) {
-      console.log(`    ⏱️ [ResearchConsolidationPhase] Batch ${Math.floor(i / 100) + 1} processed. Waiting 50ms...`);
+      console.log(`    ⏱️ [ResearchConsolidationPhase] Batch ${batchNumber} processed. Waiting 50ms...`);
       await new Promise((res) => setTimeout(res, 50));
     }
   }
@@ -287,13 +389,21 @@ export async function orchestrateResearchExecution(
   // Phase 7: Final Synthesis
   logger?.startLogSection('final_synthesis_phase', executionIndex);
   console.log(`🔄 [ResearchOrchestrator] Starting Final Synthesis Phase with ${consolidatedDocuments.length} consolidated documents...`);
+
+  // Update to synthesis phase
+  emitPhaseProgress('synthesizing', 'starting', 0.9);
+  logger?.emitOperation(`Synthesizing final research report...`, { phase: 'synthesizing', objective: researchPlan.focusedObjective });
+
   const finalReportOutput: FinalSynthesisAgentOutput = await generateFinalReport({
     consolidatedDocuments,
     researchPlan,
     currentDate,
   });
   console.log(`🏁 [ResearchOrchestrator] Research execution pipeline completed. Analyzed ${analyzedDocuments.length} documents, consolidated to ${consolidatedDocuments.length}.`);
-  // (summary logs removed to match prior logging style)
+
+  // Final completion
+  emitPhaseProgress('synthesizing', 'complete', 1.0);
+  logger?.emitOperation(`Research complete for: ${researchPlan.focusedObjective}`, { phase: 'synthesizing' });
 
   return {
     researchPlan,
