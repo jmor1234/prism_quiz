@@ -22,6 +22,7 @@ import { saveThread, loadThread } from "@/lib/thread-store";
 import { ResearchProgress } from "@/components/research-progress";
 import { ExtractionProgress } from "@/components/extraction-progress";
 import { ToolStatus } from "@/components/tool-status";
+import { StreamingTransition, useStreamingActivity } from "@/components/streaming-transition";
 import type {
   ResearchState,
   ResearchSessionData,
@@ -292,6 +293,10 @@ export function ThreadChat({ threadId, initialMessages }: { threadId: string; in
     prevStatusRef.current = status;
   }, [status, messages, threadId]);
 
+  // Track streaming activity for transition detection
+  const { hasReasoningActive, hasToolsActive, hasResponseActive, lastPhaseCompleted } =
+    useStreamingActivity(messages, status, researchState);
+
   const emptyState = (messages as UIMessage[]).length === 0;
 
   return (
@@ -364,6 +369,15 @@ export function ThreadChat({ threadId, initialMessages }: { threadId: string; in
               {/* Progress Displays */}
               {status === 'streaming' && (
                 <>
+                  {/* Transition indicator for gaps between phases */}
+                  <StreamingTransition
+                    isStreaming={status === 'streaming'}
+                    hasReasoningActive={hasReasoningActive}
+                    hasToolsActive={hasToolsActive}
+                    hasResponseActive={hasResponseActive}
+                    lastPhaseCompleted={lastPhaseCompleted}
+                  />
+
                   {/* Research Progress for executeResearchPlanTool */}
                   {researchState.session && (
                     <ResearchProgress state={researchState} />
