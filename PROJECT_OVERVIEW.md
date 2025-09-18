@@ -60,6 +60,7 @@ A real‑time, multimodal AI reasoning application. Inputs (text, images, voice�
 - Lead with the direct answer; support with minimal citations.
 - Reasoning is visible but not copied by default.
 - **Tool operations are transparent**: all tools stream real-time progress, no silent waiting.
+- **Continuous feedback**: transition detection fills gaps between phases, ensuring visual continuity.
 - Editing is safe and predictable; only one edit at a time; guard during streaming.
 - Multimodal is first‑class: images and transcribed voice flow through the same pipeline.
 

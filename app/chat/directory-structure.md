@@ -23,6 +23,7 @@ app/chat/
 │                               # - useChat() from AI SDK UI (streaming state machine)
 │                               # - onData callback handles research progress data parts
 │                               # - ResearchState management for real-time progress tracking
+│                               # - useStreamingActivity(): detects gaps between streaming phases
 │                               # - useMessageVisibility(): latest user→assistant pair focus
 │                               # - Message editing & branching (user + assistant)
 │                               # - Saves UIMessage[] snapshots to Dexie on completion
@@ -53,18 +54,27 @@ components/
 │
 ├── research-progress.tsx       # Real-time research progress display component
 │                               # - Shows session overview with objective count
-│                               # - Individual objective progress bars with phases
-│                               # - Transient operation messages
-│                               # - Only visible during active research
+│                               # - Individual objective progress with gradient bars
+│                               # - Modern card-based design with hover states
+│                               # - Calculates actual progress from partial objectives
+│                               # - Phase indicators with semantic colors
 │
 ├── extraction-progress.tsx     # URL extraction progress display component
 │                               # - Shows extraction session (X/Y URLs)
-│                               # - Individual URL status (retrieving/extracting)
-│                               # - Progress bars per URL
+│                               # - Domain-based URL display for cleaner UI
+│                               # - Individual URL status with phase-specific colors
+│                               # - Staggered entrance animations
 │
 ├── tool-status.tsx             # Simple tool status display component
-│                               # - Shows thinking/memory recording status
-│                               # - Transient messages that auto-clear
+│                               # - Floating pill design with gradient backgrounds
+│                               # - Tool-specific color coding (violet/amber)
+│                               # - Animated activity indicators
+│
+├── streaming-transition.tsx    # Transition gap detector and filler
+│                               # - Detects whitespace between streaming phases
+│                               # - Shows contextual messages ("Preparing tools...")
+│                               # - useStreamingActivity hook for phase tracking
+│                               # - Auto-shows after 800ms of inactivity
 │
 ├── app-sidebar.tsx             # Thread list + actions (New, Rename, Delete, Delete all)
 └── ui/                         # shadcn/ui primitives (button, input, sheet, sidebar, etc.)
@@ -89,6 +99,11 @@ lib/
 │
 ├── message-utils.ts            # UIMessage text extraction (excludes reasoning where needed)
 └── utils.ts                    # Generic helpers
+
+app/
+└── globals.css                 # Global styles + custom animations
+                               # - shimmer animation for progress bars
+                               # - animation delays for staggered effects
 
 hooks/
 └── use-mobile.ts               # Mobile detection helpers for responsive behaviors
