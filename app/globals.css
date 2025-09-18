@@ -157,3 +157,39 @@
   [data-streamdown="table-header-cell"] { @apply whitespace-nowrap px-4 py-2 text-left font-semibold text-sm; }
   [data-streamdown="table-cell"] { @apply px-4 py-2 text-sm; }
 }
+
+/* Custom animations for progress components */
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.animate-shimmer {
+  animation: shimmer 2s linear infinite;
+  background-size: 200% 100%;
+}
+
+/* Animation delays for staggered effects */
+.animation-delay-50 {
+  animation-delay: 50ms;
+}
+
+.animation-delay-100 {
+  animation-delay: 100ms;
+}
+
+.animation-delay-150 {
+  animation-delay: 150ms;
+}
+
+.animation-delay-200 {
+  animation-delay: 200ms;
+}
+
+.animation-delay-300 {
+  animation-delay: 300ms;
+}
