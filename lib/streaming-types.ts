@@ -32,11 +32,21 @@ export interface ResearchPhaseData {
   status: 'starting' | 'active' | 'complete' | 'error';
   progress: number;
   details?: {
+    // Generic counters
     current?: number;
     total?: number;
     description?: string;
     samples?: { url: string; title?: string; domain?: string }[];
     summary?: { queries: number; hits?: number; unique?: number };
+    // New, optional fine-grained progress fields for narrative UI
+    queries?: string[]; // small set of representative search queries
+    subphase?: 'retrieval' | 'sqa' | 'analysis' | 'consolidation';
+    metrics?: {
+      fetched?: { ok: number; total: number };
+      highSignal?: { ok: number; total: number };
+      analyzed?: { current: number; total: number };
+      consolidated?: { current: number; total: number };
+    };
   };
   startTime: number;
   endTime?: number;
@@ -101,6 +111,29 @@ export interface ExtractionUrlData {
   error?: string;
 }
 
+// Streamed list updates for large collections (search hits, deduped URLs, etc.)
+export type ResearchCollectionKind =
+  | 'search_hits'
+  | 'unique_urls'
+  | 'retrieved'
+  | 'high_signal'
+  | 'analyzed'
+  | 'consolidated'
+  | 'citations';
+
+export interface ResearchCollectionData {
+  kind: ResearchCollectionKind;
+  action: 'replace' | 'append';
+  total?: number;
+  items: { url: string; title?: string; domain?: string }[];
+}
+
+// Curated sources for the Sources tab (can evolve across phases)
+export interface ResearchSourcesData {
+  objectiveId?: string;
+  items: { url: string; title?: string; domain?: string }[];
+}
+
 // Type-safe UIMessage with research data parts
 export type ResearchUIMessage = UIMessage<
   never, // metadata type
@@ -114,6 +147,8 @@ export type ResearchUIMessage = UIMessage<
     'tool-status': ToolStatusData;
     'extraction-session': ExtractionSessionData;
     'extraction-url': ExtractionUrlData;
+    'research-collection': ResearchCollectionData;
+    'research-sources': ResearchSourcesData;
   }
 >;
 
@@ -127,7 +162,9 @@ export type ResearchDataPart =
   | { type: 'data-research-error'; data: ResearchErrorData; transient: true }
   | { type: 'data-tool-status'; data: ToolStatusData; transient: true }
   | { type: 'data-extraction-session'; data: ExtractionSessionData; id?: string }
-  | { type: 'data-extraction-url'; data: ExtractionUrlData; id: string };
+  | { type: 'data-extraction-url'; data: ExtractionUrlData; id: string }
+  | { type: 'data-research-collection'; data: ResearchCollectionData; id: string }
+  | { type: 'data-research-sources'; data: ResearchSourcesData; id?: string };
 
 // Research state for frontend
 export interface ResearchState {
@@ -141,4 +178,7 @@ export interface ResearchState {
   currentToolStatus: ToolStatusData | null;
   extractionSession: ExtractionSessionData | null;
   extractionUrls: Record<string, ExtractionUrlData>;
+  // Collections and curated sources for richer UI
+  collections?: Record<string, { kind: ResearchCollectionKind; total?: number; items: { url: string; title?: string; domain?: string }[] }>;
+  sourcesByObjective?: Record<string, { items: { url: string; title?: string; domain?: string }[] }>;
 }

@@ -3,6 +3,7 @@
 import type { UIMessage } from "ai";
 import Image from "next/image";
 import { Response } from "@/components/ai-elements/response";
+//
 import {
   Reasoning,
   ReasoningTrigger,

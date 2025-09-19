@@ -81,7 +81,19 @@ export async function orchestrateResearchExecution(
       phase,
       status,
       progress,
-      details: details as { current?: number; total?: number; description?: string },
+      details: details as {
+        current?: number; total?: number; description?: string;
+        samples?: { url: string; title?: string; domain?: string }[];
+        summary?: { queries: number; hits?: number; unique?: number };
+        queries?: string[];
+        subphase?: 'retrieval' | 'sqa' | 'analysis' | 'consolidation';
+        metrics?: {
+          fetched?: { ok: number; total: number };
+          highSignal?: { ok: number; total: number };
+          analyzed?: { current: number; total: number };
+          consolidated?: { current: number; total: number };
+        };
+      },
     });
 
     // Also update objective progress
@@ -119,8 +131,16 @@ export async function orchestrateResearchExecution(
     emitPhaseProgress('query-generation', 'error', 0.1);
     throw new Error('No queries generated for the research objective');
   }
-  emitPhaseProgress('query-generation', 'complete', 0.2);
+  // Emit a small sample of queries for UI chips
   const totalQueries = generatedQueries.keywordQueries.length + generatedQueries.neuralQueries.length;
+  const sampleQueries: string[] = [
+    ...generatedQueries.keywordQueries.slice(0, 3),
+    ...generatedQueries.neuralQueries.slice(0, Math.max(0, 3 - Math.min(3, generatedQueries.keywordQueries.length)))
+  ];
+  emitPhaseProgress('query-generation', 'complete', 0.2, {
+    description: `Generated ${totalQueries} search queries`,
+    queries: sampleQueries,
+  });
   logger?.emitOperation(`Generated ${totalQueries} search queries`, { phase: 'query-generation' });
 
   // Phase 2: Initial Exa Search
@@ -169,6 +189,25 @@ export async function orchestrateResearchExecution(
       samples,
       summary: { queries: totalQueries, hits, unique: uniqueKeys.size }
     });
+
+    // Stream a capped collection of search hits (replace semantics)
+    const topHits = [] as { url: string; title?: string; domain?: string }[];
+    for (const outcome of exaSearchOutcomes) {
+      if (!outcome.success || !outcome.results) continue;
+      for (const hit of outcome.results) {
+        try {
+          const d = new URL(hit.url).hostname.replace(/^www\./, '');
+          topHits.push({ url: hit.url, title: hit.title ?? undefined, domain: d });
+          if (topHits.length >= 50) break;
+        } catch {}
+      }
+      if (topHits.length >= 50) break;
+    }
+    logger?.emitCollectionUpdate(`${objectiveId}-search-hits`, {
+      kind: 'search_hits', action: 'replace', total: hits, items: topHits,
+    });
+    // Seed Sources tab with earliest sample domains
+    logger?.emitSources(objectiveId, { items: samples });
   }
   logger?.emitOperation(`Search completed, processing results...`, { phase: 'searching' });
 
@@ -214,6 +253,15 @@ export async function orchestrateResearchExecution(
       description: `Deduplicated to ${deduplicated.length} unique URLs`,
       samples,
     });
+    // Stream unique URL collection (replace; capped to 100)
+    const uniqueItems = deduplicated.slice(0, 100).map((d) => {
+      let domain = '';
+      try { domain = new URL(d.originalUrl).hostname.replace(/^www\./, ''); } catch {}
+      return { url: d.originalUrl, title: d.title ?? undefined, domain } as { url: string; title?: string; domain?: string };
+    });
+    logger?.emitCollectionUpdate(`${objectiveId}-unique-urls`, {
+      kind: 'unique_urls', action: 'replace', total: deduplicated.length, items: uniqueItems,
+    });
   }
   logger?.emitOperation(`Found ${deduplicated.length} unique URLs from ${totalUrls} results`, { phase: 'deduplicating' });
 
@@ -229,12 +277,6 @@ export async function orchestrateResearchExecution(
   logger?.emitOperation(`Fetching full content for ${deduplicated.length} URLs...`, { phase: 'analyzing', objective: researchPlan.focusedObjective });
 
   const contentResults = await fetchFullTextContents(deduplicated.map((d) => d.originalUrl));
-
-  // Update progress after fetching
-  emitPhaseProgress('analyzing', 'active', 0.5, {
-    description: `Fetched content from ${deduplicated.length} sources`
-  });
-  logger?.emitOperation(`Processing ${deduplicated.length} sources...`, { phase: 'analyzing' });
 
   const urlsWithFullText = contentResults.map((r) => {
     // Map by original URL; find its canonical record
@@ -259,6 +301,22 @@ export async function orchestrateResearchExecution(
   if (validContent.length === 0) {
     throw new Error('Failed to retrieve valid content from any URLs');
   }
+  // Update progress after fetching
+  emitPhaseProgress('analyzing', 'active', 0.5, {
+    description: `Fetched content from ${deduplicated.length} sources`,
+    subphase: 'retrieval',
+    metrics: { fetched: { ok: validContent.length, total: urlsWithFullText.length } },
+  });
+  // Stream retrieved collection (replace; cap 50)
+  const retrievedItems = validContent
+    .slice(0, 50)
+    .map((u) => {
+      let domain = '';
+      try { domain = new URL(u.url).hostname.replace(/^www\./, ''); } catch {}
+      return { url: u.url, title: u.title ?? undefined, domain } as { url: string; title?: string; domain?: string };
+    });
+  logger?.emitCollectionUpdate(`${objectiveId}-retrieved`, { kind: 'retrieved', action: 'replace', total: urlsWithFullText.length, items: retrievedItems });
+  logger?.emitOperation(`Processing ${deduplicated.length} sources...`, { phase: 'analyzing' });
   // Per-URL retrieval outcome (console narrative as in original tool)
   urlsWithFullText.forEach((item) => {
     if (item.retrievalSuccess) {
@@ -282,11 +340,13 @@ export async function orchestrateResearchExecution(
   // Update to signal quality assessment phase
   emitPhaseProgress('analyzing', 'active', 0.55, {
     description: `Assessing quality of ${validContent.length} sources`,
+    subphase: 'sqa',
     samples: validContent.slice(0, 8).map((u) => {
       let domain = '';
       try { domain = new URL(u.url).hostname.replace(/^www\./, ''); } catch {}
       return { url: u.url, title: u.title, domain } as { url: string; title?: string; domain?: string };
     }),
+    metrics: { highSignal: { ok: 0, total: validContent.length } },
   });
   logger?.emitOperation(`Assessing signal quality for ${validContent.length} sources...`, { phase: 'analyzing' });
 
@@ -324,6 +384,16 @@ export async function orchestrateResearchExecution(
   }
 
   const highSignal = allSqa.filter((o) => o.isHighSignal);
+  // Stream high-signal collection (replace; cap 40)
+  logger?.emitCollectionUpdate(`${objectiveId}-high-signal`, {
+    kind: 'high_signal', action: 'replace', total: allSqa.length,
+    items: highSignal.slice(0, 40).map((h) => { let domain = ''; try { domain = new URL(h.url).hostname.replace(/^www\./,''); } catch {} return { url: h.url, title: h.title ?? undefined, domain }; })
+  });
+  // Update analyzing metrics for high-signal snapshot
+  emitPhaseProgress('analyzing', 'active', 0.6, {
+    subphase: 'sqa',
+    metrics: { highSignal: { ok: highSignal.length, total: allSqa.length } },
+  });
   if (highSignal.length === 0) {
     throw new Error('No high-signal URLs identified from search results');
   }
@@ -337,11 +407,13 @@ export async function orchestrateResearchExecution(
   // Update to content analysis phase
   emitPhaseProgress('analyzing', 'active', 0.65, {
     description: `Analyzing ${highSignal.length} high-signal documents`,
+    subphase: 'analysis',
     samples: highSignal.slice(0, 8).map((h) => {
       let domain = '';
       try { domain = new URL(h.url).hostname.replace(/^www\./, ''); } catch {}
       return { url: h.url, title: h.title, domain } as { url: string; title?: string; domain?: string };
     }),
+    metrics: { analyzed: { current: 0, total: highSignal.length } },
   });
   logger?.emitOperation(`Deep analysis of ${highSignal.length} documents...`, { phase: 'analyzing' });
   const analysisInputs: ContentAnalysisAgentInput[] = highSignal.map((h) => ({
@@ -364,7 +436,7 @@ export async function orchestrateResearchExecution(
     // Update progress for each batch
     logger?.emitOperation(`Analyzing documents (batch ${batchNumber}/${totalBatches})...`, { phase: 'analyzing' });
 
-    const results = await Promise.all(
+    const results: Array<AnalyzedDocument | null> = await Promise.all(
       batch.map((inp) => analyzeDocument(inp).catch(() => null))
     );
     results.forEach((r) => {
@@ -374,8 +446,18 @@ export async function orchestrateResearchExecution(
     // Update progress based on completion (0.65 to 0.8 range)
     const progressIncrement = 0.65 + (0.15 * (i + batch.length) / analysisInputs.length);
     emitPhaseProgress('analyzing', 'active', progressIncrement, {
-      description: `Analyzed ${i + batch.length} of ${analysisInputs.length} documents`
+      description: `Analyzed ${i + batch.length} of ${analysisInputs.length} documents`,
+      subphase: 'analysis',
+      metrics: { analyzed: { current: Math.min(i + batch.length, analysisInputs.length), total: analysisInputs.length } },
     });
+    // Stream analyzed items incrementally (append; cap each append to 10)
+    const analyzedAppend = results
+      .filter((r): r is AnalyzedDocument => !!r)
+      .slice(0, 10)
+      .map((doc) => { let domain = ''; try { domain = new URL(doc.url).hostname.replace(/^www\./,''); } catch {} return { url: doc.url, domain } as { url: string; title?: string; domain?: string }; });
+    if (analyzedAppend.length) {
+      logger?.emitCollectionUpdate(`${objectiveId}-analyzed`, { kind: 'analyzed', action: 'append', items: analyzedAppend });
+    }
     if (i + CONCURRENT_CONTENT_ANALYSIS_CALLS_LIMIT < analysisInputs.length && DELAY_BETWEEN_CONTENT_ANALYSIS_BATCHES_MS > 0) {
       console.log(`    ⏱️ [ContentAnalysisPhase] Batch ${Math.floor(i / CONCURRENT_CONTENT_ANALYSIS_CALLS_LIMIT) + 1} processed. Waiting ${DELAY_BETWEEN_CONTENT_ANALYSIS_BATCHES_MS}ms...`);
       await new Promise((res) => setTimeout(res, DELAY_BETWEEN_CONTENT_ANALYSIS_BATCHES_MS));
@@ -391,7 +473,7 @@ export async function orchestrateResearchExecution(
   console.log(`\n🔄 [ResearchOrchestrator] Starting ResearchConsolidationPhase for ${analyzedDocuments.length} documents.`);
 
   // Update to consolidation phase
-  emitPhaseProgress('consolidating', 'starting', 0.8);
+  emitPhaseProgress('consolidating', 'starting', 0.8, { subphase: 'consolidation', metrics: { consolidated: { current: 0, total: analyzedDocuments.length } } });
   logger?.emitOperation(`Consolidating findings from ${analyzedDocuments.length} documents...`, { phase: 'consolidating', objective: researchPlan.focusedObjective });
 
   const consolidationInputs: ResearchConsolidationAgentInput[] = analyzedDocuments.map((doc) => ({
@@ -424,12 +506,19 @@ export async function orchestrateResearchExecution(
     const progressIncrement = 0.8 + (0.1 * (i + batch.length) / consolidationInputs.length);
     emitPhaseProgress('consolidating', 'active', progressIncrement, {
       description: `Consolidated ${i + batch.length} of ${consolidationInputs.length} documents`,
+      subphase: 'consolidation',
+      metrics: { consolidated: { current: Math.min(i + batch.length, consolidationInputs.length), total: consolidationInputs.length } },
       samples: analyzedDocuments.slice(0, 8).map((doc) => {
         let domain = '';
         try { domain = new URL(doc.url).hostname.replace(/^www\./, ''); } catch {}
         return { url: doc.url, domain } as { url: string; title?: string; domain?: string };
       }),
     });
+    // Append consolidated docs as they arrive (approximation: show from analyzedDocuments slice)
+    const consAppend = analyzedDocuments.slice(i, i + CONS_BATCH).slice(0, 10).map((doc) => { let domain = ''; try { domain = new URL(doc.url).hostname.replace(/^www\./,''); } catch {} return { url: doc.url, domain } as { url: string; title?: string; domain?: string }; });
+    if (consAppend.length) {
+      logger?.emitCollectionUpdate(`${objectiveId}-consolidated`, { kind: 'consolidated', action: 'append', items: consAppend });
+    }
 
     if (i + CONS_BATCH < consolidationInputs.length) {
       console.log(`    ⏱️ [ResearchConsolidationPhase] Batch ${batchNumber} processed. Waiting 50ms...`);
@@ -463,6 +552,14 @@ export async function orchestrateResearchExecution(
 
   // Final completion
   emitPhaseProgress('synthesizing', 'complete', 1.0);
+  // Final curated sources: use consolidated docs as citations fallback
+  logger?.emitSources(objectiveId, {
+    items: (consolidatedDocuments.slice(0, 30)).map((doc) => {
+      let domain = '';
+      try { domain = new URL(doc.url).hostname.replace(/^www\./, ''); } catch {}
+      return { url: doc.url, domain } as { url: string; title?: string; domain?: string };
+    })
+  });
   logger?.emitOperation(`Research complete for: ${researchPlan.focusedObjective}`, { phase: 'synthesizing' });
 
   return {

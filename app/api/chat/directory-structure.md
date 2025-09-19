@@ -42,7 +42,10 @@ app/api/chat/
 │   │                           #   • Extraction: emitExtractionSession, emitExtractionUrl
 │   │                           #   • Tools: emitToolStatus for think/memory tools
 │   │                           #   • Operations: emitOperation, emitSearchProgress, emitError
-│   │                           # - emitPhaseProgress supports details.summary (queries→hits→unique) and details.samples (domains/URLs)
+│   │                           #   • Collections: emitCollectionUpdate(id, { kind, action, total?, items })
+│   │                           #   • Sources: emitSources(objectiveId?, { items }) for curated Sources tab
+│   │                           # - emitPhaseProgress supports details.summary (queries→hits→unique), details.samples (domains/URLs),
+│   │                           #   details.queries (query chips), details.subphase, details.metrics (fetched/highSignal/analyzed/consolidated)
 │   │                           # - Aggregated retry metrics per phase
 │   │                           # - Writes section files + overview file in /logs
 │   ├── llmRetry.ts             # Timeout + retry wrapper for LLM calls
@@ -93,6 +96,9 @@ app/api/chat/
         │                            #   Content analysis → Consolidation → Final synthesis
         │                            # - **Emits phase progress updates at boundaries**
         │                            # - Emits sample domains/URLs + search summary counts for UI
+        │                            # - Emits subphase + metric details during analyzing/consolidating
+        │                            # - Streams large sets via emitCollectionUpdate (search_hits, unique_urls, retrieved, high_signal, analyzed, consolidated)
+        │                            # - Seeds curated sources via emitSources and finalizes post-synthesis
         │                            # - **Emits operation messages for user feedback**
         │                            # - Phase summaries with duration_ms + compact stats
         │                            # - Deterministic errors + partial successes

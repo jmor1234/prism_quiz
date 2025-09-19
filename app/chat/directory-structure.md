@@ -54,10 +54,12 @@ components/
 │
 ├── research-progress.tsx       # Real-time research progress display component
 │                               # - Session overview with objective count
-│                               # - Objective header card (percent pill, modern gradients, Inter font)
+│                               # - Objective header card (percent pill; token-only styling)
 │                               # - Expandable details: phase timeline, auto-scroll to active phase
-│                               # - Searching summary chip (queries→hits→unique)
-│                               # - Domain pills per phase (favicons, links) from emitted samples
+│                               # - Searching: summary chip + query chips (≤6)
+│                               # - Subphase metric chips (Fetched/High-signal/Analyzed/Consolidated)
+│                               # - Domain pills per phase from emitted samples
+│                               # - Expandable full lists are virtualized (smooth scroll)
 │                               # - Progressive disclosure to avoid clutter
 │
 ├── extraction-progress.tsx     # URL extraction progress display component

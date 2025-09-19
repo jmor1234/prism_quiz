@@ -427,6 +427,36 @@ export class TraceLogger {
         });
     }
 
+    // Emit large collection updates (search hits, deduped urls, etc.)
+    emitCollectionUpdate(collectionId: string, data: {
+        kind: 'search_hits' | 'unique_urls' | 'retrieved' | 'high_signal' | 'analyzed' | 'consolidated' | 'citations';
+        action: 'replace' | 'append';
+        total?: number;
+        items: { url: string; title?: string; domain?: string }[];
+    }): void {
+        if (!this.streamWriter) return;
+        this.streamWriter.write({
+            type: 'data-research-collection',
+            id: collectionId,
+            data,
+        });
+    }
+
+    // Emit curated sources for the Sources tab
+    emitSources(objectiveId: string | undefined, data: {
+        items: { url: string; title?: string; domain?: string }[];
+    }): void {
+        if (!this.streamWriter) return;
+        this.streamWriter.write({
+            type: 'data-research-sources',
+            id: objectiveId ?? 'session-sources',
+            data: {
+                objectiveId,
+                ...data,
+            },
+        });
+    }
+
     async finalizeAndWriteLog(finalError?: unknown): Promise<void> {
         if (!this.isEnabled) return;
 

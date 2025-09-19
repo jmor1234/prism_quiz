@@ -5,11 +5,13 @@ import { cn } from "@/lib/utils";
 import type { ResearchObjectiveData, ResearchPhaseData } from "@/lib/streaming-types";
 import { AlertCircle, Check, Clock, Sparkles } from "lucide-react";
 import { useEffect, useMemo, useRef } from "react";
+import VirtualizedList from "@/components/research/virtualized-list";
 
 interface ObjectiveDetailsProps {
   objectiveId: string;
   objective: ResearchObjectiveData;
   phases: Record<string, ResearchPhaseData>;
+  collections?: Record<string, { kind: string; total?: number; items: { url: string; title?: string; domain?: string }[] }>;
   className?: string;
 }
 
@@ -42,7 +44,7 @@ function formatDurationMs(start?: number, end?: number): string | null {
   return `${m}m ${rem}s`;
 }
 
-export function ObjectiveDetails({ objectiveId, phases, className }: ObjectiveDetailsProps) {
+export function ObjectiveDetails({ objectiveId, phases, collections, className }: ObjectiveDetailsProps) {
   const rowRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   const activePhaseKey = useMemo(() => {
@@ -116,7 +118,7 @@ export function ObjectiveDetails({ objectiveId, phases, className }: ObjectiveDe
                 <div className="mt-1 h-1 bg-muted/30 rounded-full overflow-hidden">
                   <div
                     className={cn(
-                      "h-full rounded-full transition-all duration-500",
+                      "h-full rounded-full transition-[width,background] duration-500",
                       isError && "bg-red-500",
                       isComplete && "bg-gradient-to-r from-emerald-500 to-emerald-400",
                       isActive && "bg-gradient-to-r from-blue-500 to-blue-400",
@@ -134,10 +136,36 @@ export function ObjectiveDetails({ objectiveId, phases, className }: ObjectiveDe
                         <span>{p.details.summary.queries} queries → {p.details.summary.hits ?? '—'} hits → {p.details.summary.unique ?? '—'} unique</span>
                       </div>
                     )}
+                    {p?.details?.queries && p.details.queries.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5">
+                        {p.details.queries.slice(0, 6).map((q, i) => (
+                          <span key={`${id}-query-${i}`} className="inline-flex items-center rounded-md border border-border bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground max-w-[220px] truncate" title={q}>
+                            {q}
+                          </span>
+                        ))}
+                      </div>
+                    )}
                     {p?.details?.samples && (
                       <div className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5">
                         <span>{p.details.samples.length} sample domains</span>
                       </div>
+                    )}
+                  </div>
+                )}
+                {/* Subphase metrics for analyzing/consolidating */}
+                {p?.details?.metrics && (
+                  <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
+                    {p.details.metrics.fetched && (
+                      <span className="rounded-full border px-2 py-0.5">Fetched {p.details.metrics.fetched.ok}/{p.details.metrics.fetched.total}</span>
+                    )}
+                    {p.details.metrics.highSignal && (
+                      <span className="rounded-full border px-2 py-0.5">High-signal {p.details.metrics.highSignal.ok}/{p.details.metrics.highSignal.total}</span>
+                    )}
+                    {p.details.metrics.analyzed && (
+                      <span className="rounded-full border px-2 py-0.5">Analyzed {p.details.metrics.analyzed.current}/{p.details.metrics.analyzed.total}</span>
+                    )}
+                    {p.details.metrics.consolidated && (
+                      <span className="rounded-full border px-2 py-0.5">Consolidated {p.details.metrics.consolidated.current}/{p.details.metrics.consolidated.total}</span>
                     )}
                   </div>
                 )}
@@ -168,6 +196,33 @@ export function ObjectiveDetails({ objectiveId, phases, className }: ObjectiveDe
                       </a>
                     ))}
                   </div>
+                )}
+
+                {/* Expandable full collection view when available */}
+                {collections && (collections[`${objectiveId}-search-hits`] || collections[`${objectiveId}-unique-urls`] || collections[`${objectiveId}-retrieved`] || collections[`${objectiveId}-high-signal`] || collections[`${objectiveId}-analyzed`] || collections[`${objectiveId}-consolidated`]) && (
+                  <details className="mt-1">
+                    <summary className="text-[11px] text-muted-foreground cursor-pointer select-none hover:text-foreground">Show all</summary>
+                    <div className="mt-1.5 pr-1">
+                      <VirtualizedList
+                        items={(collections[`${objectiveId}-${phaseKey === 'searching' ? 'search-hits' : phaseKey === 'deduplicating' ? 'unique-urls' : phaseKey === 'analyzing' ? 'analyzed' : phaseKey === 'consolidating' ? 'consolidated' : ''}`]?.items || [])}
+                        itemHeight={40}
+                        height={256}
+                        keyExtractor={(s, i) => `${s.url}-${i}`}
+                        renderItem={(s) => (
+                          <a href={s.url} target="_blank" rel="noreferrer" className="group flex items-center justify-between gap-3 rounded-lg border border-transparent px-2.5 py-1.5 hover:bg-muted">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <div className="size-4 rounded-sm bg-muted ring-1 ring-border" />
+                              <div className="text-[12px] leading-5 min-w-0">
+                                <div className="font-medium group-hover:underline truncate">{s.title || s.url}</div>
+                                <div className="text-[11px] text-muted-foreground truncate">{s.url}</div>
+                              </div>
+                            </div>
+                            {s.domain && <span className="text-[11px] text-muted-foreground shrink-0">{s.domain}</span>}
+                          </a>
+                        )}
+                      />
+                    </div>
+                  </details>
                 )}
               </div>
             </div>

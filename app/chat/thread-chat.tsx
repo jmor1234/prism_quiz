@@ -32,6 +32,7 @@ import type {
   SearchProgressData,
   ResearchErrorData,
 } from "@/lib/streaming-types";
+import { AnswerWithSourcesTabs } from "@/components/research/answer-with-sources";
 
 function useMessageVisibility(messages: UIMessage[]) {
   const [showPreviousMessages, setShowPreviousMessages] = useState(false);
@@ -81,6 +82,8 @@ export function ThreadChat({ threadId, initialMessages }: { threadId: string; in
     currentToolStatus: null,
     extractionSession: null,
     extractionUrls: {},
+    collections: {},
+    sourcesByObjective: {},
   });
 
   const { messages, status, sendMessage, stop, error, setMessages } = useChat({
@@ -179,6 +182,37 @@ export function ThreadChat({ threadId, initialMessages }: { threadId: string; in
             }));
           }
           break;
+        case 'data-research-collection': {
+          if (!id) break;
+          const payload = data as import('@/lib/streaming-types').ResearchCollectionData;
+          setResearchState((prev) => {
+            const existing = prev.collections?.[id];
+            let items = payload.items;
+            if (existing && payload.action === 'append') {
+              items = [...existing.items, ...payload.items];
+            }
+            return {
+              ...prev,
+              collections: {
+                ...(prev.collections || {}),
+                [id]: { kind: payload.kind, total: payload.total, items },
+              },
+            };
+          });
+          break;
+        }
+        case 'data-research-sources': {
+          const payload = data as import('@/lib/streaming-types').ResearchSourcesData;
+          const objId = payload.objectiveId ?? 'session';
+          setResearchState((prev) => ({
+            ...prev,
+            sourcesByObjective: {
+              ...(prev.sourcesByObjective || {}),
+              [objId]: { items: payload.items },
+            },
+          }));
+          break;
+        }
       }
     },
   });
@@ -278,6 +312,8 @@ export function ThreadChat({ threadId, initialMessages }: { threadId: string; in
         currentToolStatus: null,
         extractionSession: null,
         extractionUrls: {},
+        collections: {},
+        sourcesByObjective: {},
       });
     }
   }, [status]);
@@ -301,7 +337,7 @@ export function ThreadChat({ threadId, initialMessages }: { threadId: string; in
 
   return (
     <div className="flex flex-1 min-h-0 flex-col">
-      <Conversation className={`mx-auto w-full ${emptyState ? "max-w-[58rem]" : "max-w-3xl"} flex-1 min-h-0`}>
+      <Conversation className={`mx-auto w-full ${emptyState ? "max-w-[760px]" : "max-w-[760px]"} flex-1 min-h-0 px-4 md:px-6`}>
         <ConversationContent>
           {messages.length === 0 ? (
             <ConversationEmptyState>
@@ -359,9 +395,28 @@ export function ThreadChat({ threadId, initialMessages }: { threadId: string; in
                         }
                         onCancel={handleEditCancel}
                       />
-                    ) : (
-                      <MessageRenderer message={message} />
-                    )}
+                    ) : (() => {
+                      const isLastAssistant =
+                        message.role === 'assistant' &&
+                        (visibleMessages
+                          .slice()
+                          .reverse()
+                          .find((m) => m.role === 'assistant')?.id === message.id);
+                      const aggregatedSources = (() => {
+                        const all: { url: string; title?: string; domain?: string }[] = [];
+                        const src = researchState.sourcesByObjective || {};
+                        for (const k of Object.keys(src)) {
+                          all.push(...(src[k]?.items || []));
+                        }
+                        return all;
+                      })();
+                      if (isLastAssistant && aggregatedSources.length > 0) {
+                        return (
+                          <AnswerWithSourcesTabs message={message} sources={aggregatedSources} />
+                        );
+                      }
+                      return <MessageRenderer message={message} />;
+                    })()}
                   </MessageContent>
                 </Message>
               ))}

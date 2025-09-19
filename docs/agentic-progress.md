@@ -18,7 +18,17 @@ The UI stream can carry "data-*" parts beyond text/reasoning. For research, each
 - `data-research-phase`: per-phase progress with optional details.
   - `details.summary` (optional): compact counts like `{ queries, hits, unique }`.
   - `details.samples` (optional): a few domains/URLs `{ url, domain?, title? }[]` for credibility without flooding.
+  - `details.queries` (optional): representative query strings for UI chips (≤6).
+  - `details.subphase` (optional): `'retrieval' | 'sqa' | 'analysis' | 'consolidation'` to narrate analyzing sub-steps.
+  - `details.metrics` (optional): fine-grained counters
+    - `fetched { ok, total }`, `highSignal { ok, total }`, `analyzed { current, total }`, `consolidated { current, total }`.
 - Transient helpers: `data-research-operation`, `data-search-progress`, `data-research-error`.
+
+Collections and curated sources:
+- `data-research-collection` (persistent list updates): `{ id, kind, action, total?, items[] }`
+  - `kind`: `search_hits | unique_urls | retrieved | high_signal | analyzed | consolidated | citations`.
+  - `action`: `replace | append` for streaming in chunks.
+- `data-research-sources` (curated list for Sources tab): `{ objectiveId?, items[] }`.
 
 Types live in `lib/streaming-types.ts`. Backend emitters are in `app/api/chat/lib/traceLogger.ts`.
 
@@ -29,9 +39,12 @@ Types live in `lib/streaming-types.ts`. Backend emitters are in `app/api/chat/li
 3) `researchOrchestrator.ts` emits progress at phase boundaries:
    - Searching → emits `details.summary` (queries→hits→unique) + sample domains from Exa results.
    - Deduplicating → emits samples of unique URLs/domains.
-   - Analyzing (fetch/SQA/analysis) → emits samples from valid/high-signal/being-analyzed sets.
-   - Consolidating → emits samples from analyzed docs.
+   - Analyzing is narrated via `details.subphase` + `details.metrics`:
+     - Retrieval (`fetched`), SQA (`highSignal`), Analysis (`analyzed`).
+   - Consolidating → `consolidated` metrics + samples.
 4) `TraceLogger.emitPhaseProgress()` writes UI events directly into the stream. Raw traces remain private.
+5) Large sets stream via `emitCollectionUpdate(id, { kind, action, total?, items })`.
+6) Curated sources for the Sources tab stream via `emitSources(objectiveId, { items })`.
 
 Key files:
 - `app/api/chat/tools/researchOrchestratorTool/researchOrchestrator.ts`
@@ -55,8 +68,9 @@ This enables low-latency, incremental UI updates without extra HTTP calls.
    - Objective card: modern shell; expanded details by default.
    - Details (`components/research-objective-details.tsx`):
      - Phase timeline with progress bars and durations.
-     - Searching summary chip (queries→hits→unique).
-     - Domain pills with favicons, linked, capped (samples only).
+     - Searching: summary chip + query chips (≤6).
+     - Subphase metric chips (Fetched, High-signal, Analyzed, Consolidated).
+     - Domain pills with favicons (samples), plus an expandable, virtualized list (256px viewport) for full collections.
      - Auto-scroll to the active phase.
 3) Progressive disclosure: counts and a few samples are always visible; full lists are gated behind user intent.
 
@@ -77,6 +91,10 @@ This enables low-latency, incremental UI updates without extra HTTP calls.
   - Define a minimal, Zod-typed contract.
   - Emit small, decision-relevant details through `TraceLogger`.
   - Keep counts/samples tiny; never stream long raw content.
+
+- Streaming large lists:
+  - Use `emitCollectionUpdate(id, { kind, action })` with `replace` for snapshots and `append` for batches of ~10 items.
+  - Keep per-update cadence ≈250–400ms to avoid churn; cap lists (e.g., search_hits ≤50) unless explicitly expanded.
 
 ## Gotchas
 

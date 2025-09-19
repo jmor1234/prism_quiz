@@ -4,6 +4,7 @@
 import { Activity, ChevronDown, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useMemo, useState } from "react";
+import AnimatedNumber from "@/components/research/animated-number";
 import type {
   ResearchObjectiveData,
   ResearchState,
@@ -80,7 +81,7 @@ export function ResearchProgress({ state, className }: ResearchProgressProps) {
 
           <div className="text-right">
             <div className="text-lg font-semibold tabular-nums">
-              {Math.round(overallProgress)}%
+              <AnimatedNumber value={overallProgress} format={(n) => `${Math.round(n)}%`} />
             </div>
           </div>
         </div>
@@ -88,7 +89,7 @@ export function ResearchProgress({ state, className }: ResearchProgressProps) {
         {/* Main Progress Bar */}
         <div className="relative h-1.5 rounded-full overflow-hidden mb-4 bg-muted/30">
           <div
-            className="absolute inset-y-0 left-0 rounded-full transition-all duration-700 ease-out bg-gradient-to-r from-primary via-primary/90 to-primary/70"
+            className="absolute inset-y-0 left-0 rounded-full transition-[width] duration-500 ease-out bg-gradient-to-r from-primary via-primary/90 to-primary/70"
             style={{ width: `${overallProgress}%` }}
           />
           {/* Shimmer effect for active progress */}
@@ -114,6 +115,7 @@ export function ResearchProgress({ state, className }: ResearchProgressProps) {
                   objectiveId={objectiveId}
                   objective={objective}
                   phases={phases}
+                  collections={state.collections || {}}
                   className="mt-2"
                 />
               </CollapsibleContent>
@@ -174,22 +176,22 @@ function ObjectiveCard({ objective, onToggle, isOpen }: ObjectiveCardProps) {
       case 'failed':
         return 'bg-red-500';
       case 'active':
-        return 'bg-blue-500';
+        return 'bg-primary';
       default:
-        return 'bg-gray-400';
+        return 'bg-muted-foreground';
     }
   };
 
   const getCardStyle = () => {
     switch (objective.status) {
       case 'active':
-        return 'border-primary/20 bg-primary/5 shadow-sm';
+        return 'border-primary/30 bg-card';
       case 'complete':
-        return 'border-emerald-500/20 bg-emerald-500/5';
+        return 'border-emerald-500/30 bg-card';
       case 'failed':
-        return 'border-red-500/20 bg-red-500/5';
+        return 'border-red-500/30 bg-card';
       default:
-        return 'border-border/30';
+        return 'border-border bg-card';
     }
   };
 
@@ -197,9 +199,8 @@ function ObjectiveCard({ objective, onToggle, isOpen }: ObjectiveCardProps) {
     <div
       className={cn(
         "group relative rounded-xl border p-4",
-        "bg-gradient-to-b from-background to-muted/10",
-        "backdrop-blur-sm",
-        "transition-all duration-200 hover:shadow-md",
+        "transition-colors",
+        "hover:bg-muted/40",
         getCardStyle()
       )}
     >
@@ -208,15 +209,10 @@ function ObjectiveCard({ objective, onToggle, isOpen }: ObjectiveCardProps) {
         <div className="relative mt-0.5">
           <div className={cn(
             "w-2 h-2 rounded-full",
-            getStatusColor(),
-            objective.status === 'active' && "animate-pulse"
+            getStatusColor()
           )} />
           {objective.status === 'active' && (
-            <div className={cn(
-              "absolute inset-0 w-2 h-2 rounded-full animate-ping",
-              getStatusColor(),
-              "opacity-75"
-            )} />
+            <span className="absolute -inset-1 rounded-full ring-2 ring-ring/70" />
           )}
         </div>
 
@@ -233,7 +229,7 @@ function ObjectiveCard({ objective, onToggle, isOpen }: ObjectiveCardProps) {
               </p>
             </div>
             {/* Percent pill */}
-            <span className="shrink-0 rounded-full border px-2 py-0.5 text-xs font-medium tabular-nums text-foreground/80 transition-transform duration-300 will-change-transform" style={{ transform: `translateZ(0)` }}>
+            <span className="shrink-0 rounded-full border px-2 py-0.5 text-xs font-medium tabular-nums text-foreground/80">
               {Math.round(objective.progress * 100)}%
             </span>
           </div>
@@ -246,11 +242,11 @@ function ObjectiveCard({ objective, onToggle, isOpen }: ObjectiveCardProps) {
                 <div className="h-1.5 bg-muted/30 rounded-full overflow-hidden">
                   <div
                     className={cn(
-                      "h-full rounded-full transition-all duration-500",
-                      objective.status === 'active' && "bg-gradient-to-r from-blue-500 to-blue-400",
-                      objective.status === 'complete' && "bg-gradient-to-r from-emerald-500 to-emerald-400",
+                      "h-full rounded-full transition-[width] duration-500",
+                      objective.status === 'active' && "bg-primary",
+                      objective.status === 'complete' && "bg-emerald-500",
                       objective.status === 'failed' && "bg-red-500",
-                      objective.status === 'pending' && "bg-gray-300"
+                      objective.status === 'pending' && "bg-muted"
                     )}
                     style={{ width: `${objective.progress * 100}%` }}
                   />
@@ -259,15 +255,16 @@ function ObjectiveCard({ objective, onToggle, isOpen }: ObjectiveCardProps) {
             </div>
 
             {/* Phase chip & stats */}
-            <div className="flex items-center gap-3 text-[11px]">
+            <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
               {objective.phase && (
-                <span className="inline-flex items-center rounded-full bg-primary/10 text-primary px-1.5 py-0.5">
+                <span className="inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5">
+                  <span className={cn("size-1.5 rounded-full", getStatusColor())} />
                   {phaseLabels[objective.phase]}
                 </span>
               )}
 
               {objective.sourcesFound !== undefined && (
-                <span className="text-muted-foreground">
+                <span>
                   <span className="font-medium">{objective.sourcesAnalyzed}</span>
                   <span className="text-muted-foreground/70">/{objective.sourcesFound}</span>
                   <span className="ml-1">sources</span>

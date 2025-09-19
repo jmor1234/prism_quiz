@@ -16,7 +16,7 @@ A real‑time, multimodal AI reasoning application. Inputs (text, images, voice�
 - Engine (AI SDK v5): unifies providers, tool calling, and streaming; supports agentic controls (e.g., bounded steps).
 - State/UI (AI SDK UI + React): `useChat()` orchestrates streaming state; AI Elements render typed parts (text, reasoning, files) and keep UX streaming‑safe.
 - **Streaming infrastructure**: `createUIMessageStream` wrapper enables real-time progress updates; AsyncLocalStorage maintains context through tool execution.
-- Tools: domain actions invoked by the agent; inputs/outputs are Zod‑typed; logging captured per request; **progress emissions via TraceLogger's stream writer**. Phase updates can include compact UI metadata via `emitPhaseProgress(details)`, such as `details.summary` (queries → hits → unique) and `details.samples` (small sets of domains/URLs).
+- Tools: domain actions invoked by the agent; inputs/outputs are Zod‑typed; logging captured per request; **progress emissions via TraceLogger's stream writer**. Phase updates can include compact UI metadata via `emitPhaseProgress(details)` – `summary` (queries→hits→unique), `samples` (small sets of domains/URLs), `queries` (chips), `subphase` and `metrics` for analyzing/consolidating. Large sets stream with `emitCollectionUpdate`; curated sources stream via `emitSources`.
 
 ## Agentic principles
 - Two‑world contract: stochastic planner, deterministic tools.
@@ -39,7 +39,7 @@ A real‑time, multimodal AI reasoning application. Inputs (text, images, voice�
 ## Data flow (high level)
 1) User composes input (optionally with attachments or voice).
 2) Frontend sends to `/api/chat`; backend streams response parts (text/reasoning) and may call tools.
-3) **Real-time research progress** streams via data parts - objectives, phases, and operations visible during long-running research; select phases include summary counts and sample source domains for richer yet uncluttered UI.
+3) **Real-time research progress** streams via data parts - objectives, phases, subphase metrics and collections; searching shows queries→hits→unique and sample domains; large lists stream in chunks; curated sources power the Answer|Sources tabs.
 4) React UI renders parts as they arrive; editing and branching are guarded during streaming.
 5) On completion, a snapshot is persisted locally; users can edit/branch subsequent interactions.
 
@@ -47,7 +47,7 @@ A real‑time, multimodal AI reasoning application. Inputs (text, images, voice�
 - **Think**: private reflection to plan next steps and verify policies; **streams status messages during reflection**.
 - **Research memory**: optional per‑session notes aggregation (in‑memory by default); **streams recording status**.
 - **Targeted extraction**: depth on specific URLs with controlled crawl (separate from discovery); **streams per-URL progress**.
-- **Research orchestrator**: breadth→filter→depth→distill→synthesize pipeline for focused objectives; **streams multi-objective progress with phase visibility**.
+- **Research orchestrator**: breadth→filter→depth→distill→synthesize pipeline for focused objectives; **streams multi-objective progress with phase + subphase visibility**, collections, and curated sources.
 
 ## Observability principles
 - Per‑request tracing with sectioned, step‑indexed logs.
@@ -59,7 +59,7 @@ A real‑time, multimodal AI reasoning application. Inputs (text, images, voice�
 ## UX principles
 - Lead with the direct answer; support with minimal citations.
 - Reasoning is visible but not copied by default.
-- **Tool operations are transparent**: all tools stream real-time progress, no silent waiting. UI uses progressive disclosure: show summary chips and a few sample domains first; full lists remain gated.
+- **Tool operations are transparent**: all tools stream real-time progress, no silent waiting. UI uses progressive disclosure: show summary chips and a few sample domains first; full lists remain gated and virtualized.
 - **Continuous feedback**: transition detection fills gaps between phases, ensuring visual continuity.
 - Editing is safe and predictable; only one edit at a time; guard during streaming.
 - Multimodal is first‑class: images and transcribed voice flow through the same pipeline.
