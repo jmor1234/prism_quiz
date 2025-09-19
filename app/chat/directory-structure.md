@@ -22,8 +22,7 @@ app/chat/
 ├── thread-chat.tsx             # Main chat orchestrator (client component)
 │                               # - useChat() from AI SDK UI (streaming state machine)
 │                               # - onData callback handles research progress data parts
-│                               # - ResearchState management for real-time progress tracking
-│                               # - useStreamingActivity(): detects gaps between streaming phases
+│                               # - ResearchState management (session/objectives/phases/collections/sources/claimSpans)
 │                               # - useMessageVisibility(): latest user→assistant pair focus
 │                               # - Message editing & branching (user + assistant)
 │                               # - Saves UIMessage[] snapshots to Dexie on completion
@@ -52,32 +51,17 @@ components/
 │   ├── sources.tsx             # Citations rendering
 │   └── … (others)              # actions, artifact, branch, image, etc.
 │
-├── research-progress.tsx       # Real-time research progress display component
-│                               # - Session overview with objective count
-│                               # - Objective header card (percent pill; token-only styling)
-│                               # - Expandable details: phase timeline, auto-scroll to active phase
-│                               # - Searching: summary chip + query chips (≤6)
-│                               # - Subphase metric chips (Fetched/High-signal/Analyzed/Consolidated)
-│                               # - Domain pills per phase from emitted samples
-│                               # - Expandable full lists are virtualized (smooth scroll)
-│                               # - Progressive disclosure to avoid clutter
+├── research-progress.tsx       # Task-based research pipeline (Pipeline/Details toggle)
+│                               # - Pipeline: ChainOfThought narrative (default open), chips & metrics
+│                               # - Details: ObjectiveDetails (legacy-style full view) on demand
+│                               # - One active objective auto-open; calm defaults for concurrency
 │
-├── extraction-progress.tsx     # URL extraction progress display component
-│                               # - Shows extraction session (X/Y URLs)
-│                               # - Domain-based URL display for cleaner UI
-│                               # - Individual URL status with phase-specific colors
-│                               # - Staggered entrance animations
+├── extraction-progress.tsx     # Task-based extraction progress component
+│                               # - Shows extraction session (X/Y URLs) as URL rows inside a Task
 │
-├── tool-status.tsx             # Simple tool status display component
-│                               # - Floating pill design with gradient backgrounds
-│                               # - Tool-specific color coding (violet/amber)
-│                               # - Animated activity indicators
+├── tool-status.tsx             # (Legacy) floating tool status pill (not used; replaced by inline loaders)
 │
-├── streaming-transition.tsx    # Transition gap detector and filler
-│                               # - Detects whitespace between streaming phases
-│                               # - Shows contextual messages ("Preparing tools...")
-│                               # - useStreamingActivity hook for phase tracking
-│                               # - Auto-shows after 800ms of inactivity
+├── streaming-transition.tsx    # (Legacy) transition gap detector (not used; replaced by inline loaders)
 │
 ├── app-sidebar.tsx             # Thread list + actions (New, Rename, Delete, Delete all)
 └── ui/                         # shadcn/ui primitives (button, input, sheet, sidebar, etc.)

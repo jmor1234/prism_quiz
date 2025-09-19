@@ -24,11 +24,12 @@ The UI stream can carry "data-*" parts beyond text/reasoning. For research, each
     - `fetched { ok, total }`, `highSignal { ok, total }`, `analyzed { current, total }`, `consolidated { current, total }`.
 - Transient helpers: `data-research-operation`, `data-search-progress`, `data-research-error`.
 
-Collections and curated sources:
+Collections, curated sources, and claim spans:
 - `data-research-collection` (persistent list updates): `{ id, kind, action, total?, items[] }`
   - `kind`: `search_hits | unique_urls | retrieved | high_signal | analyzed | consolidated | citations`.
   - `action`: `replace | append` for streaming in chunks.
-- `data-research-sources` (curated list for Sources tab): `{ objectiveId?, items[] }`.
+- `data-research-sources` (curated list for Sources block): `{ objectiveId?, items[] }`.
+- `data-research-claim-spans` (precise inline citations): `{ objectiveId?, items: [{ anchor, start, end, sources[], quote? }] }`.
 
 Types live in `lib/streaming-types.ts`. Backend emitters are in `app/api/chat/lib/traceLogger.ts`.
 
@@ -62,17 +63,11 @@ This enables low-latency, incremental UI updates without extra HTTP calls.
 
 ## Frontend flow (how events render)
 
-1) `useChat()` (`app/chat/thread-chat.tsx`) receives events in `onData` and updates a `ResearchState` store.
-2) `components/research-progress.tsx` reads that state and renders:
-   - Header: percent pill + overall bar.
-   - Objective card: modern shell; expanded details by default.
-   - Details (`components/research-objective-details.tsx`):
-     - Phase timeline with progress bars and durations.
-     - Searching: summary chip + query chips (≤6).
-     - Subphase metric chips (Fetched, High-signal, Analyzed, Consolidated).
-     - Domain pills with favicons (samples), plus an expandable, virtualized list (256px viewport) for full collections.
-     - Auto-scroll to the active phase.
-3) Progressive disclosure: counts and a few samples are always visible; full lists are gated behind user intent.
+1) `useChat()` (`app/chat/thread-chat.tsx`) receives events in `onData` and updates a `ResearchState` store (session/objectives/phases/collections/sources/claimSpans).
+2) `components/research-progress.tsx` renders a Task‑based UI:
+   - Pipeline (default): `ChainOfThought` narrative (open by default for active objective), chips & metrics.
+   - Details (on demand): `ObjectiveDetails` full timeline; long lists virtualized.
+3) `MessageRenderer` renders assistant `Response`/`Reasoning`, plus inline citations using backend claim spans (offsets and URLs) with a hover card carousel.
 
 ## Design invariants
 

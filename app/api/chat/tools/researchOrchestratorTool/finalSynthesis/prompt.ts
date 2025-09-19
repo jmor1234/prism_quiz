@@ -48,6 +48,8 @@ Synthesis policy:
 Output format:
 - First, brief thinking: analyze the key themes, identify strongest evidence, plan document structure.
 - Then output the final Markdown document with [Title](URL) citations.
+- Finally, extract claimSpans as JSON: an array of objects { anchor, start, end, sources[], quote? }.
+- Compute start/end on the exact final Markdown string; anchors must match that substring.
 `;
 };
 

@@ -14,9 +14,9 @@ A real‑time, multimodal AI reasoning application. Inputs (text, images, voice�
 
 ## Layered architecture
 - Engine (AI SDK v5): unifies providers, tool calling, and streaming; supports agentic controls (e.g., bounded steps).
-- State/UI (AI SDK UI + React): `useChat()` orchestrates streaming state; AI Elements render typed parts (text, reasoning, files) and keep UX streaming‑safe.
+- State/UI (AI SDK UI + React): `useChat()` orchestrates streaming state; AI Elements render typed parts (text, reasoning, files) and keep UX streaming‑safe. Research UI is Task‑based (pipeline by default, details on demand).
 - **Streaming infrastructure**: `createUIMessageStream` wrapper enables real-time progress updates; AsyncLocalStorage maintains context through tool execution.
-- Tools: domain actions invoked by the agent; inputs/outputs are Zod‑typed; logging captured per request; **progress emissions via TraceLogger's stream writer**. Phase updates can include compact UI metadata via `emitPhaseProgress(details)` – `summary` (queries→hits→unique), `samples` (small sets of domains/URLs), `queries` (chips), `subphase` and `metrics` for analyzing/consolidating. Large sets stream with `emitCollectionUpdate`; curated sources stream via `emitSources`.
+- Tools: domain actions invoked by the agent; inputs/outputs are Zod‑typed; logging captured per request; **progress emissions via TraceLogger's stream writer**. Phase updates can include compact UI metadata via `emitPhaseProgress(details)` – `summary` (queries→hits→unique), `samples` (small sets of domains/URLs), `queries` (chips), `subphase` and `metrics` for analyzing/consolidating. Large sets stream with `emitCollectionUpdate`; curated sources stream via `emitSources`. Precise inline citations stream via `emitClaimSpans` (backend‑provided claim spans with offsets).
 
 ## Agentic principles
 - Two‑world contract: stochastic planner, deterministic tools.
@@ -39,7 +39,7 @@ A real‑time, multimodal AI reasoning application. Inputs (text, images, voice�
 ## Data flow (high level)
 1) User composes input (optionally with attachments or voice).
 2) Frontend sends to `/api/chat`; backend streams response parts (text/reasoning) and may call tools.
-3) **Real-time research progress** streams via data parts - objectives, phases, subphase metrics and collections; searching shows queries→hits→unique and sample domains; large lists stream in chunks; curated sources power the Answer|Sources tabs.
+3) **Real-time research progress** streams via data parts - objectives, phases, subphase metrics and collections; searching shows queries→hits→unique and sample domains; large lists stream in chunks; curated sources power the Sources block; **claim spans** (text offsets + URLs) stream for precise inline citations.
 4) React UI renders parts as they arrive; editing and branching are guarded during streaming.
 5) On completion, a snapshot is persisted locally; users can edit/branch subsequent interactions.
 
@@ -59,8 +59,8 @@ A real‑time, multimodal AI reasoning application. Inputs (text, images, voice�
 ## UX principles
 - Lead with the direct answer; support with minimal citations.
 - Reasoning is visible but not copied by default.
-- **Tool operations are transparent**: all tools stream real-time progress, no silent waiting. UI uses progressive disclosure: show summary chips and a few sample domains first; full lists remain gated and virtualized.
-- **Continuous feedback**: transition detection fills gaps between phases, ensuring visual continuity.
+- **Tool operations are transparent**: all tools stream real-time progress, no silent waiting. UI uses progressive disclosure: Task pipeline by default; per‑objective “Details” view on demand; summary chips first; long lists gated and virtualized.
+- **Continuous feedback**: inline loaders within the active Task (no floating overlays).
 - Editing is safe and predictable; only one edit at a time; guard during streaming.
 - Multimodal is first‑class: images and transcribed voice flow through the same pipeline.
 
@@ -68,6 +68,7 @@ A real‑time, multimodal AI reasoning application. Inputs (text, images, voice�
 - Swap models/providers: the engine abstracts provider specifics.
 - Add a tool: define a clear, typed contract; keep outputs small and decision‑oriented.
 - Adjust policy: refine prompts to guide behavior, not to micromanage.
+ - Inline citations: prefer backend claim spans (offsets) over frontend heuristics.
 
 For concrete file‑level details, see:
 - `app/api/chat/directory-structure.md` (backend)

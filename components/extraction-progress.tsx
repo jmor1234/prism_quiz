@@ -1,12 +1,13 @@
 // components/extraction-progress.tsx
 "use client";
 
-import { Loader2, CheckCircle2, XCircle, FileSearch2, Globe2, FileText, ExternalLink } from "lucide-react";
+import { Loader2, CheckCircle2, XCircle, Globe2, FileText, ExternalLink } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type {
   ExtractionSessionData,
   ExtractionUrlData,
 } from "@/lib/streaming-types";
+import { Task, TaskTrigger, TaskContent, TaskItem, TaskItemFile } from "@/components/ai-elements/task";
 
 interface ExtractionProgressProps {
   session: ExtractionSessionData;
@@ -29,64 +30,41 @@ export function ExtractionProgress({ session, urls, className }: ExtractionProgr
     : 0;
 
   return (
-    <div className={cn(
-      "mx-3 my-2",
-      "relative overflow-hidden",
-      "border border-border/50 bg-gradient-to-br from-background via-background to-muted/20",
-      "rounded-xl shadow-sm",
-      "animate-in slide-in-from-bottom-2 duration-500",
-      className
-    )}>
-      {/* Subtle animated background */}
-      <div className="absolute inset-0 bg-gradient-to-r from-blue-500/5 via-transparent to-blue-500/5 animate-pulse" />
-
-      <div className="relative p-4">
-        {/* Session Header */}
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2.5">
-            <div className="relative">
-              <FileSearch2 className="h-4 w-4 text-blue-500" />
-              <div className="absolute inset-0 bg-blue-500/20 blur-xl" />
-            </div>
-            <div>
-              <h3 className="text-sm font-semibold tracking-tight">
-                Content Extraction
-              </h3>
-              <p className="text-xs text-muted-foreground mt-0.5">
+    <div className={cn("mx-3 my-2", className)}>
+      <Task defaultOpen>
+        <TaskTrigger title="Content extraction">
+          <div className="flex w-full items-center justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-[13.5px] font-medium leading-tight truncate">
                 Processing {session.totalUrls} {session.totalUrls === 1 ? 'URL' : 'URLs'}
               </p>
+              <div className="mt-1 h-1 bg-muted/30 rounded-full overflow-hidden">
+                <div
+                  className="h-full rounded-full transition-[width] duration-500 bg-gradient-to-r from-blue-500 to-blue-400"
+                  style={{ width: `${overallProgress}%` }}
+                />
+              </div>
             </div>
-          </div>
-
-          {/* Overall Progress Indicator */}
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-medium text-muted-foreground">
+            <div className="shrink-0 text-xs text-muted-foreground">
               {session.completedUrls}/{session.totalUrls}
-            </span>
-            <div className="w-16 h-1.5 bg-muted rounded-full overflow-hidden">
-              <div
-                className="h-full bg-gradient-to-r from-blue-500 to-blue-400 rounded-full transition-all duration-500 ease-out"
-                style={{ width: `${overallProgress}%` }}
-              />
             </div>
           </div>
-        </div>
-
-        {/* URL List */}
-        <div className="space-y-2">
-          {urlList.map((url, index) => (
-            <UrlProgress key={url.url} url={url} index={index} />
-          ))}
-        </div>
-
-        {/* Error State */}
-        {session.error && (
-          <div className="mt-3 flex items-start gap-2 p-2 bg-destructive/10 rounded-lg animate-in slide-in-from-bottom-1">
-            <XCircle className="h-3.5 w-3.5 text-destructive mt-0.5 shrink-0" />
-            <span className="text-xs text-destructive">{session.error}</span>
-          </div>
-        )}
-      </div>
+        </TaskTrigger>
+        <TaskContent>
+          <TaskItem>
+            <div className="space-y-2">
+              {urlList.map((url, index) => (
+                <UrlProgress key={url.url} url={url} index={index} />
+              ))}
+            </div>
+          </TaskItem>
+          {session.error && (
+            <TaskItem>
+              <TaskItemFile className="text-destructive">{session.error}</TaskItemFile>
+            </TaskItem>
+          )}
+        </TaskContent>
+      </Task>
     </div>
   );
 }

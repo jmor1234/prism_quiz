@@ -16,13 +16,12 @@ import { Message, MessageContent } from "@/components/ai-elements/message";
 import { MessageEditForm } from "@/components/ai-elements/message-edit";
 import { ChatComposer } from "./components/chat-composer";
 import { MessageRenderer } from "./components/message-renderer";
+import { canonicalizeUrlForDedupe } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { saveThread, loadThread } from "@/lib/thread-store";
 import { ResearchProgress } from "@/components/research-progress";
 import { ExtractionProgress } from "@/components/extraction-progress";
-import { ToolStatus } from "@/components/tool-status";
-import { StreamingTransition, useStreamingActivity } from "@/components/streaming-transition";
 import type {
   ResearchState,
   ResearchSessionData,
@@ -32,7 +31,7 @@ import type {
   SearchProgressData,
   ResearchErrorData,
 } from "@/lib/streaming-types";
-import { AnswerWithSourcesTabs } from "@/components/research/answer-with-sources";
+import { Sources, SourcesTrigger, SourcesContent, Source } from "@/components/ai-elements/sources";
 
 function useMessageVisibility(messages: UIMessage[]) {
   const [showPreviousMessages, setShowPreviousMessages] = useState(false);
@@ -213,6 +212,18 @@ export function ThreadChat({ threadId, initialMessages }: { threadId: string; in
           }));
           break;
         }
+        case 'data-research-claim-spans': {
+          const payload = data as import('@/lib/streaming-types').ResearchClaimSpansData;
+          const objId = payload.objectiveId ?? 'session';
+          setResearchState((prev) => ({
+            ...prev,
+            claimSpansByObjective: {
+              ...(prev.claimSpansByObjective || {}),
+              [objId]: { items: payload.items },
+            },
+          }));
+          break;
+        }
       }
     },
   });
@@ -329,10 +340,6 @@ export function ThreadChat({ threadId, initialMessages }: { threadId: string; in
     prevStatusRef.current = status;
   }, [status, messages, threadId]);
 
-  // Track streaming activity for transition detection
-  const { hasReasoningActive, hasToolsActive, hasResponseActive, lastPhaseCompleted } =
-    useStreamingActivity(messages, status, researchState);
-
   const emptyState = (messages as UIMessage[]).length === 0;
 
   return (
@@ -410,12 +417,40 @@ export function ThreadChat({ threadId, initialMessages }: { threadId: string; in
                         }
                         return all;
                       })();
-                      if (isLastAssistant && aggregatedSources.length > 0) {
+                      // Prefer backend-provided claim spans; fallback to empty
+                      const inlineCitations = (() => {
+                        const spans = researchState.claimSpansByObjective && Object.values(researchState.claimSpansByObjective).flatMap(v => v.items) || [];
+                        return spans.slice(0, 8).map(s => ({ anchor: s.anchor, sources: s.sources, quote: s.quote }));
+                      })();
+                      const uniqueSources = (() => {
+                        const seen = new Set<string>();
+                        const out: { url: string; title?: string; domain?: string }[] = [];
+                        for (const s of aggregatedSources) {
+                          const key = canonicalizeUrlForDedupe(s.url || '');
+                          if (!key || seen.has(key)) continue;
+                          seen.add(key);
+                          out.push(s);
+                        }
+                        return out;
+                      })();
+                      if (isLastAssistant && uniqueSources.length > 0) {
                         return (
-                          <AnswerWithSourcesTabs message={message} sources={aggregatedSources} />
+                          <>
+                            <MessageRenderer message={message} inlineCitations={inlineCitations} />
+                            <div className="mt-3">
+                              <Sources>
+                                <SourcesTrigger count={uniqueSources.length} />
+                                <SourcesContent>
+                                  {uniqueSources.map((s, i) => (
+                                    <Source key={`${s.url}-${i}`} href={s.url} title={s.title || s.url} />
+                                  ))}
+                                </SourcesContent>
+                              </Sources>
+                            </div>
+                          </>
                         );
                       }
-                      return <MessageRenderer message={message} />;
+                      return <MessageRenderer message={message} inlineCitations={inlineCitations} />;
                     })()}
                   </MessageContent>
                 </Message>
@@ -424,15 +459,6 @@ export function ThreadChat({ threadId, initialMessages }: { threadId: string; in
               {/* Progress Displays */}
               {status === 'streaming' && (
                 <>
-                  {/* Transition indicator for gaps between phases */}
-                  <StreamingTransition
-                    isStreaming={status === 'streaming'}
-                    hasReasoningActive={hasReasoningActive}
-                    hasToolsActive={hasToolsActive}
-                    hasResponseActive={hasResponseActive}
-                    lastPhaseCompleted={lastPhaseCompleted}
-                  />
-
                   {/* Research Progress for executeResearchPlanTool */}
                   {researchState.session && (
                     <ResearchProgress state={researchState} />
@@ -444,11 +470,6 @@ export function ThreadChat({ threadId, initialMessages }: { threadId: string; in
                       session={researchState.extractionSession}
                       urls={researchState.extractionUrls}
                     />
-                  )}
-
-                  {/* Tool Status for simple tools */}
-                  {researchState.currentToolStatus && (
-                    <ToolStatus status={researchState.currentToolStatus} />
                   )}
                 </>
               )}

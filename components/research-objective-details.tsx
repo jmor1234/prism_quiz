@@ -4,7 +4,7 @@
 import { cn } from "@/lib/utils";
 import type { ResearchObjectiveData, ResearchPhaseData } from "@/lib/streaming-types";
 import { AlertCircle, Check, Clock, Sparkles } from "lucide-react";
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import VirtualizedList from "@/components/research/virtualized-list";
 
 interface ObjectiveDetailsProps {
@@ -45,16 +45,22 @@ function formatDurationMs(start?: number, end?: number): string | null {
 }
 
 export function ObjectiveDetails({ objectiveId, phases, collections, className }: ObjectiveDetailsProps) {
+  // Light UI throttle to reduce visible jitter
+  const [throttledPhases, setThrottledPhases] = useState(phases);
+  useEffect(() => {
+    const t = setTimeout(() => setThrottledPhases(phases), 300);
+    return () => clearTimeout(t);
+  }, [phases]);
   const rowRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   const activePhaseKey = useMemo(() => {
     for (const phaseKey of PHASE_ORDER) {
       const id = `${objectiveId}-${phaseKey}`;
-      const p = phases[id];
+      const p = throttledPhases[id];
       if (p?.status === 'starting' || p?.status === 'active') return phaseKey;
     }
     return undefined;
-  }, [objectiveId, phases]);
+  }, [objectiveId, throttledPhases]);
 
   useEffect(() => {
     if (!activePhaseKey) return;
@@ -78,7 +84,7 @@ export function ObjectiveDetails({ objectiveId, phases, collections, className }
       <div className="space-y-3">
         {PHASE_ORDER.map((phaseKey) => {
           const id = `${objectiveId}-${phaseKey}`;
-          const p = phases[id];
+          const p = throttledPhases[id];
           const status = p?.status ?? "pending";
           const isComplete = status === "complete";
           const isError = status === "error";

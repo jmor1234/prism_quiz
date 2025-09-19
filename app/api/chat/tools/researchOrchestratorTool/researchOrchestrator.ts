@@ -560,6 +560,19 @@ export async function orchestrateResearchExecution(
       return { url: doc.url, domain } as { url: string; title?: string; domain?: string };
     })
   });
+  // Emit claim spans from final synthesis structured output (preferred over heuristics)
+  try {
+    const claimItems = (finalReportOutput.claimSpans || []).map((it) => ({
+      anchor: it.anchor,
+      start: it.start,
+      end: it.end,
+      sources: Array.from(new Set(it.sources)).slice(0, 5),
+      quote: it.quote,
+    }));
+    if (claimItems.length > 0) {
+      logger?.emitClaimSpans(objectiveId, { items: claimItems });
+    }
+  } catch {}
   logger?.emitOperation(`Research complete for: ${researchPlan.focusedObjective}`, { phase: 'synthesizing' });
 
   return {
@@ -567,6 +580,7 @@ export async function orchestrateResearchExecution(
     finalSynthesisReport: {
       thinking: finalReportOutput.thinking,
       finalDocument: finalReportOutput.finalDocument,
+      claimSpans: finalReportOutput.claimSpans || [],
     },
   };
 }
