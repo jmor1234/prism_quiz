@@ -59,10 +59,6 @@ components/
 ├── extraction-progress.tsx     # Task-based extraction progress component
 │                               # - Shows extraction session (X/Y URLs) as URL rows inside a Task
 │
-├── tool-status.tsx             # (Legacy) floating tool status pill (not used; replaced by inline loaders)
-│
-├── streaming-transition.tsx    # (Legacy) transition gap detector (not used; replaced by inline loaders)
-│
 ├── app-sidebar.tsx             # Thread list + actions (New, Rename, Delete, Delete all)
 └── ui/                         # shadcn/ui primitives (button, input, sheet, sidebar, etc.)
 

@@ -30,6 +30,8 @@ export function ResearchProgress({ state, className }: ResearchProgressProps) {
   const { session, objectives, phases, currentOperation, searchProgress, currentToolStatus } = state;
   // Per-objective view toggle to avoid showing both pipeline and details at once
   const [showDetailsMap, setShowDetailsMap] = useState<Record<string, boolean>>({});
+  const collections = state.collections || {};
+  const faviconFor = (domain?: string) => (domain ? `https://icons.duckduckgo.com/ip3/${domain}.ico` : undefined);
 
   // Calculate actual progress based on objective progress
   const objectivesList = useMemo(() => Object.values(objectives), [objectives]);
@@ -249,6 +251,14 @@ export function ResearchProgress({ state, className }: ResearchProgressProps) {
                           : (p?.status === 'starting' || p?.status === 'active')
                             ? 'active'
                             : 'pending';
+                        const collectionIdForPhase = (() => {
+                          if (phaseKey === 'searching') return `${objectiveId}-search-hits`;
+                          if (phaseKey === 'deduplicating') return `${objectiveId}-unique-urls`;
+                          if (phaseKey === 'analyzing') return `${objectiveId}-analyzed`;
+                          if (phaseKey === 'consolidating') return `${objectiveId}-consolidated`;
+                          if (phaseKey === 'synthesizing') return undefined;
+                          return undefined;
+                        })();
 
                         return (
                           <ChainOfThoughtStep
@@ -312,6 +322,41 @@ export function ResearchProgress({ state, className }: ResearchProgressProps) {
                                   </ChainOfThoughtSearchResult>
                                 )}
                               </ChainOfThoughtSearchResults>
+                            )}
+                            {/* Sample domains (minimal, with favicons) */}
+                            {p?.details?.samples && p.details.samples.length > 0 && (
+                              <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                                {p.details.samples.slice(0, 6).map((s, si) => {
+                                  let domain = s.domain;
+                                  if (!domain) { try { domain = new URL(s.url).hostname.replace(/^www\./,''); } catch {}
+                                  }
+                                  return (
+                                    <a
+                                      key={`${id}-sample-${si}`}
+                                      href={s.url}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] text-muted-foreground hover:text-foreground hover:bg-muted/40"
+                                      title={s.title || s.url}
+                                    >
+                                      {domain && (
+                                        // eslint-disable-next-line @next/next/no-img-element
+                                        <img src={faviconFor(domain)} alt="" className="h-3 w-3 rounded-sm" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                                      )}
+                                      <span className="truncate max-w-[200px]">{domain || s.url}</span>
+                                    </a>
+                                  );
+                                })}
+                                {collectionIdForPhase && collections[collectionIdForPhase]?.items?.length > 0 && (
+                                  <button
+                                    type="button"
+                                    className="text-[11px] text-primary underline-offset-2 hover:underline ml-1"
+                                    onClick={() => setShowDetailsMap((m) => ({ ...m, [objectiveId]: true }))}
+                                  >
+                                    Show all
+                                  </button>
+                                )}
+                              </div>
                             )}
                           </ChainOfThoughtStep>
                         );
