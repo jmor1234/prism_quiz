@@ -53,11 +53,12 @@ components/
 │   └── … (others)              # actions, artifact, branch, image, etc.
 │
 ├── research-progress.tsx       # Real-time research progress display component
-│                               # - Shows session overview with objective count
-│                               # - Individual objective progress with gradient bars
-│                               # - Modern card-based design with hover states
-│                               # - Calculates actual progress from partial objectives
-│                               # - Phase indicators with semantic colors
+│                               # - Session overview with objective count
+│                               # - Objective header card (percent pill, modern gradients, Inter font)
+│                               # - Expandable details: phase timeline, auto-scroll to active phase
+│                               # - Searching summary chip (queries→hits→unique)
+│                               # - Domain pills per phase (favicons, links) from emitted samples
+│                               # - Progressive disclosure to avoid clutter
 │
 ├── extraction-progress.tsx     # URL extraction progress display component
 │                               # - Shows extraction session (X/Y URLs)

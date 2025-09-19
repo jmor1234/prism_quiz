@@ -35,6 +35,8 @@ export interface ResearchPhaseData {
     current?: number;
     total?: number;
     description?: string;
+    samples?: { url: string; title?: string; domain?: string }[];
+    summary?: { queries: number; hits?: number; unique?: number };
   };
   startTime: number;
   endTime?: number;
@@ -55,6 +57,13 @@ export interface SearchProgressData {
   completed: number;
   total: number;
   resultsFound?: number;
+}
+
+// Optional summary snapshots for compact UI chips
+export interface SearchSummaryData {
+  queries: number;
+  hits: number;
+  unique: number;
 }
 
 // Error notifications (transient)

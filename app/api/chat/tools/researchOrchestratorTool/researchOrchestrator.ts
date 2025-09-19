@@ -135,7 +135,41 @@ export async function orchestrateResearchExecution(
   });
   // (summary logs removed to match prior logging style)
 
-  emitPhaseProgress('searching', 'complete', 0.3);
+  // Emit searching complete with sample domains for UI
+  {
+    const domains = new Set<string>();
+    const samples: { url: string; title?: string; domain?: string }[] = [];
+    for (const outcome of exaSearchOutcomes) {
+      if (!outcome.success || !outcome.results) continue;
+      for (const hit of outcome.results) {
+        try {
+          const d = new URL(hit.url).hostname.replace(/^www\./, '');
+          if (!domains.has(d)) {
+            domains.add(d);
+            samples.push({ url: hit.url, title: hit.title ?? undefined, domain: d });
+            if (samples.length >= 8) break;
+          }
+        } catch {}
+      }
+      if (samples.length >= 8) break;
+    }
+    // Compute summary counts for UI chips
+    let hits = 0;
+    const uniqueKeys = new Set<string>();
+    for (const outcome of exaSearchOutcomes) {
+      if (outcome.success && outcome.results) {
+        hits += outcome.results.length;
+        for (const r of outcome.results) {
+          try { uniqueKeys.add(canonicalizeUrlForDedup(r.url)); } catch {}
+        }
+      }
+    }
+    emitPhaseProgress('searching', 'complete', 0.3, {
+      description: 'Search completed',
+      samples,
+      summary: { queries: totalQueries, hits, unique: uniqueKeys.size }
+    });
+  }
   logger?.emitOperation(`Search completed, processing results...`, { phase: 'searching' });
 
   // Phase 2.5: Deduplicate URLs (canonicalize for key, preserve original for fetch)
@@ -169,7 +203,18 @@ export async function orchestrateResearchExecution(
   }
   const deduplicated = Array.from(urlMap.values());
   console.log(`🔄 [ResearchOrchestrator] URL Deduplication complete. ${deduplicated.length} unique URLs from ${totalUrls} total results.`);
-  emitPhaseProgress('deduplicating', 'complete', 0.35);
+  // Emit dedup completion with unique domain samples
+  {
+    const samples = deduplicated.slice(0, 8).map((d) => {
+      let domain = '';
+      try { domain = new URL(d.originalUrl).hostname.replace(/^www\./, ''); } catch {}
+      return { url: d.originalUrl, title: d.title ?? undefined, domain } as { url: string; title?: string; domain?: string };
+    });
+    emitPhaseProgress('deduplicating', 'complete', 0.35, {
+      description: `Deduplicated to ${deduplicated.length} unique URLs`,
+      samples,
+    });
+  }
   logger?.emitOperation(`Found ${deduplicated.length} unique URLs from ${totalUrls} results`, { phase: 'deduplicating' });
 
   if (deduplicated.length === 0) {
@@ -236,7 +281,12 @@ export async function orchestrateResearchExecution(
 
   // Update to signal quality assessment phase
   emitPhaseProgress('analyzing', 'active', 0.55, {
-    description: `Assessing quality of ${validContent.length} sources`
+    description: `Assessing quality of ${validContent.length} sources`,
+    samples: validContent.slice(0, 8).map((u) => {
+      let domain = '';
+      try { domain = new URL(u.url).hostname.replace(/^www\./, ''); } catch {}
+      return { url: u.url, title: u.title, domain } as { url: string; title?: string; domain?: string };
+    }),
   });
   logger?.emitOperation(`Assessing signal quality for ${validContent.length} sources...`, { phase: 'analyzing' });
 
@@ -286,7 +336,12 @@ export async function orchestrateResearchExecution(
 
   // Update to content analysis phase
   emitPhaseProgress('analyzing', 'active', 0.65, {
-    description: `Analyzing ${highSignal.length} high-signal documents`
+    description: `Analyzing ${highSignal.length} high-signal documents`,
+    samples: highSignal.slice(0, 8).map((h) => {
+      let domain = '';
+      try { domain = new URL(h.url).hostname.replace(/^www\./, ''); } catch {}
+      return { url: h.url, title: h.title, domain } as { url: string; title?: string; domain?: string };
+    }),
   });
   logger?.emitOperation(`Deep analysis of ${highSignal.length} documents...`, { phase: 'analyzing' });
   const analysisInputs: ContentAnalysisAgentInput[] = highSignal.map((h) => ({
@@ -368,7 +423,12 @@ export async function orchestrateResearchExecution(
     // Update progress based on completion (0.8 to 0.9 range)
     const progressIncrement = 0.8 + (0.1 * (i + batch.length) / consolidationInputs.length);
     emitPhaseProgress('consolidating', 'active', progressIncrement, {
-      description: `Consolidated ${i + batch.length} of ${consolidationInputs.length} documents`
+      description: `Consolidated ${i + batch.length} of ${consolidationInputs.length} documents`,
+      samples: analyzedDocuments.slice(0, 8).map((doc) => {
+        let domain = '';
+        try { domain = new URL(doc.url).hostname.replace(/^www\./, ''); } catch {}
+        return { url: doc.url, domain } as { url: string; title?: string; domain?: string };
+      }),
     });
 
     if (i + CONS_BATCH < consolidationInputs.length) {

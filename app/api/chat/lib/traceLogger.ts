@@ -299,6 +299,7 @@ export class TraceLogger {
             current?: number;
             total?: number;
             description?: string;
+            samples?: { url: string; title?: string; domain?: string }[];
         };
     }): void {
         if (!this.streamWriter) return;
@@ -338,6 +339,20 @@ export class TraceLogger {
         this.streamWriter.write({
             type: 'data-search-progress',
             data,
+            transient: true,
+        });
+    }
+
+    // Emit optional search summary snapshot
+    emitSearchSummary(data: { queries: number; hits: number; unique: number }): void {
+        if (!this.streamWriter) return;
+        this.streamWriter.write({
+            type: 'data-research-operation',
+            data: {
+                message: `Searching: ${data.queries} queries → ${data.hits} hits → ${data.unique} unique`,
+                phase: 'searching',
+                timestamp: Date.now(),
+            },
             transient: true,
         });
     }

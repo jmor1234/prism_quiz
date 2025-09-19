@@ -42,6 +42,7 @@ app/api/chat/
 │   │                           #   • Extraction: emitExtractionSession, emitExtractionUrl
 │   │                           #   • Tools: emitToolStatus for think/memory tools
 │   │                           #   • Operations: emitOperation, emitSearchProgress, emitError
+│   │                           # - emitPhaseProgress supports details.summary (queries→hits→unique) and details.samples (domains/URLs)
 │   │                           # - Aggregated retry metrics per phase
 │   │                           # - Writes section files + overview file in /logs
 │   ├── llmRetry.ts             # Timeout + retry wrapper for LLM calls
@@ -91,6 +92,7 @@ app/api/chat/
         │                            #   Exa full-text (batched, rate-limited) → SQA (full text) →
         │                            #   Content analysis → Consolidation → Final synthesis
         │                            # - **Emits phase progress updates at boundaries**
+        │                            # - Emits sample domains/URLs + search summary counts for UI
         │                            # - **Emits operation messages for user feedback**
         │                            # - Phase summaries with duration_ms + compact stats
         │                            # - Deterministic errors + partial successes
@@ -146,8 +148,8 @@ app/api/chat/
 4) Primary agent plans tool usage; tools run with per-request TraceLogger context; cache performance tracked in real-time
 5) **Tools emit real-time progress via logger's stream writer → data parts stream to frontend**
 6) executeResearchPlanTool runs objectives in parallel → researchOrchestrator per objective
-7) **Each research phase emits progress updates (query-gen, searching, analyzing, etc.)**
-8) Orchestrator phases log summaries (duration_ms, counts, sample URLs)
+7) **Each research phase emits progress updates (query-gen, searching, analyzing, etc.)**, including optional details.summary (queries→hits→unique) and details.samples (domains/URLs) for UI richness
+8) Orchestrator phases log summaries (duration_ms, counts) and provide small sample URLs for visibility
 9) Final synthesis returns Markdown report → route streams to client (reasoning included) + cache metrics (USD costs, efficiency)
 10) **Frontend onData callback updates ResearchState → ResearchProgress component renders**
 
