@@ -17,7 +17,7 @@ const DEFAULT_TIMEOUTS: Record<RetryPhase, number> = {
   sqa: 10_000,
   contentAnalysis: 25_000,
   consolidation: 15_000,
-  finalSynthesis: 45_000, // Increased for complex synthesis
+  finalSynthesis: 60_000, // Increased for complex synthesis
 };
 
 const PHASE_TIMEOUT_ENV: Record<RetryPhase, string> = {
