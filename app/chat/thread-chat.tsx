@@ -32,6 +32,7 @@ import type {
   ResearchErrorData,
 } from "@/lib/streaming-types";
 import { Sources, SourcesTrigger, SourcesContent, Source } from "@/components/ai-elements/sources";
+import { ToolStatus } from "@/components/ai-elements/tool-status";
 
 function useMessageVisibility(messages: UIMessage[]) {
   const [showPreviousMessages, setShowPreviousMessages] = useState(false);
@@ -84,6 +85,22 @@ export function ThreadChat({ threadId, initialMessages }: { threadId: string; in
     collections: {},
     sourcesByObjective: {},
   });
+
+  // Tool status exit animation staging
+  const [toolStatusExiting, setToolStatusExiting] = useState(false);
+  const toolStatusExitStartRef = useRef<number | null>(null);
+  const toolStatusRemoveRef = useRef<number | null>(null);
+
+  // Fallback planning indicator (when no tool/session/extraction activity is visible)
+  const [showPlanningIndicator, setShowPlanningIndicator] = useState(false);
+  const [planningExiting, setPlanningExiting] = useState(false);
+  const planningExitRef = useRef<number | null>(null);
+  const planningRemoveRef = useRef<number | null>(null);
+  const planningShowDelayRef = useRef<number | null>(null);
+
+  // Compute when to show planning: streaming but no explicit tool status or progress UIs
+
+  // Planning indicator visibility is computed after we have streaming status
 
   const { messages, status, sendMessage, stop, error, setMessages } = useChat({
     id: threadId,
@@ -152,17 +169,38 @@ export function ThreadChat({ threadId, initialMessages }: { threadId: string; in
           }, 5000);
           break;
         case 'data-tool-status':
+          // Stage in → exit → remove for smooth transition
+          try {
+            // Clear any pending exit timers before scheduling new ones
+            if (toolStatusExitStartRef.current) {
+              clearTimeout(toolStatusExitStartRef.current);
+              toolStatusExitStartRef.current = null;
+            }
+            if (toolStatusRemoveRef.current) {
+              clearTimeout(toolStatusRemoveRef.current);
+              toolStatusRemoveRef.current = null;
+            }
+          } catch {}
+
           setResearchState((prev) => ({
             ...prev,
             currentToolStatus: data as import('@/lib/streaming-types').ToolStatusData,
           }));
-          // Auto-clear after 2 seconds
-          setTimeout(() => {
+          setToolStatusExiting(false);
+
+          // Begin exit after a short display window
+          toolStatusExitStartRef.current = window.setTimeout(() => {
+            setToolStatusExiting(true);
+          }, 1200);
+
+          // Remove after exit animation completes
+          toolStatusRemoveRef.current = window.setTimeout(() => {
             setResearchState((prev) => ({
               ...prev,
               currentToolStatus: null,
             }));
-          }, 2000);
+            setToolStatusExiting(false);
+          }, 1600);
           break;
         case 'data-extraction-session':
           setResearchState((prev) => ({
@@ -227,6 +265,37 @@ export function ThreadChat({ threadId, initialMessages }: { threadId: string; in
       }
     },
   });
+
+  // Compute planning indicator after status is defined
+  useEffect(() => {
+    const next = (
+      status === 'streaming' &&
+      !researchState.currentToolStatus &&
+      !researchState.session &&
+      !researchState.extractionSession &&
+      !researchState.currentOperation &&
+      !researchState.searchProgress
+    );
+    // Clear any existing timers on change
+    if (planningExitRef.current) { clearTimeout(planningExitRef.current); planningExitRef.current = null; }
+    if (planningRemoveRef.current) { clearTimeout(planningRemoveRef.current); planningRemoveRef.current = null; }
+    if (planningShowDelayRef.current) { clearTimeout(planningShowDelayRef.current); planningShowDelayRef.current = null; }
+
+    if (next) {
+      // Defer showing by ~200ms to avoid flashing for very short gaps
+      planningShowDelayRef.current = window.setTimeout(() => {
+        setShowPlanningIndicator(true);
+        setPlanningExiting(false);
+      }, 200);
+    } else if (showPlanningIndicator) {
+      // Animate out gracefully
+      setPlanningExiting(true);
+      planningRemoveRef.current = window.setTimeout(() => {
+        setShowPlanningIndicator(false);
+        setPlanningExiting(false);
+      }, 400);
+    }
+  }, [status, researchState.currentToolStatus, researchState.session, researchState.extractionSession, researchState.currentOperation, researchState.searchProgress, showPlanningIndicator]);
 
   // Hydrate messages on mount/thread change from local store
   useEffect(() => {
@@ -459,6 +528,25 @@ export function ThreadChat({ threadId, initialMessages }: { threadId: string; in
               {/* Progress Displays */}
               {status === 'streaming' && (
                 <>
+                  {/* Fallback Planning Indicator (covers in-between tool calls) */}
+                  {showPlanningIndicator && (
+                    <ToolStatus
+                      toolName={"thinkTool"}
+                      action={"Planning next action"}
+                      exiting={planningExiting}
+                      variant="dots"
+                    />
+                  )}
+
+                  {/* Lightweight status for think/memory tools */}
+                  {researchState.currentToolStatus && (
+                    <ToolStatus
+                      toolName={researchState.currentToolStatus.toolName}
+                      action={researchState.currentToolStatus.action}
+                      exiting={toolStatusExiting}
+                    />
+                  )}
+
                   {/* Research Progress for executeResearchPlanTool */}
                   {researchState.session && (
                     <ResearchProgress state={researchState} />
