@@ -132,7 +132,7 @@ export function ResearchProgress({ state, className }: ResearchProgressProps) {
         </div>
 
         {/* Objectives List */}
-        <div className="space-y-2">
+        <div className="space-y-3">
           {sortedEntries.map(([objectiveId, objective], idx) => {
             const isOpen = !!openObjectives[objectiveId];
             const percent = Math.round((objective.progress ?? 0) * 100);
@@ -148,7 +148,7 @@ export function ResearchProgress({ state, className }: ResearchProgressProps) {
               <Task key={objectiveId} open={isOpen} onOpenChange={(open) => setOpenObjectives((prev) => ({ ...prev, [objectiveId]: open }))}>
                 <TaskTrigger
                   title={objective.objective}
-                  className="cursor-pointer rounded-md transition-all duration-200 hover:bg-accent/60 dark:hover:bg-accent/40 hover:ring-1 hover:ring-border/70 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 data-[state=open]:bg-accent/30 data-[state=open]:ring-1 data-[state=open]:ring-border/70 data-[state=open]:shadow-md"
+                  className="cursor-pointer rounded-md transition-all duration-200 hover:bg-accent/60 dark:hover:bg-accent/40 hover:ring-1 hover:ring-border/70 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 data-[state=closed]:px-3 data-[state=closed]:py-2.5 data-[state=open]:px-2.5 data-[state=open]:py-2 data-[state=open]:bg-accent/30 data-[state=open]:ring-1 data-[state=open]:ring-border/70 data-[state=open]:shadow-md"
                 >
                   <div className="flex w-full items-center justify-between gap-3">
                     <div className="min-w-0">
