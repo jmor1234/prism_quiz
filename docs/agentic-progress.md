@@ -24,6 +24,7 @@ The UI stream can carry "data-*" parts beyond text/reasoning. For research, each
   - `details.metrics` (optional): fine-grained counters
     - `fetched { ok, total }`, `highSignal { ok, total }`, `analyzed { current, total }`, `consolidated { current, total }`.
 - Transient helpers: `data-research-operation`, `data-search-progress`, `data-research-error`.
+- Tool status (transient): `data-tool-status` for think/memory tools — `{ toolName, action, timestamp }`.
 
 Collections, curated sources, and claim spans:
 - `data-research-collection` (persistent list updates): `{ id, kind, action, total?, items[] }`
@@ -69,12 +70,16 @@ This enables low-latency, incremental UI updates without extra HTTP calls.
    - Pipeline (default): Objective step (full objective + chips for key entities/focus areas/categories), Query‑generation query chips with "Show all" (opens Details), Searching summary chips (queries|hits|unique) and sample domains.
    - Details (on demand): `ObjectiveDetails` full timeline; long lists virtualized; full objective context and full query list are shown.
 3) `MessageRenderer` renders assistant `Response`/`Reasoning`, plus inline citations using backend claim spans (offsets and URLs) with a hover card carousel.
+4) `ToolStatus` renders lightweight, transient feedback:
+   - For `data-tool-status` events from think/memory tools.
+   - As a fallback planning indicator when streaming but no tool/session/extraction/operation is active. It defers showing by ~200 ms to avoid flashes and uses subtle slide/fade transitions (spinner or 3‑dot variant).
 
 ## Design invariants
 
 - Clean hierarchy: one focal line per card (title → percent), secondary info as chips/pills.
 - Motion as feedback: subtle shimmer on bars; small transitions; respects reduced motion.
 - Dark/light parity: neutral tokens; gradient accents; tabular numerals for stability.
+- Avoid stale gaps: never leave the UI idle during active planning or in-between tool calls.
 
 ## Extending the system safely
 
@@ -98,6 +103,7 @@ This enables low-latency, incremental UI updates without extra HTTP calls.
 - Don’t persist partial streams; we snapshot only after `status==='ready'`.
 - Keep samples small (≤8) to protect bandwidth and UI clarity.
 - Title availability varies by phase; graceful fallback to domains.
+- Links in user bubbles: apply bubble‑aware link styles so URLs remain visible in both themes.
 
 ## Glossary
 

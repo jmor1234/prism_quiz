@@ -46,6 +46,7 @@ components/
 │   ├── response.tsx            # Streams assistant text
 │   ├── reasoning.tsx           # Streams visible reasoning (auto-open/close)
 │   ├── tool.tsx                # (Private) tool parts, not rendered by default
+│   ├── tool-status.tsx         # Lightweight transient tool/planning status (slide/fade, spinner or dots)
 │   ├── prompt-input.tsx        # Attachment context; clipboard/drag-drop; image compression
 │   ├── code-block.tsx          # Code fences with copy
 │   ├── sources.tsx             # Citations rendering
@@ -126,6 +127,7 @@ hooks/
 - useChat() manages streaming states (idle→loading→streaming→idle)
 - Edit controls hidden while streaming; single edit active at a time
 - Copy excludes reasoning by default; citations rendered via ai-elements/sources when present
+ - Planning gaps are covered by `ToolStatus` with a 200 ms deferred show to avoid flash; exits animate
 
 ---
 
