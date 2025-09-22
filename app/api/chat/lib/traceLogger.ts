@@ -276,6 +276,9 @@ export class TraceLogger {
         progress: number;
         sourcesFound?: number;
         sourcesAnalyzed?: number;
+        focusAreas?: string[];
+        keyEntities?: string[];
+        categories?: string[];
         error?: string;
     }): void {
         if (!this.streamWriter) return;

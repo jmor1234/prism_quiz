@@ -23,6 +23,10 @@ export interface ResearchObjectiveData {
   startTime: number;
   endTime?: number;
   error?: string;
+  // Optional enriched plan context for display
+  focusAreas?: string[];
+  keyEntities?: string[];
+  categories?: string[];
 }
 
 // Research phase progress (persistent, reconciled)

@@ -44,7 +44,7 @@ function formatDurationMs(start?: number, end?: number): string | null {
   return `${m}m ${rem}s`;
 }
 
-export function ObjectiveDetails({ objectiveId, phases, collections, className }: ObjectiveDetailsProps) {
+export function ObjectiveDetails({ objectiveId, objective, phases, collections, className }: ObjectiveDetailsProps) {
   // Light UI throttle to reduce visible jitter
   const [throttledPhases, setThrottledPhases] = useState(phases);
   useEffect(() => {
@@ -82,6 +82,45 @@ export function ObjectiveDetails({ objectiveId, phases, collections, className }
       )}
     >
       <div className="space-y-3">
+        {/* Objective full text */}
+        <div className="rounded-md border bg-muted/20 px-3 py-2">
+          <div className="text-xs font-medium text-muted-foreground">Objective</div>
+          <div className="mt-1 text-[12.5px] text-foreground whitespace-pre-wrap break-words">
+            {objective.objective}
+          </div>
+        </div>
+
+        {/* Objective context chips */}
+        {(objective.keyEntities && objective.keyEntities.length > 0) && (
+          <div>
+            <div className="text-[11px] text-muted-foreground mb-1">Key entities</div>
+            <div className="flex flex-wrap gap-1.5">
+              {objective.keyEntities.map((e, i) => (
+                <span key={`ent-${i}`} className="inline-flex items-center rounded-full border border-border bg-muted px-2 py-0.5 text-[11px] font-medium text-foreground/80">{e}</span>
+              ))}
+            </div>
+          </div>
+        )}
+        {(objective.focusAreas && objective.focusAreas.length > 0) && (
+          <div>
+            <div className="text-[11px] text-muted-foreground mb-1">Focus areas</div>
+            <div className="flex flex-wrap gap-1.5">
+              {objective.focusAreas.map((f, i) => (
+                <span key={`fa-${i}`} className="inline-flex items-center rounded-full border border-border bg-muted px-2 py-0.5 text-[11px] font-medium text-foreground/80 whitespace-normal break-words">{f}</span>
+              ))}
+            </div>
+          </div>
+        )}
+        {objective.categories && objective.categories.length > 0 && (
+          <div>
+            <div className="text-[11px] text-muted-foreground mb-1">Categories</div>
+            <div className="flex flex-wrap gap-1.5">
+              {objective.categories.map((c, i) => (
+                <span key={`cat-${i}`} className="inline-flex items-center rounded-full border border-border bg-muted px-2 py-0.5 text-[11px] font-medium text-foreground/80">{c}</span>
+              ))}
+            </div>
+          </div>
+        )}
         {PHASE_ORDER.map((phaseKey) => {
           const id = `${objectiveId}-${phaseKey}`;
           const p = throttledPhases[id];

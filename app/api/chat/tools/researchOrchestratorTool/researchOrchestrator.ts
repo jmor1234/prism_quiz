@@ -102,6 +102,9 @@ export async function orchestrateResearchExecution(
       status: 'active',
       phase: phase as "query-generation" | "searching" | "deduplicating" | "analyzing" | "consolidating" | "synthesizing",
       progress,
+      focusAreas: researchPlan.focusAreas,
+      keyEntities: researchPlan.keyEntities,
+      categories: (researchPlan.recommendedCategories as string[]) || [],
     });
   };
 

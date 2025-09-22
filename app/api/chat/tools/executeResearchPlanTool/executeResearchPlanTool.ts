@@ -94,6 +94,9 @@ export const executeResearchPlanTool = tool({
           objective: objective.focusedObjective,
           status: 'pending',
           progress: 0,
+          focusAreas: objective.focusAreas,
+          keyEntities: objective.keyEntities,
+          categories: (objective.recommendedCategories as string[]) || [],
         });
       });
       const researchPromises = researchPlan.map((objective, index) => {
@@ -119,6 +122,9 @@ export const executeResearchPlanTool = tool({
           objective: objective.focusedObjective,
           status: 'active',
           progress: 0.1,
+          focusAreas: objective.focusAreas,
+          keyEntities: objective.keyEntities,
+          categories: (objective.recommendedCategories as string[]) || [],
         });
 
         // Update session to active

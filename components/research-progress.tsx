@@ -239,6 +239,7 @@ export function ResearchProgress({ state, className }: ResearchProgressProps) {
                       <ChainOfThoughtHeader>Research pipeline</ChainOfThoughtHeader>
                       <ChainOfThoughtContent>
                       {([
+                        'objective',
                         'query-generation',
                         'searching',
                         'deduplicating',
@@ -248,11 +249,13 @@ export function ResearchProgress({ state, className }: ResearchProgressProps) {
                       ] as const).map((phaseKey) => {
                         const id = `${objectiveId}-${phaseKey}`;
                         const p = phases[id];
-                        const status: 'complete' | 'active' | 'pending' = p?.status === 'complete'
+                        const status: 'complete' | 'active' | 'pending' = phaseKey === 'objective'
                           ? 'complete'
-                          : (p?.status === 'starting' || p?.status === 'active')
-                            ? 'active'
-                            : 'pending';
+                          : p?.status === 'complete'
+                            ? 'complete'
+                            : (p?.status === 'starting' || p?.status === 'active')
+                              ? 'active'
+                              : 'pending';
                         const collectionIdForPhase = (() => {
                           if (phaseKey === 'searching') return `${objectiveId}-search-hits`;
                           if (phaseKey === 'deduplicating') return `${objectiveId}-unique-urls`;
@@ -267,6 +270,7 @@ export function ResearchProgress({ state, className }: ResearchProgressProps) {
                             key={id}
                             label={(() => {
                               const labels: Record<string, string> = {
+                                'objective': 'Objective',
                                 'query-generation': 'Query generation',
                                 'searching': 'Searching',
                                 'deduplicating': 'Deduplicating',
@@ -278,6 +282,39 @@ export function ResearchProgress({ state, className }: ResearchProgressProps) {
                             })()}
                             status={status}
                           >
+                            {/* Objective overview at the top of pipeline */}
+                            {phaseKey === 'objective' && (
+                              <div className="mt-1 space-y-2">
+                                <div className="text-[12px] text-foreground/90">{objective.objective}</div>
+                                {(objective.keyEntities && objective.keyEntities.length > 0) && (
+                                  <ChainOfThoughtSearchResults>
+                                    {objective.keyEntities.slice(0, 6).map((e, i) => (
+                                      <ChainOfThoughtSearchResult key={`ent-${i}`} className="rounded-full border border-border bg-muted text-foreground/80">
+                                        {e}
+                                      </ChainOfThoughtSearchResult>
+                                    ))}
+                                  </ChainOfThoughtSearchResults>
+                                )}
+                                {(objective.focusAreas && objective.focusAreas.length > 0) && (
+                                  <ChainOfThoughtSearchResults>
+                                    {objective.focusAreas.slice(0, 6).map((f, i) => (
+                                      <ChainOfThoughtSearchResult key={`fa-${i}`} className="rounded-full border border-border bg-muted text-foreground/80">
+                                        {f}
+                                      </ChainOfThoughtSearchResult>
+                                    ))}
+                                  </ChainOfThoughtSearchResults>
+                                )}
+                                {objective.categories && objective.categories.length > 0 && (
+                                  <ChainOfThoughtSearchResults>
+                                    {objective.categories.slice(0, 6).map((c, i) => (
+                                      <ChainOfThoughtSearchResult key={`cat-${i}`} className="rounded-full border border-border bg-muted text-foreground/80">
+                                        {c}
+                                      </ChainOfThoughtSearchResult>
+                                    ))}
+                                  </ChainOfThoughtSearchResults>
+                                )}
+                              </div>
+                            )}
                             {/* Searching summary chips (with queries count chip) */}
                             {phaseKey === 'searching' && (p?.details?.summary || (p?.details?.queries && p.details.queries.length > 0)) && (
                               <ChainOfThoughtSearchResults>
@@ -301,7 +338,9 @@ export function ResearchProgress({ state, className }: ResearchProgressProps) {
                               <>
                                 <ChainOfThoughtSearchResults>
                                   {p.details.queries.slice(0, 6).map((q, i) => (
-                                    <ChainOfThoughtSearchResult key={`${id}-q-${i}`}>{q}</ChainOfThoughtSearchResult>
+                                    <ChainOfThoughtSearchResult key={`${id}-q-${i}`} className="rounded-full border border-border bg-muted text-foreground/80" title={q}>
+                                      {q}
+                                    </ChainOfThoughtSearchResult>
                                   ))}
                                 </ChainOfThoughtSearchResults>
                                 {p.details.queries.length > 6 && (
