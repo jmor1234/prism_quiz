@@ -32,7 +32,7 @@ app/chat/
     ├── chat-composer.tsx       # Bottom composer (attachments, voice, theme toggle)
     ├── attachment-button.tsx   # Opens file dialog and wires into attachment context
     ├── voice-button.tsx        # Mic capture → /api/transcribe → inserts text
-    └── message-renderer.tsx    # Renders message parts (text, reasoning, file)
+    └── message-renderer.tsx    # Renders message parts (text, reasoning, file) using markdown; inline citations are standard [Title](URL) links
 
 ---
 
@@ -43,13 +43,13 @@ components/
 ├── ai-elements/                # Streaming-aware building blocks (used by chat UI)
 │   ├── conversation.tsx        # Provides chat container + context
 │   ├── message.tsx             # Role-aware container + hover actions
-│   ├── response.tsx            # Streams assistant text
+│   ├── response.tsx            # Streams assistant text (markdown renderer)
 │   ├── reasoning.tsx           # Streams visible reasoning (auto-open/close)
 │   ├── tool.tsx                # (Private) tool parts, not rendered by default
 │   ├── tool-status.tsx         # Lightweight transient tool/planning status (slide/fade, spinner or dots)
 │   ├── prompt-input.tsx        # Attachment context; clipboard/drag-drop; image compression
 │   ├── code-block.tsx          # Code fences with copy
-│   ├── sources.tsx             # Citations rendering
+│   ├── sources.tsx             # Sources drawer (All research sources); favicon + [Title](URL)
 │   └── … (others)              # actions, artifact, branch, image, etc.
 │
 ├── research-progress.tsx       # Task-based research pipeline (Pipeline/Details toggle)

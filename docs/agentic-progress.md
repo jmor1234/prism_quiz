@@ -47,7 +47,7 @@ Types live in `lib/streaming-types.ts`. Backend emitters are in `app/api/chat/li
    - Consolidating → `consolidated` metrics + samples.
 4) `TraceLogger.emitPhaseProgress()` writes UI events directly into the stream. Raw traces remain private.
 5) Large sets stream via `emitCollectionUpdate(id, { kind, action, total?, items })`.
-6) Curated sources for the Sources tab stream via `emitSources(objectiveId, { items })`.
+6) Curated sources for the Sources tab stream via `emitSources(objectiveId, { items })`. The frontend displays an “All research sources” drawer (favicon + `[Title](URL)`), distinct from inline citations in the answer.
 
 Key files:
 - `app/api/chat/tools/researchOrchestratorTool/researchOrchestrator.ts`
@@ -69,7 +69,7 @@ This enables low-latency, incremental UI updates without extra HTTP calls.
 2) `components/research-progress.tsx` renders a Task‑based UI:
    - Pipeline (default): Objective step (full objective + chips for key entities/focus areas/categories), Query‑generation query chips with "Show all" (opens Details), Searching summary chips (queries|hits|unique) and sample domains.
    - Details (on demand): `ObjectiveDetails` full timeline; long lists virtualized; full objective context and full query list are shown.
-3) `MessageRenderer` renders assistant `Response`/`Reasoning`, plus inline citations using backend claim spans (offsets and URLs) with a hover card carousel.
+3) `MessageRenderer` renders assistant `Response`/`Reasoning` using markdown. Inline citations in the answer are the model’s own `[Title](URL)` links; no hover-card overlay is used.
 4) `ToolStatus` renders lightweight, transient feedback:
    - For `data-tool-status` events from think/memory tools.
    - As a fallback planning indicator when streaming but no tool/session/extraction/operation is active. It defers showing by ~200 ms to avoid flashes and uses subtle slide/fade transitions (spinner or 3‑dot variant).
