@@ -131,15 +131,15 @@ export async function orchestrateResearchExecution(
     emitPhaseProgress('query-generation', 'error', 0.1);
     throw new Error('No queries generated for the research objective');
   }
-  // Emit a small sample of queries for UI chips
+  // Emit full query list for Details view; UI will cap display in Pipeline
   const totalQueries = generatedQueries.keywordQueries.length + generatedQueries.neuralQueries.length;
-  const sampleQueries: string[] = [
-    ...generatedQueries.keywordQueries.slice(0, 3),
-    ...generatedQueries.neuralQueries.slice(0, Math.max(0, 3 - Math.min(3, generatedQueries.keywordQueries.length)))
+  const allQueries: string[] = [
+    ...generatedQueries.keywordQueries,
+    ...generatedQueries.neuralQueries,
   ];
   emitPhaseProgress('query-generation', 'complete', 0.2, {
     description: `Generated ${totalQueries} search queries`,
-    queries: sampleQueries,
+    queries: allQueries,
   });
   logger?.emitOperation(`Generated ${totalQueries} search queries`, { phase: 'query-generation' });
 

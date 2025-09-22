@@ -158,6 +158,19 @@ export function ObjectiveDetails({ objectiveId, phases, collections, className }
                     )}
                   </div>
                 )}
+                {/* Full list of queries under Query generation in Details */}
+                {phaseKey === 'query-generation' && p?.details?.queries && p.details.queries.length > 0 && (
+                  <div className="mt-1">
+                    <div className="text-[11px] text-muted-foreground mb-1">Queries ({p.details.queries.length})</div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {p.details.queries.map((q, i) => (
+                        <span key={`${id}-q-${i}`} className="inline-flex items-center rounded-md border border-border bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground whitespace-normal break-words max-w-full" title={q}>
+                          {q}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
                 {/* Subphase metrics for analyzing/consolidating */}
                 {p?.details?.metrics && (
                   <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">

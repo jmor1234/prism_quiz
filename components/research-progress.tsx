@@ -278,27 +278,42 @@ export function ResearchProgress({ state, className }: ResearchProgressProps) {
                             })()}
                             status={status}
                           >
-                            {/* Searching summary chips */}
-                            {phaseKey === 'searching' && p?.details?.summary && (
+                            {/* Searching summary chips (with queries count chip) */}
+                            {phaseKey === 'searching' && (p?.details?.summary || (p?.details?.queries && p.details.queries.length > 0)) && (
                               <ChainOfThoughtSearchResults>
                                 <ChainOfThoughtSearchResult>
-                                  {p.details.summary.queries} queries
+                                  {(p?.details?.summary?.queries ?? p?.details?.queries?.length ?? '—')} queries
                                 </ChainOfThoughtSearchResult>
-                                <ChainOfThoughtSearchResult>
-                                  {(p.details.summary.hits ?? '—')} hits
-                                </ChainOfThoughtSearchResult>
-                                <ChainOfThoughtSearchResult>
-                                  {(p.details.summary.unique ?? '—')} unique
-                                </ChainOfThoughtSearchResult>
+                                {typeof p?.details?.summary?.hits !== 'undefined' && (
+                                  <ChainOfThoughtSearchResult>
+                                    {p.details.summary!.hits} hits
+                                  </ChainOfThoughtSearchResult>
+                                )}
+                                {typeof p?.details?.summary?.unique !== 'undefined' && (
+                                  <ChainOfThoughtSearchResult>
+                                    {p.details.summary!.unique} unique
+                                  </ChainOfThoughtSearchResult>
+                                )}
                               </ChainOfThoughtSearchResults>
                             )}
-                            {/* Representative queries (≤6) */}
-                            {phaseKey === 'searching' && p?.details?.queries && p.details.queries.length > 0 && (
-                              <ChainOfThoughtSearchResults>
-                                {p.details.queries.slice(0, 6).map((q, i) => (
-                                  <ChainOfThoughtSearchResult key={`${id}-q-${i}`}>{q}</ChainOfThoughtSearchResult>
-                                ))}
-                              </ChainOfThoughtSearchResults>
+                            {/* Representative queries (≤6) with Show all like URLs */}
+                            {phaseKey === 'query-generation' && p?.details?.queries && p.details.queries.length > 0 && (
+                              <>
+                                <ChainOfThoughtSearchResults>
+                                  {p.details.queries.slice(0, 6).map((q, i) => (
+                                    <ChainOfThoughtSearchResult key={`${id}-q-${i}`}>{q}</ChainOfThoughtSearchResult>
+                                  ))}
+                                </ChainOfThoughtSearchResults>
+                                {p.details.queries.length > 6 && (
+                                  <button
+                                    type="button"
+                                    className="text-[11px] text-primary underline-offset-2 hover:underline ml-1"
+                                    onClick={() => setShowDetailsMap((m) => ({ ...m, [objectiveId]: true }))}
+                                  >
+                                    Show all
+                                  </button>
+                                )}
+                              </>
                             )}
                             {/* Subphase metrics */}
                             {p?.details?.metrics && (
