@@ -31,7 +31,7 @@ import type {
   SearchProgressData,
   ResearchErrorData,
 } from "@/lib/streaming-types";
-import { Sources, SourcesTrigger, SourcesContent, Source } from "@/components/ai-elements/sources";
+import { Sources, SourcesTrigger, SourcesContent, SourceList } from "@/components/ai-elements/sources";
 import { ToolStatus } from "@/components/ai-elements/tool-status";
 
 function useMessageVisibility(messages: UIMessage[]) {
@@ -241,13 +241,33 @@ export function ThreadChat({ threadId, initialMessages }: { threadId: string; in
         case 'data-research-sources': {
           const payload = data as import('@/lib/streaming-types').ResearchSourcesData;
           const objId = payload.objectiveId ?? 'session';
-          setResearchState((prev) => ({
-            ...prev,
-            sourcesByObjective: {
-              ...(prev.sourcesByObjective || {}),
-              [objId]: { items: payload.items },
-            },
-          }));
+          setResearchState((prev) => {
+            const existing = prev.sourcesByObjective?.[objId]?.items || [];
+            // Merge by canonical URL; prefer items with title
+            const byKey = new Map<string, { url: string; title?: string; domain?: string }>();
+            const insert = (arr: { url: string; title?: string; domain?: string }[]) => {
+              for (const s of arr) {
+                const key = canonicalizeUrlForDedupe(s.url || '');
+                if (!key) continue;
+                const current = byKey.get(key);
+                if (!current) {
+                  byKey.set(key, s);
+                } else if (!current.title && s.title) {
+                  byKey.set(key, { ...s });
+                }
+              }
+            };
+            insert(existing);
+            insert(payload.items || []);
+            const merged = Array.from(byKey.values());
+            return {
+              ...prev,
+              sourcesByObjective: {
+                ...(prev.sourcesByObjective || {}),
+                [objId]: { items: merged },
+              },
+            };
+          });
           break;
         }
         case 'data-research-claim-spans': {
@@ -510,9 +530,7 @@ export function ThreadChat({ threadId, initialMessages }: { threadId: string; in
                               <Sources>
                                 <SourcesTrigger count={uniqueSources.length} />
                                 <SourcesContent>
-                                  {uniqueSources.map((s, i) => (
-                                    <Source key={`${s.url}-${i}`} href={s.url} title={s.title || s.url} />
-                                  ))}
+                                  <SourceList items={uniqueSources} />
                                 </SourcesContent>
                               </Sources>
                             </div>

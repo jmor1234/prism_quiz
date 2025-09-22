@@ -556,13 +556,23 @@ export async function orchestrateResearchExecution(
   // Final completion
   emitPhaseProgress('synthesizing', 'complete', 1.0);
   // Final curated sources: use consolidated docs as citations fallback
-  logger?.emitSources(objectiveId, {
-    items: (consolidatedDocuments.slice(0, 30)).map((doc) => {
-      let domain = '';
-      try { domain = new URL(doc.url).hostname.replace(/^www\./, ''); } catch {}
-      return { url: doc.url, domain } as { url: string; title?: string; domain?: string };
-    })
-  });
+  {
+    // Prefer titles captured during deduplication when available
+    const titleLookup = new Map<string, string | undefined>();
+    try {
+      for (const d of deduplicated) {
+        titleLookup.set(d.originalUrl, d.title ?? undefined);
+      }
+    } catch {}
+    logger?.emitSources(objectiveId, {
+      items: (consolidatedDocuments.slice(0, 30)).map((doc) => {
+        let domain = '';
+        try { domain = new URL(doc.url).hostname.replace(/^www\./, ''); } catch {}
+        const title = titleLookup.get(doc.url) ?? undefined;
+        return { url: doc.url, title, domain } as { url: string; title?: string; domain?: string };
+      })
+    });
+  }
   // Emit claim spans from final synthesis structured output (preferred over heuristics)
   try {
     const claimItems = (finalReportOutput.claimSpans || []).map((it) => ({
