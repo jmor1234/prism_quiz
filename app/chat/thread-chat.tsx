@@ -506,11 +506,6 @@ export function ThreadChat({ threadId, initialMessages }: { threadId: string; in
                         }
                         return all;
                       })();
-                      // Prefer backend-provided claim spans; fallback to empty
-                      const inlineCitations = (() => {
-                        const spans = researchState.claimSpansByObjective && Object.values(researchState.claimSpansByObjective).flatMap(v => v.items) || [];
-                        return spans.slice(0, 8).map(s => ({ anchor: s.anchor, sources: s.sources, quote: s.quote }));
-                      })();
                       const uniqueSources = (() => {
                         const seen = new Set<string>();
                         const out: { url: string; title?: string; domain?: string }[] = [];
@@ -525,7 +520,7 @@ export function ThreadChat({ threadId, initialMessages }: { threadId: string; in
                       if (isLastAssistant && uniqueSources.length > 0) {
                         return (
                           <>
-                            <MessageRenderer message={message} inlineCitations={inlineCitations} />
+                            <MessageRenderer message={message} />
                             <div className="mt-3">
                               <Sources>
                                 <SourcesTrigger count={uniqueSources.length} />
@@ -540,7 +535,7 @@ export function ThreadChat({ threadId, initialMessages }: { threadId: string; in
                           </>
                         );
                       }
-                      return <MessageRenderer message={message} inlineCitations={inlineCitations} />;
+                      return <MessageRenderer message={message} />;
                     })()}
                   </MessageContent>
                 </Message>

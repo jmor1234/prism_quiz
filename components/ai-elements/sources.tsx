@@ -27,7 +27,6 @@ export type SourcesTriggerProps = ComponentProps<typeof CollapsibleTrigger> & {
 export const SourcesTrigger = ({
   className,
   count,
-  inlineCount,
   children,
   ...props
 }: SourcesTriggerProps) => (
