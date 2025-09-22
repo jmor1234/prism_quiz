@@ -530,7 +530,10 @@ export function ThreadChat({ threadId, initialMessages }: { threadId: string; in
                               <Sources>
                                 <SourcesTrigger count={uniqueSources.length} />
                                 <SourcesContent>
-                                  <SourceList items={uniqueSources} />
+                                  <SourceList
+                                    items={uniqueSources}
+                                    microcopy={"All sources consulted during research for this response."}
+                                  />
                                 </SourcesContent>
                               </Sources>
                             </div>

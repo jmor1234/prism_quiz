@@ -21,22 +21,30 @@ export const Sources = ({ className, ...props }: SourcesProps) => (
 
 export type SourcesTriggerProps = ComponentProps<typeof CollapsibleTrigger> & {
   count: number;
+  inlineCount?: number; // accepted but ignored for display to keep API stable
 };
 
 export const SourcesTrigger = ({
   className,
   count,
+  inlineCount,
   children,
   ...props
 }: SourcesTriggerProps) => (
   <CollapsibleTrigger
-    className={cn("flex items-center gap-2", className)}
+    className={cn(
+      "group inline-flex items-center gap-2 rounded-md border px-2 py-1",
+      "cursor-pointer select-none transition-colors",
+      "hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40",
+      "data-[state=open]:bg-accent/30",
+      className
+    )}
     {...props}
   >
     {children ?? (
       <>
-        <p className="font-medium tabular-nums">Used {count} sources</p>
-        <ChevronDownIcon className="h-4 w-4" />
+        <p className="font-medium tabular-nums">All research sources • {count}</p>
+        <ChevronDownIcon className="h-4 w-4 transition-transform group-data-[state=open]:rotate-180" />
       </>
     )}
   </CollapsibleTrigger>
@@ -50,7 +58,8 @@ export const SourcesContent = ({
 }: SourcesContentProps) => (
   <CollapsibleContent
     className={cn(
-      "mt-3 flex w-fit flex-col gap-2",
+      "mt-2 w-full max-w-[720px] rounded-lg border bg-muted/20 p-2 shadow-sm",
+      "flex flex-col gap-2",
       "data-[state=closed]:fade-out-0 data-[state=closed]:slide-out-to-top-2 data-[state=open]:slide-in-from-top-2 outline-none data-[state=closed]:animate-out data-[state=open]:animate-in",
       className
     )}
@@ -100,7 +109,7 @@ export const SourceListItem = ({ url, title, domain, className }: SourceListItem
         target="_blank"
         className={cn(
           "group flex items-center gap-2 min-h-6 -mx-1.5 px-1.5 rounded-md",
-          "hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+          "cursor-pointer transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
         )}
         aria-label={aria}
         title={title ? `${title} — ${url}` : url}
@@ -131,15 +140,19 @@ export const SourceListItem = ({ url, title, domain, className }: SourceListItem
 export type SourceListProps = ComponentProps<"div"> & {
   items: SourceListItemData[];
   initialCount?: number;
+  microcopy?: string;
 };
 
-// Simple capped list with optional Show all expansion; semantic ul/li structure
-export const SourceList = ({ items, initialCount = 8, className, ...props }: SourceListProps) => {
+// Simple capped list with optional Show all and filters; semantic ul/li structure
+export const SourceList = ({ items, initialCount = 8, microcopy, className, ...props }: SourceListProps) => {
   const [expanded, setExpanded] = useState(false);
   const visible = expanded ? items : items.slice(0, initialCount);
 
   return (
     <div className={cn("w-full", className)} {...props}>
+      {microcopy && (
+        <p className="mb-2 text-[11px] text-muted-foreground">{microcopy}</p>
+      )}
       <ul className="space-y-1">
         {visible.map((s, i) => (
           <SourceListItem key={`${s.url}-${i}`} url={s.url} title={s.title} domain={s.domain} />
