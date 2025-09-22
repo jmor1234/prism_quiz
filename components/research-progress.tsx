@@ -3,7 +3,7 @@
 
 import { Activity } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useEffect, useRef } from "react";
 import AnimatedNumber from "@/components/research/animated-number";
 import type {
   ResearchObjectiveData,
@@ -60,18 +60,17 @@ export function ResearchProgress({ state, className }: ResearchProgressProps) {
     });
   }, [objectives]);
 
-  // Auto-open the currently active objective; fallback to first entry
-  const [openObjectiveId, setOpenObjectiveId] = useState<string | null>(null);
+  // Multi-open objective state. Auto-open only once (first active or first entry).
+  const [openObjectives, setOpenObjectives] = useState<Record<string, boolean>>({});
+  const didAutoOpenRef = useRef(false);
   useEffect(() => {
+    if (didAutoOpenRef.current) return;
+    if (sortedEntries.length === 0) return;
     const firstActive = sortedEntries.find(([, o]) => o.status === 'active')?.[0];
-    if (firstActive && firstActive !== openObjectiveId) {
-      setOpenObjectiveId(firstActive);
-      return;
-    }
-    if (!openObjectiveId && sortedEntries.length > 0) {
-      setOpenObjectiveId(sortedEntries[0][0]);
-    }
-  }, [sortedEntries, openObjectiveId]);
+    const toOpen = firstActive ?? sortedEntries[0][0];
+    setOpenObjectives({ [toOpen]: true });
+    didAutoOpenRef.current = true;
+  }, [sortedEntries]);
 
   // Guard after hooks so hooks order is stable across renders
   if (!session || (session.status !== 'starting' && session.status !== 'active')) {
@@ -135,7 +134,7 @@ export function ResearchProgress({ state, className }: ResearchProgressProps) {
         {/* Objectives List */}
         <div className="space-y-2">
           {sortedEntries.map(([objectiveId, objective], idx) => {
-            const isOpen = openObjectiveId === objectiveId;
+            const isOpen = !!openObjectives[objectiveId];
             const percent = Math.round((objective.progress ?? 0) * 100);
             const phaseLabels: Record<string, string> = {
               'query-generation': 'Generating',
@@ -146,8 +145,11 @@ export function ResearchProgress({ state, className }: ResearchProgressProps) {
               'synthesizing': 'Synthesizing',
             };
             return (
-              <Task key={objectiveId} open={isOpen} onOpenChange={(open) => setOpenObjectiveId(open ? objectiveId : null)}>
-                <TaskTrigger title={objective.objective}>
+              <Task key={objectiveId} open={isOpen} onOpenChange={(open) => setOpenObjectives((prev) => ({ ...prev, [objectiveId]: open }))}>
+                <TaskTrigger
+                  title={objective.objective}
+                  className="cursor-pointer rounded-md transition-all duration-200 hover:bg-accent/60 dark:hover:bg-accent/40 hover:ring-1 hover:ring-border/70 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 data-[state=open]:bg-accent/30 data-[state=open]:ring-1 data-[state=open]:ring-border/70 data-[state=open]:shadow-md"
+                >
                   <div className="flex w-full items-center justify-between gap-3">
                     <div className="min-w-0">
                       <p className="text-[13.5px] font-medium leading-tight truncate">{objective.objective}</p>
