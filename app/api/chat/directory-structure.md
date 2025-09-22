@@ -96,9 +96,11 @@ app/api/chat/
         │                            #   Content analysis → Consolidation → Final synthesis
         │                            # - **Emits phase progress updates at boundaries**
         │                            # - Emits sample domains/URLs + search summary counts for UI
+        │                            # - Emits full query list on query-generation for UI chips/Details
         │                            # - Emits subphase + metric details during analyzing/consolidating
         │                            # - Streams large sets via emitCollectionUpdate (search_hits, unique_urls, retrieved, high_signal, analyzed, consolidated)
         │                            # - Seeds curated sources via emitSources and finalizes post-synthesis
+        │                            # - Re-emits objective context (focusAreas, keyEntities, categories) with each phase via emitObjectiveProgress
         │                            # - **Emits operation messages for user feedback**
         │                            # - Phase summaries with duration_ms + compact stats
         │                            # - Deterministic errors + partial successes

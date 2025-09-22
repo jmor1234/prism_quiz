@@ -14,11 +14,12 @@ This document explains how long-running agentic tool processes produce rich, dyn
 The UI stream can carry "data-*" parts beyond text/reasoning. For research, each phase emits:
 
 - `data-research-session`: overall session status and objective counts.
-- `data-research-objective`: per-objective status and phase.
+- `data-research-objective`: per-objective status and phase. Optional enriched context for UI chips:
+  - `focusAreas: string[]`, `keyEntities: string[]`, `categories: string[]`.
 - `data-research-phase`: per-phase progress with optional details.
-  - `details.summary` (optional): compact counts like `{ queries, hits, unique }`.
+  - `details.summary` (optional): compact counts like `{ queries, hits, unique }` (Searching).
   - `details.samples` (optional): a few domains/URLs `{ url, domain?, title? }[]` for credibility without flooding.
-  - `details.queries` (optional): representative query strings for UI chips (≤6).
+  - `details.queries` (optional): query strings. Query‑generation emits the full list; the UI caps display in Pipeline and shows all in Details.
   - `details.subphase` (optional): `'retrieval' | 'sqa' | 'analysis' | 'consolidation'` to narrate analyzing sub-steps.
   - `details.metrics` (optional): fine-grained counters
     - `fetched { ok, total }`, `highSignal { ok, total }`, `analyzed { current, total }`, `consolidated { current, total }`.
@@ -65,8 +66,8 @@ This enables low-latency, incremental UI updates without extra HTTP calls.
 
 1) `useChat()` (`app/chat/thread-chat.tsx`) receives events in `onData` and updates a `ResearchState` store (session/objectives/phases/collections/sources/claimSpans).
 2) `components/research-progress.tsx` renders a Task‑based UI:
-   - Pipeline (default): `ChainOfThought` narrative (open by default for active objective), chips & metrics.
-   - Details (on demand): `ObjectiveDetails` full timeline; long lists virtualized.
+   - Pipeline (default): Objective step (full objective + chips for key entities/focus areas/categories), Query‑generation query chips with "Show all" (opens Details), Searching summary chips (queries|hits|unique) and sample domains.
+   - Details (on demand): `ObjectiveDetails` full timeline; long lists virtualized; full objective context and full query list are shown.
 3) `MessageRenderer` renders assistant `Response`/`Reasoning`, plus inline citations using backend claim spans (offsets and URLs) with a hover card carousel.
 
 ## Design invariants
@@ -90,6 +91,7 @@ This enables low-latency, incremental UI updates without extra HTTP calls.
 - Streaming large lists:
   - Use `emitCollectionUpdate(id, { kind, action })` with `replace` for snapshots and `append` for batches of ~10 items.
   - Keep per-update cadence ≈250–400ms to avoid churn; cap lists (e.g., search_hits ≤50) unless explicitly expanded.
+  - Keep Objective context stable by including it in all `data-research-objective` updates.
 
 ## Gotchas
 

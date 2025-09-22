@@ -52,9 +52,11 @@ components/
 │   └── … (others)              # actions, artifact, branch, image, etc.
 │
 ├── research-progress.tsx       # Task-based research pipeline (Pipeline/Details toggle)
-│                               # - Pipeline: ChainOfThought narrative (default open), chips & metrics
-│                               # - Details: ObjectiveDetails (legacy-style full view) on demand
-│                               # - One active objective auto-open; calm defaults for concurrency
+│                               # - Pipeline: Objective step (objective + chips for key entities, focus areas, categories)
+│                               #            Query-generation displays query chips with "Show all" → Details
+│                               #            Searching displays summary chips (queries|hits|unique) and sample domains
+│                               # - Details: ObjectiveDetails shows full objective text and full lists
+│                               # - Multiple objectives can be open simultaneously; calm defaults for concurrency
 │
 ├── extraction-progress.tsx     # Task-based extraction progress component
 │                               # - Shows extraction session (X/Y URLs) as URL rows inside a Task

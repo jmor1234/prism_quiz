@@ -39,7 +39,7 @@ A real‑time, multimodal AI reasoning application. Inputs (text, images, voice�
 ## Data flow (high level)
 1) User composes input (optionally with attachments or voice).
 2) Frontend sends to `/api/chat`; backend streams response parts (text/reasoning) and may call tools.
-3) **Real-time research progress** streams via data parts - objectives, phases, subphase metrics and collections; searching shows queries→hits→unique and sample domains; large lists stream in chunks; curated sources power the Sources block; **claim spans** (text offsets + URLs) stream for precise inline citations.
+3) **Real-time research progress** streams via data parts - objectives, phases, subphase metrics and collections. Pipeline includes a leading Objective step (full objective + chips for key entities, focus areas, categories). Query‑generation shows representative query chips; Searching shows summary chips (queries→hits→unique) and sample domains. Large lists stream in chunks; curated sources power the Sources block; **claim spans** (text offsets + URLs) stream for precise inline citations.
 4) React UI renders parts as they arrive; editing and branching are guarded during streaming.
 5) On completion, a snapshot is persisted locally; users can edit/branch subsequent interactions.
 
@@ -59,7 +59,7 @@ A real‑time, multimodal AI reasoning application. Inputs (text, images, voice�
 ## UX principles
 - Lead with the direct answer; support with minimal citations.
 - Reasoning is visible but not copied by default.
-- **Tool operations are transparent**: all tools stream real-time progress, no silent waiting. UI uses progressive disclosure: Task pipeline by default; per‑objective “Details” view on demand; summary chips first; long lists gated and virtualized.
+- **Tool operations are transparent**: all tools stream real-time progress, no silent waiting. UI uses progressive disclosure: Task pipeline by default; per‑objective “Details” view on demand; summary chips first; long lists gated and virtualized. Multiple objectives can be expanded simultaneously.
 - **Continuous feedback**: inline loaders within the active Task (no floating overlays).
 - Editing is safe and predictable; only one edit at a time; guard during streaming.
 - Multimodal is first‑class: images and transcribed voice flow through the same pipeline.
