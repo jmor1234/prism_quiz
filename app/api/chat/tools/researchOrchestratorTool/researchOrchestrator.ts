@@ -15,6 +15,7 @@ import type { ResearchConsolidationAgentInput } from "./researchConsolidation/ty
 import type { ConsolidatedDocument } from "./researchConsolidation/schema";
 import { generateFinalReport } from "./finalSynthesis/agent";
 import type { FinalSynthesisAgentOutput } from "./finalSynthesis/schema";
+import { generateMergedFinalReport } from './finalSynthesisReducer/agent';
 
 // Safe, deterministic URL canonicalization for dedup/citations
 function canonicalizeUrlForDedup(rawUrl: string): string {
@@ -58,6 +59,10 @@ export interface ResearchExecutionResult {
   researchPlan: ResearchPlan;
   finalSynthesisReport: FinalSynthesisAgentOutput;
 }
+
+// Map-Reduce Final Synthesis configuration (no envs; change here if needed)
+const FINAL_SYNTHESIS_PARTITION_TRIGGER = 10;
+const FINAL_SYNTHESIS_MAX_GROUP_SIZE = 10; // ensure each group ≤ 10 documents
 
 // Orchestration phases to be implemented in subsequent phases
 export async function orchestrateResearchExecution(
@@ -546,32 +551,105 @@ export async function orchestrateResearchExecution(
   emitPhaseProgress('synthesizing', 'starting', 0.9);
   logger?.emitOperation(`Synthesizing final research report...`, { phase: 'synthesizing', objective: researchPlan.focusedObjective });
 
-  const finalReportOutput: FinalSynthesisAgentOutput = await generateFinalReport({
-    consolidatedDocuments,
-    researchPlan,
-    currentDate,
+  // Helper to partition deterministically into balanced groups, each ≤ maxGroupSize
+  const partitionIntoGroups = <T,>(items: T[], maxGroupSize: number): T[][] => {
+    if (items.length === 0) return [];
+    const groupCount = Math.ceil(items.length / maxGroupSize);
+    if (groupCount <= 1) return [items.slice()];
+    const baseSize = Math.floor(items.length / groupCount);
+    let remainder = items.length % groupCount;
+    const groups: T[][] = [];
+    let start = 0;
+    for (let g = 0; g < groupCount; g++) {
+      const size = baseSize + (remainder > 0 ? 1 : 0);
+      groups.push(items.slice(start, start + size));
+      start += size;
+      if (remainder > 0) remainder -= 1;
+    }
+    return groups;
+  };
+
+  // Deterministic ordering by domain -> url to keep groups stable
+  const orderedConsolidated = [...consolidatedDocuments].sort((a, b) => {
+    const ad = (() => { try { return new URL(a.url).hostname.replace(/^www\./, ''); } catch { return ''; } })();
+    const bd = (() => { try { return new URL(b.url).hostname.replace(/^www\./, ''); } catch { return ''; } })();
+    if (ad !== bd) return ad.localeCompare(bd);
+    return a.url.localeCompare(b.url);
   });
+
+  let finalReportOutput: FinalSynthesisAgentOutput;
+
+  if (orderedConsolidated.length >= FINAL_SYNTHESIS_PARTITION_TRIGGER) {
+    const groups = partitionIntoGroups(orderedConsolidated, FINAL_SYNTHESIS_MAX_GROUP_SIZE);
+    console.log(`  🧩 [FinalSynthesis] Partitioned into ${groups.length} group(s) of ≤ ${FINAL_SYNTHESIS_MAX_GROUP_SIZE}.`);
+    logger?.emitOperation(`Running group synthesis (${groups.length} groups)...`, { phase: 'synthesizing' });
+    emitPhaseProgress('synthesizing', 'active', 0.93, { description: `Group synthesis (${groups.length} groups)` });
+
+    // Map: run all groups in parallel
+    const groupResults = await Promise.all(
+      groups.map((group, idx) => {
+        console.log(`    ↪️  [Group ${idx + 1}/${groups.length}] ${group.length} documents`);
+        return generateFinalReport({
+          consolidatedDocuments: group,
+          researchPlan,
+          currentDate,
+        }).catch((e) => {
+          console.error(`    ❌ [Group ${idx + 1}] synthesis error:`, e instanceof Error ? e.message : String(e));
+          // Propagate to fail fast; alternatively could continue and reduce without this group
+          throw e;
+        });
+      })
+    );
+
+    if (groupResults.length === 1) {
+      // Single group: skip reducer hop and use the group's output directly
+      finalReportOutput = groupResults[0];
+    } else {
+      // Reduce: merge group reports into a single final output
+      logger?.emitOperation(`Merging ${groupResults.length} group reports...`, { phase: 'synthesizing' });
+      emitPhaseProgress('synthesizing', 'active', 0.97, { description: `Merging group reports` });
+
+      const reducerOutput = await generateMergedFinalReport({
+        groupReports: groupResults.map((r) => ({ finalDocument: r.finalDocument, claimSpans: r.claimSpans || [] })),
+        researchPlan,
+        currentDate,
+      });
+
+      finalReportOutput = {
+        thinking: reducerOutput.thinking,
+        finalDocument: reducerOutput.finalDocument,
+        claimSpans: reducerOutput.claimSpans || [],
+      } as FinalSynthesisAgentOutput;
+    }
+  } else {
+    // Single-call synthesis (original behavior)
+    finalReportOutput = await generateFinalReport({
+      consolidatedDocuments: orderedConsolidated,
+      researchPlan,
+      currentDate,
+    });
+  }
   console.log(`🏁 [ResearchOrchestrator] Research execution pipeline completed. Analyzed ${analyzedDocuments.length} documents, consolidated to ${consolidatedDocuments.length}.`);
 
   // Final completion
   emitPhaseProgress('synthesizing', 'complete', 1.0);
-  // Final curated sources: use consolidated docs as citations fallback
+  // Final curated sources: use consolidated docs as citations fallback (union & dedupe)
   {
-    // Prefer titles captured during deduplication when available
     const titleLookup = new Map<string, string | undefined>();
     try {
       for (const d of deduplicated) {
         titleLookup.set(d.originalUrl, d.title ?? undefined);
       }
     } catch {}
-    logger?.emitSources(objectiveId, {
-      items: (consolidatedDocuments.slice(0, 30)).map((doc) => {
-        let domain = '';
-        try { domain = new URL(doc.url).hostname.replace(/^www\./, ''); } catch {}
-        const title = titleLookup.get(doc.url) ?? undefined;
-        return { url: doc.url, title, domain } as { url: string; title?: string; domain?: string };
-      })
-    });
+    const byKey = new Map<string, { url: string; title?: string; domain?: string }>();
+    for (const doc of consolidatedDocuments) {
+      const key = canonicalizeUrlForDedup(doc.url);
+      let domain = '';
+      try { domain = new URL(doc.url).hostname.replace(/^www\./, ''); } catch {}
+      const title = titleLookup.get(doc.url) ?? undefined;
+      if (!byKey.has(key)) byKey.set(key, { url: doc.url, title, domain });
+    }
+    logger?.emitSources(objectiveId, { items: Array.from(byKey.values()).slice(0, 30) });
   }
   // Emit claim spans from final synthesis structured output (preferred over heuristics)
   try {

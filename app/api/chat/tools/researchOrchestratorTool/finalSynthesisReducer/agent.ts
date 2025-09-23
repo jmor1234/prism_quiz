@@ -1,50 +1,50 @@
 import { generateObject } from 'ai';
 import { anthropic } from '@ai-sdk/anthropic';
 import { getLogger } from '@/app/api/chat/lib/traceLogger';
-import { FinalSynthesisAgentInput } from './types';
-import { finalSynthesisAgentOutputSchema, FinalSynthesisAgentOutput } from './schema';
-import { getFinalSynthesisPrompt } from './prompt';
+import type { FinalSynthesisReducerInput } from './types';
+import { finalSynthesisReducerOutputSchema, type FinalSynthesisReducerOutput } from './schema';
+import { getFinalSynthesisReducerPrompt } from './prompt';
 import { withRetry } from '@/app/api/chat/lib/llmRetry';
 import { getPhaseTimeoutMs } from '@/app/api/chat/lib/retryConfig';
 
-const TOOL_NAME = 'finalSynthesisAgent';
+const TOOL_NAME = 'finalSynthesisReducerAgent';
 const LLM_MODEL_NAME = 'claude-sonnet-4-20250514';
 
-export async function generateFinalReport(
-  input: FinalSynthesisAgentInput
-): Promise<FinalSynthesisAgentOutput> {
+export async function generateMergedFinalReport(
+  input: FinalSynthesisReducerInput
+): Promise<FinalSynthesisReducerOutput> {
   const logger = getLogger();
-  let llmOutput: FinalSynthesisAgentOutput | null = null;
+  let llmOutput: FinalSynthesisReducerOutput | null = null;
   let llmError: unknown = null;
 
   logger?.logToolCallStart(TOOL_NAME, {
     mainResearchObjective: input.researchPlan.focusedObjective.substring(0, 150),
-    consolidatedDocumentsCount: input.consolidatedDocuments.length,
+    groupCount: input.groupReports.length,
   });
 
   try {
-    const { object: synthesisResult, usage } = await withRetry(
+    const { object: result, usage } = await withRetry(
       (signal) =>
         generateObject({
           model: anthropic(LLM_MODEL_NAME),
-          schema: finalSynthesisAgentOutputSchema,
-          prompt: getFinalSynthesisPrompt(input),
+          schema: finalSynthesisReducerOutputSchema,
+          prompt: getFinalSynthesisReducerPrompt(input),
           abortSignal: signal,
         }),
       { phase: 'finalSynthesis', timeoutMs: getPhaseTimeoutMs('finalSynthesis') }
     );
-    llmOutput = synthesisResult as FinalSynthesisAgentOutput;
-
+    llmOutput = result as FinalSynthesisReducerOutput;
     logger?.logToolInternalStep(TOOL_NAME, 'LLM_CALL_SUCCESS', {
       usage,
       outputSummary: {
         thinkingLength: llmOutput.thinking?.length || 0,
         finalDocumentLength: llmOutput.finalDocument.length,
+        claimSpansCount: llmOutput.claimSpans?.length || 0,
       },
     });
-    // Console visibility for token usage (mirrors other agents' style)
-    console.log(`[` + TOOL_NAME + `] LLM synthesis complete for ` +
-      `${input.consolidatedDocuments.length} docs. ` +
+    // Console visibility for token usage
+    console.log(`[` + TOOL_NAME + `] LLM merge complete for ` +
+      `${input.groupReports.length} group report(s). ` +
       `📊 Tokens: ${usage.inputTokens?.toLocaleString?.() ?? 'n/a'} in / ` +
       `${usage.outputTokens?.toLocaleString?.() ?? 'n/a'} out / ` +
       `${(usage.totalTokens as number | undefined) ?? 'n/a'} total`);
@@ -63,14 +63,14 @@ export async function generateFinalReport(
       }
     } catch {}
     throw new Error(
-      `[${TOOL_NAME}] Final synthesis LLM call failed: ${
+      `[${TOOL_NAME}] Merge synthesis LLM call failed: ${
         error instanceof Error ? error.message : String(error)
       }`
     );
   }
 
   logger?.logToolCallEnd(TOOL_NAME, llmOutput, llmError);
-  return llmOutput as FinalSynthesisAgentOutput;
+  return llmOutput as FinalSynthesisReducerOutput;
 }
 
 
