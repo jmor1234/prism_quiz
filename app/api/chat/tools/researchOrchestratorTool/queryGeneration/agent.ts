@@ -1,5 +1,5 @@
 import { generateObject } from 'ai';
-import { anthropic } from '@ai-sdk/anthropic';
+import { google } from '@ai-sdk/google';
 import { getLogger } from '@/app/api/chat/lib/traceLogger';
 import { QueryGenerationPromptInput } from './types';
 import { queryGenerationOutputSchema, QueryGenerationOutput } from './schema';
@@ -43,7 +43,7 @@ Focus Areas: ${input.focusAreas.length} areas defined
     const { object: result, usage } = await withRetry(
       (signal) =>
         generateObject({
-          model: anthropic('claude-sonnet-4-20250514'),
+          model: google('gemini-2.5-flash-lite'),
           schema: queryGenerationOutputSchema,
           prompt: getQueryGenerationPrompt(inputWithDefaults),
           abortSignal: signal,
