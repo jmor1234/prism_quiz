@@ -14,7 +14,7 @@ import { consolidateDocument } from "./researchConsolidation/agent";
 import type { ResearchConsolidationAgentInput } from "./researchConsolidation/types";
 import type { ConsolidatedDocument } from "./researchConsolidation/schema";
 import { generateFinalReport } from "./finalSynthesis/agent";
-import type { FinalSynthesisAgentOutput } from "./finalSynthesis/schema";
+import type { FinalSynthesisAgentOutput } from "./finalSynthesis/types";
 import { generateMergedFinalReport } from './finalSynthesisReducer/agent';
 
 // Safe, deterministic URL canonicalization for dedup/citations
@@ -61,8 +61,8 @@ export interface ResearchExecutionResult {
 }
 
 // Map-Reduce Final Synthesis configuration (no envs; change here if needed)
-const FINAL_SYNTHESIS_PARTITION_TRIGGER = 10;
-const FINAL_SYNTHESIS_MAX_GROUP_SIZE = 10; // ensure each group ≤ 10 documents
+const FINAL_SYNTHESIS_PARTITION_TRIGGER = 20;
+const FINAL_SYNTHESIS_MAX_GROUP_SIZE = 20; // ensure each group ≤ 10 documents
 
 // Orchestration phases to be implemented in subsequent phases
 export async function orchestrateResearchExecution(
@@ -609,16 +609,14 @@ export async function orchestrateResearchExecution(
       logger?.emitOperation(`Merging ${groupResults.length} group reports...`, { phase: 'synthesizing' });
       emitPhaseProgress('synthesizing', 'active', 0.97, { description: `Merging group reports` });
 
-      const reducerOutput = await generateMergedFinalReport({
-        groupReports: groupResults.map((r) => ({ finalDocument: r.finalDocument, claimSpans: r.claimSpans || [] })),
+    const reducerOutput = await generateMergedFinalReport({
+      groupReports: groupResults.map((r) => ({ finalDocument: r.finalDocument })),
         researchPlan,
         currentDate,
       });
 
       finalReportOutput = {
-        thinking: reducerOutput.thinking,
         finalDocument: reducerOutput.finalDocument,
-        claimSpans: reducerOutput.claimSpans || [],
       } as FinalSynthesisAgentOutput;
     }
   } else {
@@ -651,27 +649,13 @@ export async function orchestrateResearchExecution(
     }
     logger?.emitSources(objectiveId, { items: Array.from(byKey.values()).slice(0, 30) });
   }
-  // Emit claim spans from final synthesis structured output (preferred over heuristics)
-  try {
-    const claimItems = (finalReportOutput.claimSpans || []).map((it) => ({
-      anchor: it.anchor,
-      start: it.start,
-      end: it.end,
-      sources: Array.from(new Set(it.sources)).slice(0, 5),
-      quote: it.quote,
-    }));
-    if (claimItems.length > 0) {
-      logger?.emitClaimSpans(objectiveId, { items: claimItems });
-    }
-  } catch {}
+  // Claim spans removed to save tokens; rely on inline citations in final Markdown
   logger?.emitOperation(`Research complete for: ${researchPlan.focusedObjective}`, { phase: 'synthesizing' });
 
   return {
     researchPlan,
     finalSynthesisReport: {
-      thinking: finalReportOutput.thinking,
       finalDocument: finalReportOutput.finalDocument,
-      claimSpans: finalReportOutput.claimSpans || [],
     },
   };
 }

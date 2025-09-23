@@ -142,10 +142,9 @@ app/api/chat/
         │   └── types.ts
         │
         └── finalSynthesis/
-            ├── agent.ts            # Gemini 2.5 flash → outline + final Markdown report (+ claim spans)
-            ├── prompt.ts           # Synthesis policy; output format; disciplined citations; emits claimSpans (offsets)
-            ├── schema.ts           # finalDocument + claimSpans (anchor, start, end, sources[], quote?)
-            └── types.ts
+            ├── agent.ts            # Anthropic (Claude) → final Markdown report (generateText)
+            ├── prompt.ts           # Synthesis policy; output format; disciplined citations (inline [Title](URL))
+            └── types.ts            # FinalSynthesisAgentInput / FinalSynthesisAgentOutput (finalDocument only)
 
 ---
 

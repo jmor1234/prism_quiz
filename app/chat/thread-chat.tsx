@@ -270,18 +270,7 @@ export function ThreadChat({ threadId, initialMessages }: { threadId: string; in
           });
           break;
         }
-        case 'data-research-claim-spans': {
-          const payload = data as import('@/lib/streaming-types').ResearchClaimSpansData;
-          const objId = payload.objectiveId ?? 'session';
-          setResearchState((prev) => ({
-            ...prev,
-            claimSpansByObjective: {
-              ...(prev.claimSpansByObjective || {}),
-              [objId]: { items: payload.items },
-            },
-          }));
-          break;
-        }
+        // claimSpans removed
       }
     },
   });

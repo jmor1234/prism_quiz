@@ -1,14 +1,14 @@
-import { generateObject } from 'ai';
-import { anthropic } from '@ai-sdk/anthropic';
+import { generateText } from 'ai';
+import { google } from '@ai-sdk/google';
 import { getLogger } from '@/app/api/chat/lib/traceLogger';
 import { FinalSynthesisAgentInput } from './types';
-import { finalSynthesisAgentOutputSchema, FinalSynthesisAgentOutput } from './schema';
+import type { FinalSynthesisAgentOutput } from './types';
 import { getFinalSynthesisPrompt } from './prompt';
 import { withRetry } from '@/app/api/chat/lib/llmRetry';
 import { getPhaseTimeoutMs } from '@/app/api/chat/lib/retryConfig';
 
 const TOOL_NAME = 'finalSynthesisAgent';
-const LLM_MODEL_NAME = 'claude-sonnet-4-20250514';
+const LLM_MODEL_NAME = 'gemini-2.5-flash-lite';
 
 export async function generateFinalReport(
   input: FinalSynthesisAgentInput
@@ -16,6 +16,7 @@ export async function generateFinalReport(
   const logger = getLogger();
   let llmOutput: FinalSynthesisAgentOutput | null = null;
   let llmError: unknown = null;
+  const startedAt = Date.now();
 
   logger?.logToolCallStart(TOOL_NAME, {
     mainResearchObjective: input.researchPlan.focusedObjective.substring(0, 150),
@@ -23,22 +24,20 @@ export async function generateFinalReport(
   });
 
   try {
-    const { object: synthesisResult, usage } = await withRetry(
+    const { text, usage } = await withRetry(
       (signal) =>
-        generateObject({
-          model: anthropic(LLM_MODEL_NAME),
-          schema: finalSynthesisAgentOutputSchema,
+        generateText({
+          model: google(LLM_MODEL_NAME),
           prompt: getFinalSynthesisPrompt(input),
           abortSignal: signal,
         }),
       { phase: 'finalSynthesis', timeoutMs: getPhaseTimeoutMs('finalSynthesis') }
     );
-    llmOutput = synthesisResult as FinalSynthesisAgentOutput;
+    llmOutput = { finalDocument: text } as FinalSynthesisAgentOutput;
 
     logger?.logToolInternalStep(TOOL_NAME, 'LLM_CALL_SUCCESS', {
       usage,
       outputSummary: {
-        thinkingLength: llmOutput.thinking?.length || 0,
         finalDocumentLength: llmOutput.finalDocument.length,
       },
     });
@@ -67,6 +66,10 @@ export async function generateFinalReport(
         error instanceof Error ? error.message : String(error)
       }`
     );
+  } finally {
+    const durationMs = Date.now() - startedAt;
+    logger?.logToolInternalStep(TOOL_NAME, 'LLM_CALL_DURATION', { duration_ms: durationMs });
+    try { console.log(`[${TOOL_NAME}] Duration: ${durationMs} ms`); } catch {}
   }
 
   logger?.logToolCallEnd(TOOL_NAME, llmOutput, llmError);

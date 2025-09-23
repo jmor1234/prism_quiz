@@ -31,7 +31,7 @@ Collections, curated sources, and claim spans:
   - `kind`: `search_hits | unique_urls | retrieved | high_signal | analyzed | consolidated | citations`.
   - `action`: `replace | append` for streaming in chunks.
 - `data-research-sources` (curated list for Sources block): `{ objectiveId?, items[] }`.
-- `data-research-claim-spans` (precise inline citations): `{ objectiveId?, items: [{ anchor, start, end, sources[], quote? }] }`.
+<!-- claimSpans removed; inline citations in final Markdown remain the display mechanism -->
 
 Types live in `lib/streaming-types.ts`. Backend emitters are in `app/api/chat/lib/traceLogger.ts`.
 
@@ -39,12 +39,17 @@ Types live in `lib/streaming-types.ts`. Backend emitters are in `app/api/chat/li
 
 1) `app/api/chat/route.ts` wraps the model stream with `createUIMessageStream` and injects a writer into `TraceLogger`.
 2) Tools execute with that logger in AsyncLocalStorage.
-3) `researchOrchestrator.ts` emits progress at phase boundaries:
+3) `researchOrchestrator.ts` emits progress at phase boundaries and performs hierarchical final synthesis when needed:
    - Searching → emits `details.summary` (queries→hits→unique) + sample domains from Exa results.
    - Deduplicating → emits samples of unique URLs/domains.
    - Analyzing is narrated via `details.subphase` + `details.metrics`:
      - Retrieval (`fetched`), SQA (`highSignal`), Analysis (`analyzed`).
    - Consolidating → `consolidated` metrics + samples.
+   - Final Synthesis (map–reduce when many docs):
+     - If consolidated docs < 10 → single Final Synthesis call.
+     - If exactly 10 → one group; reducer is skipped.
+     - If > 10 → partition into balanced groups of ≤10; run all group syntheses in parallel, then a small reducer merges the group reports into a single final document.
+     - Progress signals include an operation for group synthesis and a merge step when applicable; reducer emits once.
 4) `TraceLogger.emitPhaseProgress()` writes UI events directly into the stream. Raw traces remain private.
 5) Large sets stream via `emitCollectionUpdate(id, { kind, action, total?, items })`.
 6) Curated sources for the Sources tab stream via `emitSources(objectiveId, { items })`. The frontend displays an “All research sources” drawer (favicon + `[Title](URL)`), distinct from inline citations in the answer.
@@ -53,6 +58,8 @@ Key files:
 - `app/api/chat/tools/researchOrchestratorTool/researchOrchestrator.ts`
 - `app/api/chat/lib/traceLogger.ts` (emission helpers)
 - `app/api/chat/route.ts` (stream wrapper + DI)
+- `app/api/chat/tools/researchOrchestratorTool/finalSynthesis/agent.ts` (group synthesis via generateText)
+- `app/api/chat/tools/researchOrchestratorTool/finalSynthesisReducer/agent.ts` (merge/reducer via generateText)
 
 ## Transport (what actually streams)
 
@@ -65,7 +72,7 @@ This enables low-latency, incremental UI updates without extra HTTP calls.
 
 ## Frontend flow (how events render)
 
-1) `useChat()` (`app/chat/thread-chat.tsx`) receives events in `onData` and updates a `ResearchState` store (session/objectives/phases/collections/sources/claimSpans).
+1) `useChat()` (`app/chat/thread-chat.tsx`) receives events in `onData` and updates a `ResearchState` store (session/objectives/phases/collections/sources).
 2) `components/research-progress.tsx` renders a Task‑based UI:
    - Pipeline (default): Objective step (full objective + chips for key entities/focus areas/categories), Query‑generation query chips with "Show all" (opens Details), Searching summary chips (queries|hits|unique) and sample domains.
    - Details (on demand): `ObjectiveDetails` full timeline; long lists virtualized; full objective context and full query list are shown.

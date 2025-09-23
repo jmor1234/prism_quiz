@@ -1,14 +1,14 @@
-import { generateObject } from 'ai';
-import { anthropic } from '@ai-sdk/anthropic';
+import { generateText } from 'ai';
+import { google } from '@ai-sdk/google';
 import { getLogger } from '@/app/api/chat/lib/traceLogger';
 import type { FinalSynthesisReducerInput } from './types';
-import { finalSynthesisReducerOutputSchema, type FinalSynthesisReducerOutput } from './schema';
+import type { FinalSynthesisReducerOutput } from './types';
 import { getFinalSynthesisReducerPrompt } from './prompt';
 import { withRetry } from '@/app/api/chat/lib/llmRetry';
 import { getPhaseTimeoutMs } from '@/app/api/chat/lib/retryConfig';
 
 const TOOL_NAME = 'finalSynthesisReducerAgent';
-const LLM_MODEL_NAME = 'claude-sonnet-4-20250514';
+const LLM_MODEL_NAME = 'gemini-2.5-flash-lite';
 
 export async function generateMergedFinalReport(
   input: FinalSynthesisReducerInput
@@ -16,6 +16,7 @@ export async function generateMergedFinalReport(
   const logger = getLogger();
   let llmOutput: FinalSynthesisReducerOutput | null = null;
   let llmError: unknown = null;
+  const startedAt = Date.now();
 
   logger?.logToolCallStart(TOOL_NAME, {
     mainResearchObjective: input.researchPlan.focusedObjective.substring(0, 150),
@@ -23,23 +24,20 @@ export async function generateMergedFinalReport(
   });
 
   try {
-    const { object: result, usage } = await withRetry(
+    const { text, usage } = await withRetry(
       (signal) =>
-        generateObject({
-          model: anthropic(LLM_MODEL_NAME),
-          schema: finalSynthesisReducerOutputSchema,
+        generateText({
+          model: google(LLM_MODEL_NAME),
           prompt: getFinalSynthesisReducerPrompt(input),
           abortSignal: signal,
         }),
       { phase: 'finalSynthesis', timeoutMs: getPhaseTimeoutMs('finalSynthesis') }
     );
-    llmOutput = result as FinalSynthesisReducerOutput;
+    llmOutput = { finalDocument: text } as FinalSynthesisReducerOutput;
     logger?.logToolInternalStep(TOOL_NAME, 'LLM_CALL_SUCCESS', {
       usage,
       outputSummary: {
-        thinkingLength: llmOutput.thinking?.length || 0,
         finalDocumentLength: llmOutput.finalDocument.length,
-        claimSpansCount: llmOutput.claimSpans?.length || 0,
       },
     });
     // Console visibility for token usage
@@ -67,6 +65,10 @@ export async function generateMergedFinalReport(
         error instanceof Error ? error.message : String(error)
       }`
     );
+  } finally {
+    const durationMs = Date.now() - startedAt;
+    logger?.logToolInternalStep(TOOL_NAME, 'LLM_CALL_DURATION', { duration_ms: durationMs });
+    try { console.log(`[${TOOL_NAME}] Duration: ${durationMs} ms`); } catch {}
   }
 
   logger?.logToolCallEnd(TOOL_NAME, llmOutput, llmError);

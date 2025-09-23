@@ -39,17 +39,15 @@ ${insights}
 
 Synthesis policy:
 - Use only the provided consolidated documents; do not introduce outside facts.
-- Place inline [Title](URL) citations immediately after claims; prefer 1–2 strongest; deduplicate repeats.
+- Place inline [Title](URL) citations immediately after claims; prefer strongest; deduplicate repeats.
 - If sources conflict, note it and prefer the most authoritative or most recent; explain briefly.
-- Lead with the direct answer, then minimal supporting synthesis; paraphrase (no long quotes).
+- Lead with the direct answer, then supporting synthesis; be clear and concise but balance not leaving out important details.
 - If evidence is insufficient, state the uncertainty and propose the smallest next research step.
 - When recency matters, surface the most recent credible evidence.
 
 Output format:
-- First, brief thinking: analyze the key themes, identify strongest evidence, plan document structure.
-- Then output the final Markdown document with [Title](URL) citations.
-- Finally, extract claimSpans as JSON: an array of objects { anchor, start, end, sources[], quote? }.
-- Compute start/end on the exact final Markdown string; anchors must match that substring.
+- Output the final Markdown document with [Title](URL) citations.
+ - Keep citations inline using [Title](URL) format only.
 `;
 };
 

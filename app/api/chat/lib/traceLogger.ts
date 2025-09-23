@@ -460,20 +460,7 @@ export class TraceLogger {
         });
     }
 
-    // Emit claim spans for precise inline citations
-    emitClaimSpans(objectiveId: string | undefined, data: {
-        items: { anchor: string; start: number; end: number; sources: string[]; quote?: string }[];
-    }): void {
-        if (!this.streamWriter) return;
-        this.streamWriter.write({
-            type: 'data-research-claim-spans',
-            id: objectiveId ?? 'session-claim-spans',
-            data: {
-                objectiveId,
-                ...data,
-            },
-        });
-    }
+    // emitClaimSpans removed to reduce token usage
 
     async finalizeAndWriteLog(finalError?: unknown): Promise<void> {
         if (!this.isEnabled) return;

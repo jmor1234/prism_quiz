@@ -27,15 +27,13 @@ ${groupsSection}
 Merge policy:
 - Operate ONLY over the provided group final documents; do not introduce outside facts.
 - Reconcile overlaps and contradictions; prefer the most authoritative or most recent sources when conflicts matter.
-- Keep disciplined inline citations in [Title](URL) format immediately after claims; prefer 1–2 strongest; deduplicate repeats.
-- Lead with the direct answer, then minimal, well-structured synthesis. Be concise, paraphrase, avoid long quotes.
+- Keep disciplined inline citations in [Title](URL) format immediately after claims; prefer strongest; deduplicate repeats.
+- Lead with the direct answer, then minimal, well-structured synthesis. Be clear and concise.
 - If evidence is insufficient on a key point, state uncertainty and the smallest next research step.
 
 Output format:
-- First, brief thinking: how you resolved conflicts, selected evidence, and structured the final.
-- Then output the final Markdown document with [Title](URL) citations.
-- Finally, extract claimSpans as JSON: an array of objects { anchor, start, end, sources[], quote? }.
-- Compute start/end offsets on the exact final Markdown string; anchors must match that substring.
+- Output the final Markdown document with [Title](URL) citations.
+ - Keep citations inline using [Title](URL) format only.
 `;
 }
 

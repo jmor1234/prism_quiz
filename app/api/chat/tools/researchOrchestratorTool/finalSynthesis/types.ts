@@ -7,4 +7,8 @@ export interface FinalSynthesisAgentInput {
   currentDate: string;
 }
 
+export interface FinalSynthesisAgentOutput {
+  finalDocument: string;
+}
+
 

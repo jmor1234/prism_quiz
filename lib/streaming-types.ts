@@ -139,18 +139,7 @@ export interface ResearchSourcesData {
 }
 
 // Claim spans for precise inline citations (backend-provided)
-export interface ResearchClaimSpanItem {
-  anchor: string; // exact substring in final answer
-  start: number;  // character offset in final answer
-  end: number;    // character offset (exclusive)
-  sources: string[];
-  quote?: string;
-}
-
-export interface ResearchClaimSpansData {
-  objectiveId?: string;
-  items: ResearchClaimSpanItem[];
-}
+// Claim spans removed to reduce token usage; inline citations in final Markdown are authoritative
 
 // Type-safe UIMessage with research data parts
 export type ResearchUIMessage = UIMessage<
@@ -167,7 +156,6 @@ export type ResearchUIMessage = UIMessage<
     'extraction-url': ExtractionUrlData;
     'research-collection': ResearchCollectionData;
     'research-sources': ResearchSourcesData;
-    'research-claim-spans': ResearchClaimSpansData;
   }
 >;
 
@@ -183,8 +171,7 @@ export type ResearchDataPart =
   | { type: 'data-extraction-session'; data: ExtractionSessionData; id?: string }
   | { type: 'data-extraction-url'; data: ExtractionUrlData; id: string }
   | { type: 'data-research-collection'; data: ResearchCollectionData; id: string }
-  | { type: 'data-research-sources'; data: ResearchSourcesData; id?: string }
-  | { type: 'data-research-claim-spans'; data: ResearchClaimSpansData; id?: string };
+  | { type: 'data-research-sources'; data: ResearchSourcesData; id?: string };
 
 // Research state for frontend
 export interface ResearchState {
@@ -201,5 +188,5 @@ export interface ResearchState {
   // Collections and curated sources for richer UI
   collections?: Record<string, { kind: ResearchCollectionKind; total?: number; items: { url: string; title?: string; domain?: string }[] }>;
   sourcesByObjective?: Record<string, { items: { url: string; title?: string; domain?: string }[] }>;
-  claimSpansByObjective?: Record<string, { items: ResearchClaimSpanItem[] }>;
+  // claimSpansByObjective removed
 }

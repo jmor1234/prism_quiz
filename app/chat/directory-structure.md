@@ -22,7 +22,7 @@ app/chat/
 ├── thread-chat.tsx             # Main chat orchestrator (client component)
 │                               # - useChat() from AI SDK UI (streaming state machine)
 │                               # - onData callback handles research progress data parts
-│                               # - ResearchState management (session/objectives/phases/collections/sources/claimSpans)
+│                               # - ResearchState management (session/objectives/phases/collections/sources)
 │                               # - useMessageVisibility(): latest user→assistant pair focus
 │                               # - Message editing & branching (user + assistant)
 │                               # - Saves UIMessage[] snapshots to Dexie on completion
@@ -32,7 +32,7 @@ app/chat/
     ├── chat-composer.tsx       # Bottom composer (attachments, voice, theme toggle)
     ├── attachment-button.tsx   # Opens file dialog and wires into attachment context
     ├── voice-button.tsx        # Mic capture → /api/transcribe → inserts text
-    └── message-renderer.tsx    # Renders message parts (text, reasoning, file) using markdown; inline citations are standard [Title](URL) links
+└── message-renderer.tsx    # Renders message parts (text, reasoning, file) using markdown; inline citations are standard [Title](URL) links (no claim-span overlays)
 
 ---
 
