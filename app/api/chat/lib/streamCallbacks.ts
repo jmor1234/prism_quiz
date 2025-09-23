@@ -49,13 +49,14 @@ interface StreamCallbackDeps {
   economics: TokenEconomics;
   cache: CacheManager;
   stepIndexRef: { current: number };
+  threadId?: string;
 }
 
 /**
  * Creates all streaming event callbacks with proper dependency injection
  */
 export function createStreamCallbacks(deps: StreamCallbackDeps) {
-  const { logger, economics, cache, stepIndexRef } = deps;
+  const { logger, economics, cache, stepIndexRef, threadId } = deps;
 
   return {
     /**
@@ -72,9 +73,7 @@ export function createStreamCallbacks(deps: StreamCallbackDeps) {
         toolCalls: step.toolCalls.map((tc) => ({ toolName: tc.toolName })),
       });
 
-      // Console token visibility per step
-      const u = step.usage as unknown as { totalTokens?: number };
-      economics.formatStepTokens(stepIndexRef.current, u.totalTokens);
+      // Per-step token console output removed for cleaner logs
 
       // Capture planning thoughts from thinkTool calls
       const thinkCall = step.toolCalls.find((tc) => tc.toolName === 'thinkTool') as unknown as { args?: { thought?: string } } | undefined;
@@ -89,7 +88,7 @@ export function createStreamCallbacks(deps: StreamCallbackDeps) {
      */
     onFinish: async (event: FinishEvent) => {
       // Calculate and log cache metrics
-      const metrics = economics.updateFromEvent(event as EventWithMetadata);
+      const metrics = economics.updateFromEvent(event as EventWithMetadata, { threadId });
       economics.formatConsoleOutput(metrics);
 
       // Log cache performance to trace

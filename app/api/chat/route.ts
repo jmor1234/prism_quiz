@@ -22,12 +22,10 @@ import type { ResearchUIMessage } from '@/lib/streaming-types';
 export const maxDuration = 300;
 
 export async function POST(req: Request) {
-  const { messages }: { messages: UIMessage[] } = await req.json();
+  const { messages, id }: { messages: UIMessage[]; id?: string } = await req.json();
 
   // Debug: Log what messages we actually received
   console.log(`\n[DEBUG] Received ${messages.length} messages in request`);
-  const messageTokenEstimate = JSON.stringify(messages).length / 4; // Rough estimate
-  console.log(`[DEBUG] Estimated message size: ~${Math.round(messageTokenEstimate)} tokens`);
 
   // Initialize services
   const enableLogging = process.env.ENABLE_DETAILED_TRACE_LOGGING === 'true';
@@ -68,6 +66,7 @@ export async function POST(req: Request) {
       economics,
       cache,
       stepIndexRef,
+      threadId: id,
     });
 
     // Create UI message stream with research progress capabilities
