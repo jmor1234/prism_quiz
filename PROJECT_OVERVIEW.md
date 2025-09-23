@@ -37,6 +37,8 @@ A real‑time, multimodal AI reasoning application. Inputs (text, images, voice�
 - System prompt split: stable instructions cached across sessions; only date/context marked fresh.
 - History breakpoints: dynamic cache markers on conversation state, maintained across multi‑step agent loops.
 - Real‑time cost tracking: USD calculations using actual provider pricing, session‑level accumulation.
+- Thread‑aware accounting: backend aggregates tokens per thread (using the incoming request `id` as threadId) and also reports per‑run metrics.
+- Cache correctness: cached token counts prefer provider metadata (`cache_read_input_tokens` + `cache_creation_input_tokens`) with fallback to `cachedInputTokens` only when metadata is absent, avoiding double‑counting.
 
 ## Data flow (high level)
 1) User composes input (optionally with attachments or voice).
@@ -55,8 +57,10 @@ A real‑time, multimodal AI reasoning application. Inputs (text, images, voice�
 - Per‑request tracing with sectioned, step‑indexed logs.
 - Phase summaries include duration and compact stats.
 - Never log raw long content; sample sparsely; prefer counts and sizes.
-- Real‑time cache performance metrics: efficiency percentages, cost savings in USD, session‑level accumulation.
-- Token economics visibility: fresh vs cached token breakdown, conversation context tracking, provider pricing integration.
+- Real‑time cache performance metrics: efficiency percentages, cost savings in USD, session‑level and thread‑level accumulation.
+- Token economics visibility: concise console summary per run:
+  - `Thread <id>: <cumulative tokens> | <cached now> (<% now>) | run $<cost> (saved $<run> <run%>) | thread $<total> (saved $<total> <total%>)`.
+- No per‑step token prints in console; only the single concise thread line.
 
 ## UX principles
 - Lead with the direct answer; support with minimal citations.

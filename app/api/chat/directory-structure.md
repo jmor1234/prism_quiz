@@ -9,6 +9,7 @@ app/api/chat/
 │                               # - **Wraps streamText with createUIMessageStream for progress streaming**
 │                               # - **Injects stream writer into TraceLogger for tool progress emissions**
 │                               # - Configures streamText with tools and Anthropic options
+│                               # - Receives `{ id, messages }`; uses `id` as threadId for per-thread accounting
 │                               # - Returns createUIMessageStreamResponse({ stream })
 │
 ├── systemPrompt.ts             # Primary agent instructions (concise, non-prescriptive)
@@ -23,14 +24,14 @@ app/api/chat/
 │   │                           # - System prompt split (stable cached/dynamic fresh)
 │   │                           # - Conversation history caching with 5m TTL
 │   │                           # - Cache breakpoint management for multi-step loops
-│   ├── tokenEconomics.ts       # Session-level token tracking and cost analysis
+│   ├── tokenEconomics.ts       # Session/thread token tracking and cost analysis
 │   │                           # - Singleton pattern for session persistence
 │   │                           # - Real-time USD cost calculations with cache discounts
 │   │                           # - Cache efficiency metrics (multiplier, true efficiency)
-│   │                           # - Console formatting for token/cost visibility
+│   │                           # - Provider metadata preferred for cache counts; fallback to usage only if needed
+│   │                           # - Console output: single concise line per run (thread totals + this-run cost)
 │   ├── streamCallbacks.ts      # Stream event handlers with dependency injection
-│   │                           # - onStepFinish: step logging and token tracking
-│   │                           # - onFinish: cache metrics and final response
+│   │                           # - onFinish: cache metrics and final response (per-thread + per-run)
 │   │                           # - onError/onAbort: proper log finalization
 │   │                           # - prepareStep: cache breakpoint maintenance
 │   ├── traceLogger.ts          # Structured per-request tracing (AsyncLocalStorage)

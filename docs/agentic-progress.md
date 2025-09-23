@@ -61,6 +61,13 @@ Key files:
 - `app/api/chat/tools/researchOrchestratorTool/finalSynthesis/agent.ts` (group synthesis via generateText)
 - `app/api/chat/tools/researchOrchestratorTool/finalSynthesisReducer/agent.ts` (merge/reducer via generateText)
 
+### Token & cost visibility (console)
+
+- The backend prints one concise line per run (no per-step token logs):
+  - `Thread <id>: <cumulative tokens> | <cached now> (<% now>) | run $<cost> (saved $<run> <run%>) | thread $<total> (saved $<total> <total%>)`.
+- Thread id comes from the request `id` sent by `useChat()`; the backend aggregates cumulative thread totals and shows the current run’s cached context snapshot.
+- Cached token counts prefer Anthropic provider metadata (`cache_read_input_tokens`, `cache_creation_input_tokens`); fallback to `cachedInputTokens` only if metadata is unavailable, avoiding double counting.
+
 ## Transport (what actually streams)
 
 The server writes typed data objects into the same SSE stream as model output. Each object has:
