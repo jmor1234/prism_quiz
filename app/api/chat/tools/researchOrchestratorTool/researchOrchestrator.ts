@@ -61,8 +61,8 @@ export interface ResearchExecutionResult {
 }
 
 // Map-Reduce Final Synthesis configuration (no envs; change here if needed)
-const FINAL_SYNTHESIS_PARTITION_TRIGGER = 15;
-const FINAL_SYNTHESIS_MAX_GROUP_SIZE = 15; // ensure each group ≤ 10 documents
+const FINAL_SYNTHESIS_PARTITION_TRIGGER = 20;
+const FINAL_SYNTHESIS_MAX_GROUP_SIZE = 20; // ensure each group ≤ 10 documents
 
 // Orchestration phases to be implemented in subsequent phases
 export async function orchestrateResearchExecution(
