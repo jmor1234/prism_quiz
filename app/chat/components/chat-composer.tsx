@@ -40,6 +40,12 @@ export function ChatComposer({ onSubmit, status, onStop, disabled, variant = "de
   }, []);
 
   const handleSubmit = useCallback(({ text, files }: { text?: string; files?: FileUIPart[] }, event: React.FormEvent<HTMLFormElement>) => {
+    // Block submission during streaming
+    if (status === "streaming") {
+      event.preventDefault();
+      return;
+    }
+
     const trimmed = text?.trim();
     if (trimmed) {
       onSubmit({ text: trimmed, files });
@@ -48,7 +54,7 @@ export function ChatComposer({ onSubmit, status, onStop, disabled, variant = "de
     }
     // Clear the composer after submitting
     event.currentTarget.reset();
-  }, [onSubmit]);
+  }, [onSubmit, status]);
 
   const handleStopClick = useCallback((e: React.MouseEvent) => {
     if (status === "streaming") {
@@ -88,6 +94,7 @@ export function ChatComposer({ onSubmit, status, onStop, disabled, variant = "de
               className="min-h-0 resize-none border-0 bg-transparent p-0 text-base placeholder:text-muted-foreground/70 focus-visible:ring-0 md:text-base"
               placeholder={isHero ? "Ask anything" : "Message…"}
               rows={1}
+              data-status={status}
             />
           </div>
           <VoiceButton 

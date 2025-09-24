@@ -564,6 +564,13 @@ export const PromptInputTextarea = ({
         return;
       }
 
+      // Check if streaming - prevent submission if so
+      const status = e.currentTarget.dataset.status;
+      if (status === "streaming") {
+        e.preventDefault();
+        return;
+      }
+
       // Submit on Enter (without Shift)
       e.preventDefault();
       const form = e.currentTarget.form;
@@ -736,11 +743,15 @@ export const PromptInputSubmit = ({
     Icon = <XIcon className="size-4" />;
   }
 
+  // During streaming, use type="button" to prevent form submission
+  // This allows the button to only trigger the stop action
+  const buttonType = status === "streaming" ? "button" : "submit";
+
   return (
     <Button
       className={cn("gap-1.5 rounded-lg", className)}
       size={size}
-      type="submit"
+      type={buttonType}
       variant={variant}
       {...props}
     >
