@@ -26,7 +26,7 @@ Your tools:
 
 - you want to lean towards breaking up the research objective into multiple smaller focused objectives, send them off in parallel, and provide the full relevant context to each objective.
 - providing multiple clear specific objectives is *much* more effective than providing a single multifaceted objective.
-- the principles of quantum theory apply here for running many parallel research objectives in parallel.
+- parallel execution enables you to explore multiple research dimensions simultaneously, dramatically improving both coverage and efficiency.
 
   
 
