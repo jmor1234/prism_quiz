@@ -1,7 +1,7 @@
 // components/research-progress.tsx
 "use client";
 
-import { Activity } from "lucide-react";
+import { Activity, Check, AlertCircle, Clock, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useMemo, useState, useEffect, useRef } from "react";
 import AnimatedNumber from "@/components/research/animated-number";
@@ -145,7 +145,24 @@ export function ResearchProgress({ state, className }: ResearchProgressProps) {
               'synthesizing': 'Synthesizing',
             };
             return (
-              <Task key={objectiveId} open={isOpen} onOpenChange={(open) => setOpenObjectives((prev) => ({ ...prev, [objectiveId]: open }))}>
+              <Task
+                key={objectiveId}
+                open={isOpen}
+                onOpenChange={(open) => setOpenObjectives((prev) => ({ ...prev, [objectiveId]: open }))}
+                className={cn(
+                  "motion-safe:animate-in motion-safe:fade-in-50 motion-safe:slide-in-from-top-1",
+                  `motion-safe:animation-delay-${idx * 50}`
+                )}
+              >
+                {/* Screen reader announcements */}
+                <div className="sr-only" aria-live="polite" aria-atomic="true">
+                  {objective.status === 'active' && objective.phase &&
+                    `Research objective ${idx + 1}: ${phaseLabels[objective.phase]}. ${percent}% complete.`}
+                </div>
+                <div className="sr-only" role="status" aria-live="polite">
+                  {objective.status === 'complete' && `Objective ${idx + 1} completed successfully.`}
+                  {objective.status === 'failed' && `Objective ${idx + 1} failed.`}
+                </div>
                 <TaskTrigger
                   title={objective.objective}
                   className="cursor-pointer rounded-md transition-all duration-200 hover:bg-accent/60 dark:hover:bg-accent/40 hover:ring-1 hover:ring-border/70 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 data-[state=closed]:px-3 data-[state=closed]:py-2.5 data-[state=open]:px-2.5 data-[state=open]:py-2 data-[state=open]:bg-accent/30 data-[state=open]:ring-1 data-[state=open]:ring-border/70 data-[state=open]:shadow-md"
@@ -167,16 +184,29 @@ export function ResearchProgress({ state, className }: ResearchProgressProps) {
                       </div>
                     </div>
                     <div className="shrink-0 flex items-center gap-2">
-                      {session?.status === 'active' && objective.status === 'active' && (
-                        <Loader className="text-muted-foreground" size={12} />
+                      {/* Status icon with consistent meaning */}
+                      {objective.status === 'complete' && (
+                        <div className="grid place-items-center h-5 w-5 rounded-full bg-emerald-500/10">
+                          <Check className="h-3 w-3 text-emerald-500" aria-label="Complete" />
+                        </div>
+                      )}
+                      {objective.status === 'failed' && (
+                        <div className="grid place-items-center h-5 w-5 rounded-full bg-red-500/10">
+                          <AlertCircle className="h-3 w-3 text-red-500" aria-label="Failed" />
+                        </div>
+                      )}
+                      {objective.status === 'active' && (
+                        <div className="grid place-items-center h-5 w-5 rounded-full bg-primary/10">
+                          <Sparkles className="h-3 w-3 text-primary animate-pulse" aria-label="Active" />
+                        </div>
+                      )}
+                      {objective.status === 'pending' && (
+                        <div className="grid place-items-center h-5 w-5 rounded-full bg-muted/50">
+                          <Clock className="h-3 w-3 text-muted-foreground" aria-label="Pending" />
+                        </div>
                       )}
                       {objective.phase && (
                         <span className="inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[11px] text-muted-foreground">
-                          <span className={cn("size-1.5 rounded-full",
-                            objective.status === 'complete' ? 'bg-emerald-500' :
-                            objective.status === 'failed' ? 'bg-red-500' :
-                            objective.status === 'active' ? 'bg-primary' : 'bg-muted-foreground'
-                          )} />
                           {phaseLabels[objective.phase]}
                         </span>
                       )}
@@ -185,30 +215,36 @@ export function ResearchProgress({ state, className }: ResearchProgressProps) {
                   </div>
                 </TaskTrigger>
                 <TaskContent>
-                  {/* Toggle to switch between concise pipeline and full details */}
-                  <div className="mb-2 flex items-center justify-end gap-2">
-                    <button
-                      type="button"
-                      aria-pressed={!showDetailsMap[objectiveId]}
-                      className={cn(
-                        "text-xs rounded-md border px-2 py-0.5",
-                        !showDetailsMap[objectiveId] ? "border-primary text-primary" : "border-border text-muted-foreground"
-                      )}
-                      onClick={() => setShowDetailsMap((m) => ({ ...m, [objectiveId]: false }))}
-                    >
-                      Pipeline
-                    </button>
-                    <button
-                      type="button"
-                      aria-pressed={!!showDetailsMap[objectiveId]}
-                      className={cn(
-                        "text-xs rounded-md border px-2 py-0.5",
-                        showDetailsMap[objectiveId] ? "border-primary text-primary" : "border-border text-muted-foreground"
-                      )}
-                      onClick={() => setShowDetailsMap((m) => ({ ...m, [objectiveId]: true }))}
-                    >
-                      Details
-                    </button>
+                  {/* Segmented control for Pipeline/Details toggle */}
+                  <div className="mb-2 flex items-center justify-end">
+                    <div className="inline-flex rounded-lg border bg-muted/30 p-0.5" role="group" aria-label="View mode">
+                      <button
+                        type="button"
+                        aria-pressed={!showDetailsMap[objectiveId]}
+                        className={cn(
+                          "text-xs rounded-md px-3 py-1 transition-all",
+                          !showDetailsMap[objectiveId]
+                            ? "bg-background text-foreground shadow-sm"
+                            : "text-muted-foreground hover:text-foreground"
+                        )}
+                        onClick={() => setShowDetailsMap((m) => ({ ...m, [objectiveId]: false }))}
+                      >
+                        Pipeline
+                      </button>
+                      <button
+                        type="button"
+                        aria-pressed={!!showDetailsMap[objectiveId]}
+                        className={cn(
+                          "text-xs rounded-md px-3 py-1 transition-all",
+                          showDetailsMap[objectiveId]
+                            ? "bg-background text-foreground shadow-sm"
+                            : "text-muted-foreground hover:text-foreground"
+                        )}
+                        onClick={() => setShowDetailsMap((m) => ({ ...m, [objectiveId]: true }))}
+                      >
+                        Details
+                      </button>
+                    </div>
                   </div>
                   {/* Contextual transient statuses at top for primary objective */}
                   {idx === 0 && (currentToolStatus || currentOperation || searchProgress) && (
