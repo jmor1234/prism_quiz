@@ -30,22 +30,25 @@ export const ToolStatus = ({ toolName, action, exiting = false, variant = "spinn
     >
       <div
         className={cn(
-          "not-prose mb-3 w-full rounded-xl border bg-gradient-to-b from-muted/30 to-muted/15 shadow-sm",
+          "not-prose mb-3 w-full rounded-xl border shadow-sm",
+          "bg-gradient-to-b from-blue-500/[0.05] to-blue-500/[0.02] border-blue-500/20",
+          "dark:from-violet-500/[0.08] dark:to-violet-500/[0.03] dark:border-violet-500/20",
           "motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-top-2",
           exiting && "motion-safe:animate-out motion-safe:fade-out-0 motion-safe:slide-out-to-top-2"
         )}
       >
         <div className={cn(
-          "flex items-center gap-2.5 px-3 py-2.5 text-sm",
-          exiting ? "text-muted-foreground/70" : "text-muted-foreground"
+          "flex items-center gap-2.5 px-3 py-2.5 text-sm animate-pulse",
+          "text-blue-700 dark:text-violet-400",
+          exiting && "opacity-70"
         )}>
           {variant === "spinner" ? (
-            <Loader size={14} className="mr-1" />
+            <Loader size={14} className="mr-1 text-blue-600 dark:text-violet-400" />
           ) : (
             <span className="mr-1 inline-flex w-4 justify-center" aria-hidden="true" />
           )}
           <span className="font-medium">{label}</span>
-          <span className="text-muted-foreground/80">
+          <span className="opacity-90">
             {action}
             {variant === "dots" && <Dots />}
           </span>
