@@ -401,6 +401,11 @@ export function ResearchProgress({ state, className }: ResearchProgressProps) {
                                 Synthesizing key findings across all sources
                               </div>
                             )}
+                            {phaseKey === 'synthesizing' && status === 'active' && (
+                              <div className="text-xs text-muted-foreground animate-pulse">
+                                Crafting comprehensive research summary
+                              </div>
+                            )}
                             {/* Keep fetched and high-signal metrics for earlier phases */}
                             {p?.details?.metrics && (p.details.metrics.fetched || p.details.metrics.highSignal) && (
                               <ChainOfThoughtSearchResults>
