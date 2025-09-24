@@ -390,15 +390,19 @@ export function ResearchProgress({ state, className }: ResearchProgressProps) {
                                 )}
                               </>
                             )}
-                            {/* Subphase descriptions with pulse animation instead of metrics */}
+                            {/* Subphase descriptions with pulse animation and dynamic counts */}
                             {phaseKey === 'analyzing' && status === 'active' && (
                               <div className="text-xs text-muted-foreground animate-pulse">
-                                Extracting insights from discovered documents
+                                {p?.details?.metrics?.analyzed?.total
+                                  ? `Analyzing ${p.details.metrics.analyzed.total} relevant documents`
+                                  : 'Extracting insights from discovered documents'}
                               </div>
                             )}
                             {phaseKey === 'consolidating' && status === 'active' && (
                               <div className="text-xs text-muted-foreground animate-pulse">
-                                Synthesizing key findings across all sources
+                                {p?.details?.metrics?.consolidated?.total
+                                  ? `Consolidating findings from ${p.details.metrics.consolidated.total} documents`
+                                  : 'Synthesizing key findings across all sources'}
                               </div>
                             )}
                             {phaseKey === 'synthesizing' && status === 'active' && (
