@@ -169,7 +169,7 @@ export function AppSidebar() {
                         </SidebarMenuButton>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <SidebarMenuAction showOnHover>
+                            <SidebarMenuAction showOnHover aria-label="More actions">
                               <MoreHorizontal />
                             </SidebarMenuAction>
                           </DropdownMenuTrigger>

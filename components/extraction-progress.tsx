@@ -126,9 +126,9 @@ function UrlProgress({ url, index }: UrlProgressProps) {
   const getDomain = (urlString: string) => {
     try {
       const domain = new URL(urlString).hostname.replace('www.', '');
-      return domain.length > 30 ? domain.substring(0, 30) + '...' : domain;
+      return domain.length > 30 ? domain.substring(0, 30) + '…' : domain;
     } catch {
-      return urlString.substring(0, 30) + '...';
+      return urlString.substring(0, 30) + '…';
     }
   };
 

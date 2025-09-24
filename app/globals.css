@@ -197,3 +197,31 @@
 .animation-delay-300 {
   animation-delay: 300ms;
 }
+
+/* Touch interaction optimization for mobile */
+@layer base {
+  /* Remove tap delay on all interactive elements */
+  button,
+  a,
+  input,
+  textarea,
+  select,
+  [role="button"],
+  [role="link"],
+  [tabindex]:not([tabindex="-1"]) {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: oklch(0 0 0 / 5%);
+  }
+
+  /* Dark mode tap highlight */
+  .dark button,
+  .dark a,
+  .dark input,
+  .dark textarea,
+  .dark select,
+  .dark [role="button"],
+  .dark [role="link"],
+  .dark [tabindex]:not([tabindex="-1"]) {
+    -webkit-tap-highlight-color: oklch(1 0 0 / 5%);
+  }
+}

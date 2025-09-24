@@ -15,6 +15,7 @@ export function AttachmentButton({ disabled }: AttachmentButtonProps) {
       onClick={attachments.openFileDialog}
       disabled={disabled}
       className="h-8 w-8 text-muted-foreground hover:text-foreground"
+      aria-label="Add attachments"
     >
       <PlusIcon className="h-4 w-4" />
     </PromptInputButton>

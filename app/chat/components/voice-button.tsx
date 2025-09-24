@@ -96,12 +96,13 @@ export function VoiceButton({ onTranscriptionComplete, disabled }: VoiceButtonPr
       onClick={isRecording ? stopRecording : startRecording}
       disabled={disabled || isTranscribing}
       className={`h-8 w-8 ${
-        isRecording 
-          ? 'text-red-500 hover:text-red-600' 
+        isRecording
+          ? 'text-red-500 hover:text-red-600'
           : isTranscribing
           ? 'text-blue-500'
           : 'text-muted-foreground hover:text-foreground'
       }`}
+      aria-label={isRecording ? "Stop recording" : "Start voice recording"}
     >
       {isTranscribing ? (
         <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
