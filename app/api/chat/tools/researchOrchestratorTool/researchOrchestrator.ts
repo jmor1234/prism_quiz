@@ -476,6 +476,12 @@ export async function orchestrateResearchExecution(
   }
   // (summary logs removed to match prior logging style)
 
+  // Mark analyzing phase as complete
+  emitPhaseProgress('analyzing', 'complete', 0.8, {
+    description: `Analyzed ${analyzedDocuments.length} documents`,
+    metrics: { analyzed: { current: analyzedDocuments.length, total: analyzedDocuments.length } },
+  });
+
   // Phase 6.5: Research Consolidation (batched)
   logger?.startLogSection('research_consolidation_phase', executionIndex);
   console.log(`\n🔄 [ResearchOrchestrator] Starting ResearchConsolidationPhase for ${analyzedDocuments.length} documents.`);
@@ -536,6 +542,12 @@ export async function orchestrateResearchExecution(
   if (consolidatedDocuments.length === 0) {
     throw new Error('Failed to consolidate any documents');
   }
+
+  // Mark consolidating phase as complete
+  emitPhaseProgress('consolidating', 'complete', 0.9, {
+    description: `Consolidated ${consolidatedDocuments.length} documents`,
+    metrics: { consolidated: { current: consolidatedDocuments.length, total: consolidatedDocuments.length } },
+  });
 
   logger?.logToolInternalStep('ResearchOrchestrator', 'CONTENT_PROCESSING_COMPLETED', {
     analyzedDocsCount: analyzedDocuments.length,
