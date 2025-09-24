@@ -12,7 +12,7 @@ export type ToolStatusProps = {
 };
 
 const Dots = () => (
-  <span className="ml-1 inline-flex items-center gap-1">
+  <span className="ml-2 inline-flex items-center gap-1">
     <span className="h-1.5 w-1.5 rounded-full bg-current/70 animate-bounce"></span>
     <span className="h-1.5 w-1.5 rounded-full bg-current/70 animate-bounce animation-delay-100"></span>
     <span className="h-1.5 w-1.5 rounded-full bg-current/70 animate-bounce animation-delay-200"></span>
