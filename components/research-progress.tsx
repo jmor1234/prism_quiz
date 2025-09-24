@@ -390,8 +390,19 @@ export function ResearchProgress({ state, className }: ResearchProgressProps) {
                                 )}
                               </>
                             )}
-                            {/* Subphase metrics */}
-                            {p?.details?.metrics && (
+                            {/* Subphase descriptions with pulse animation instead of metrics */}
+                            {phaseKey === 'analyzing' && status === 'active' && (
+                              <div className="text-xs text-muted-foreground animate-pulse">
+                                Extracting insights from discovered documents
+                              </div>
+                            )}
+                            {phaseKey === 'consolidating' && status === 'active' && (
+                              <div className="text-xs text-muted-foreground animate-pulse">
+                                Synthesizing key findings across all sources
+                              </div>
+                            )}
+                            {/* Keep fetched and high-signal metrics for earlier phases */}
+                            {p?.details?.metrics && (p.details.metrics.fetched || p.details.metrics.highSignal) && (
                               <ChainOfThoughtSearchResults>
                                 {p.details.metrics.fetched && (
                                   <ChainOfThoughtSearchResult>
@@ -401,16 +412,6 @@ export function ResearchProgress({ state, className }: ResearchProgressProps) {
                                 {p.details.metrics.highSignal && (
                                   <ChainOfThoughtSearchResult>
                                     High-signal {p.details.metrics.highSignal.ok}/{p.details.metrics.highSignal.total}
-                                  </ChainOfThoughtSearchResult>
-                                )}
-                                {p.details.metrics.analyzed && (
-                                  <ChainOfThoughtSearchResult>
-                                    Analyzed {p.details.metrics.analyzed.current}/{p.details.metrics.analyzed.total}
-                                  </ChainOfThoughtSearchResult>
-                                )}
-                                {p.details.metrics.consolidated && (
-                                  <ChainOfThoughtSearchResult>
-                                    Consolidated {p.details.metrics.consolidated.current}/{p.details.metrics.consolidated.total}
                                   </ChainOfThoughtSearchResult>
                                 )}
                               </ChainOfThoughtSearchResults>
