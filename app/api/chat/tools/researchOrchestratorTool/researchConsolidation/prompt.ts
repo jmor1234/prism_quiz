@@ -32,10 +32,9 @@ Consolidation policy:
 - Use only this analyzed document; do not introduce outside facts.
 - Identify the primary contribution: what this document uniquely adds toward the objective.
 - Prefer a small set of essential findings; deduplicate overlaps and collapse near-duplicates.
-- For each finding, keep one strongest, short evidence snippet; avoid long quotes.
 - Note important caveats/uncertainties if they materially affect the conclusion.
 - Treat newly identified entities as essential only if they materially advance the objective; otherwise omit.
-- Treat the “Summary of analysis” as context; do not restate it. Paraphrase concisely.
+- Treat the “Summary of analysis” as context; do not restate it. Paraphrase clearly, concisely and accurately.
 
 Distill essential contributions with evidence and significance.
 `;
