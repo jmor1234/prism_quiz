@@ -33,7 +33,7 @@ Analysis policy:
 - Extract findings that directly address the objective and focus areas; pay attention to key entities and their relationships.
 - Provide brief verbatim evidence (short quotes) near each finding; avoid long quotes.
 - Note contradictions, gaps, or caveats if present.
-- Paraphrase and be concise.
+- Aim to be generally clear and concise.
 - If evidence is insufficient for a finding, state that clearly.
 
 Extract key insights with supporting evidence and a concise summary.
