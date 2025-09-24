@@ -8,6 +8,7 @@ This document explains how long-running agentic tool processes produce rich, dyn
 - Two-world contract: stochastic planner (model) + deterministic tools (typed, side-effect explicit).
 - Progress is data: tools emit small, typed progress events that the UI renders immediately.
 - Progressive disclosure: show aggregates first (chips, bars), reveal detail on intent (expandables/virtualized lists).
+- Parallel exploration preserves cognitive diversity: simultaneous objectives avoid path dependence and confirmation bias that sequential research creates.
 
 ## Data contract (types that flow)
 
