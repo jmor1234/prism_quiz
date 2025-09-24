@@ -151,17 +151,17 @@ export const ChainOfThoughtStep = memo(
           "flex gap-2 text-sm rounded-md transition-all duration-200",
           statusStyles[status].text,
           statusStyles[status].container,
-          status !== "pending" && "pl-2 py-1.5 -ml-2",
+          status !== "pending" && "p-2",
           "fade-in-0 slide-in-from-top-2 animate-in",
           className
         )}
         {...props}
       >
-        <div className="relative mt-0.5">
+        <div className="relative mt-0.5 shrink-0">
           <StatusIcon className={cn("size-4", !Icon && statusStyles[status].iconClass)} />
           <div className="-mx-px absolute top-7 bottom-0 left-1/2 w-px bg-border" />
         </div>
-        <div className="flex-1 space-y-2 pr-2">
+        <div className="flex-1 space-y-2 min-w-0">
           <div>{label}</div>
           {description && (
             <div className="text-muted-foreground text-xs">{description}</div>
@@ -177,7 +177,7 @@ export type ChainOfThoughtSearchResultsProps = ComponentProps<"div">;
 
 export const ChainOfThoughtSearchResults = memo(
   ({ className, ...props }: ChainOfThoughtSearchResultsProps) => (
-    <div className={cn("flex items-center gap-2", className)} {...props} />
+    <div className={cn("flex flex-wrap items-center gap-2", className)} {...props} />
   )
 );
 
