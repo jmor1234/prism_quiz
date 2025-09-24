@@ -26,4 +26,6 @@ I would also like to use to use our intuition and explore curiosities together.
 
 After you implement new code *DO NOT DO an npm run build* it takes way too long, just do a linter and type check please. we do type checks with npx tsc --noEmit
 
+run this command for both: (npx tsc --noEmit && npm run lint)
+
 *do not ever use the any type as you WILL get an error and then youll have to waste time fixing it*
