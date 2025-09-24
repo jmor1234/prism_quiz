@@ -422,7 +422,7 @@ export function ThreadChat({ threadId, initialMessages }: { threadId: string; in
 
   return (
     <div className="flex flex-1 min-h-0 flex-col">
-      <Conversation className={`mx-auto w-full ${emptyState ? "max-w-[760px]" : "max-w-[760px]"} flex-1 min-h-0 px-4 md:px-6`}>
+      <Conversation className={`mx-auto w-full ${emptyState ? "max-w-[840px]" : "max-w-[840px]"} flex-1 min-h-0 px-4 md:px-6`}>
         <ConversationContent>
           {messages.length === 0 ? (
             <ConversationEmptyState>
