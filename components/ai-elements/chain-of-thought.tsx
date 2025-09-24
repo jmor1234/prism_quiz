@@ -11,7 +11,9 @@ import { cn } from "@/lib/utils";
 import {
   BrainIcon,
   ChevronDownIcon,
-  DotIcon,
+  CheckCircle2,
+  Circle,
+  Loader2,
   type LucideIcon,
 } from "lucide-react";
 import type { ComponentProps } from "react";
@@ -113,7 +115,7 @@ export type ChainOfThoughtStepProps = ComponentProps<"div"> & {
 export const ChainOfThoughtStep = memo(
   ({
     className,
-    icon: Icon = DotIcon,
+    icon: Icon,
     label,
     description,
     status = "complete",
@@ -121,26 +123,45 @@ export const ChainOfThoughtStep = memo(
     ...props
   }: ChainOfThoughtStepProps) => {
     const statusStyles = {
-      complete: "text-muted-foreground",
-      active: "text-foreground",
-      pending: "text-muted-foreground/50",
+      complete: {
+        text: "text-muted-foreground",
+        container: "bg-emerald-500/[0.05] dark:bg-emerald-500/10 border-l-2 border-emerald-500/30",
+        icon: CheckCircle2,
+        iconClass: "text-emerald-500",
+      },
+      active: {
+        text: "text-foreground",
+        container: "bg-primary/[0.08] dark:bg-primary/[0.12] border-l-2 border-primary/60",
+        icon: Loader2,
+        iconClass: "text-primary animate-spin",
+      },
+      pending: {
+        text: "text-muted-foreground/50",
+        container: "",
+        icon: Circle,
+        iconClass: "text-muted-foreground/30",
+      },
     };
+
+    const StatusIcon = Icon || statusStyles[status].icon;
 
     return (
       <div
         className={cn(
-          "flex gap-2 text-sm",
-          statusStyles[status],
+          "flex gap-2 text-sm rounded-md transition-all duration-200",
+          statusStyles[status].text,
+          statusStyles[status].container,
+          status !== "pending" && "pl-2 py-1.5 -ml-2",
           "fade-in-0 slide-in-from-top-2 animate-in",
           className
         )}
         {...props}
       >
         <div className="relative mt-0.5">
-          <Icon className="size-4" />
+          <StatusIcon className={cn("size-4", !Icon && statusStyles[status].iconClass)} />
           <div className="-mx-px absolute top-7 bottom-0 left-1/2 w-px bg-border" />
         </div>
-        <div className="flex-1 space-y-2">
+        <div className="flex-1 space-y-2 pr-2">
           <div>{label}</div>
           {description && (
             <div className="text-muted-foreground text-xs">{description}</div>
