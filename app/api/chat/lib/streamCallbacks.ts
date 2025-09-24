@@ -81,6 +81,20 @@ export function createStreamCallbacks(deps: StreamCallbackDeps) {
       if (thought && typeof thought === 'string') {
         logger.logAgentPlanning(thought);
       }
+
+      // Emit processing status after research tools complete
+      const hasResearchTool = step.toolCalls.some((tc) =>
+        tc.toolName === 'executeResearchPlanTool' ||
+        tc.toolName === 'targetedExtractionTool'
+      );
+
+      if (hasResearchTool) {
+        // Show thinking component while processing research results
+        logger.emitToolStatus({
+          toolName: 'thinkTool',
+          action: 'Processing research findings...'
+        });
+      }
     },
 
     /**
