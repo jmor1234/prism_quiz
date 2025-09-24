@@ -92,7 +92,7 @@ export function ResearchProgress({ state, className }: ResearchProgressProps) {
       {/* Subtle top accent line */}
       <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-primary/60 to-transparent" />
 
-      <div className="px-4 py-3.5">
+      <div className="px-1 py-3.5">
         {/* Header Section */}
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2.5">
