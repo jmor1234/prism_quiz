@@ -164,18 +164,18 @@ export class TokenEconomics {
       cacheCreateTokens = 0;
     }
 
-    // Total cached tokens counted for this request
-    const effectiveCacheTokens = cacheReadTokens + cacheCreateTokens;
-
-    // Calculate real costs in USD (cache reads and creations both cost the cache price)
-    const freshInputCost = (requestInputTokens / 1_000_000) * SONNET_4_INPUT_PRICE;
+    // Calculate real costs in USD with correct split:
+    // - Cache creations are a subset of current input and should be billed at cache price, not added to fresh again
+    const freshNonCacheInputTokens = Math.max(0, requestInputTokens - cacheCreateTokens);
+    const freshNonCacheCost = (freshNonCacheInputTokens / 1_000_000) * SONNET_4_INPUT_PRICE;
     const cacheReadCost = (cacheReadTokens / 1_000_000) * SONNET_4_CACHE_PRICE;
     const cacheCreateCost = (cacheCreateTokens / 1_000_000) * SONNET_4_CACHE_PRICE;
     const outputCost = (requestOutputTokens / 1_000_000) * SONNET_4_OUTPUT_PRICE;
-    const totalCostWithCache = freshInputCost + cacheReadCost + cacheCreateCost + outputCost;
+    const totalCostWithCache = freshNonCacheCost + cacheReadCost + cacheCreateCost + outputCost;
 
-    // Cost without caching (all input at full price)
-    const conversationContextTokens = requestInputTokens + effectiveCacheTokens;
+    // Context passed to the model this run = current input (includes creations) + cached reads
+    const conversationContextTokens = requestInputTokens + cacheReadTokens;
+    // Cost without caching (all context treated as fresh input)
     const allInputCost = (conversationContextTokens / 1_000_000) * SONNET_4_INPUT_PRICE;
     const totalCostWithoutCache = allInputCost + outputCost;
     const realCostSavings = totalCostWithoutCache - totalCostWithCache;
@@ -185,7 +185,8 @@ export class TokenEconomics {
     this.sessionTokens.totalInputTokens += requestInputTokens;
     this.sessionTokens.totalOutputTokens += requestOutputTokens;
     this.sessionTokens.totalTokens += requestTotalTokens;
-    this.sessionTokens.totalCachedTokens += effectiveCacheTokens;
+    // Track cached reads only for context accounting
+    this.sessionTokens.totalCachedTokens += cacheReadTokens;
     this.sessionTokens.totalCostSavings += realCostSavings;
     this.sessionTokens.totalActualCost += totalCostWithCache;
     this.sessionTokens.totalCostWithoutCache += totalCostWithoutCache;
@@ -214,7 +215,8 @@ export class TokenEconomics {
       t.totalInputTokens += requestInputTokens;
       t.totalOutputTokens += requestOutputTokens;
       t.totalTokens += requestTotalTokens;
-      t.totalCachedTokens += effectiveCacheTokens;
+      // Per-thread: cached reads and context-in only
+      t.totalCachedTokens += cacheReadTokens;
       t.totalContextTokens += conversationContextTokens;
       t.totalActualCost += totalCostWithCache;
       t.totalCostWithoutCache += totalCostWithoutCache;
@@ -244,8 +246,8 @@ export class TokenEconomics {
     }
 
     // Calculate cache metrics
-    const cacheMultiplier = requestInputTokens > 0 ? effectiveCacheTokens / requestInputTokens : 0;
-    const trueCacheEfficiency = conversationContextTokens > 0 ? effectiveCacheTokens / conversationContextTokens : 0;
+    const cacheMultiplier = requestInputTokens > 0 ? cacheReadTokens / requestInputTokens : 0;
+    const trueCacheEfficiency = conversationContextTokens > 0 ? cacheReadTokens / conversationContextTokens : 0;
 
     // Session metrics
     const sessionTotalContextTokens = this.sessionTokens.totalInputTokens + this.sessionTokens.totalCachedTokens;
@@ -257,7 +259,8 @@ export class TokenEconomics {
       request: {
         inputTokens: requestInputTokens,
         outputTokens: requestOutputTokens,
-        cachedTokens: effectiveCacheTokens,
+        // Expose cached reads for this run
+        cachedTokens: cacheReadTokens,
         totalTokens: requestTotalTokens,
         conversationTokens: conversationContextTokens,
         cacheMultiplier: Math.round(cacheMultiplier * 10) / 10,
@@ -296,26 +299,24 @@ export class TokenEconomics {
     const { request } = metrics;
     const th = metrics.thread;
 
-    if (th) {
-      // Single concise line: cumulative tokens, current cached snapshot, per-run cost, and thread cumulative cost
-      console.log(
-        `🧵 Thread ${th.id}: ${th.totalTokens.toLocaleString()} tokens ` +
-          `| ${request.cachedTokens.toLocaleString()} cached now (${request.trueCacheEfficiency}%) ` +
-          `| run $${request.actualCostUSD.toFixed(4)} (saved $${request.costSavingsUSD.toFixed(4)} ${request.costReductionPercent}%) ` +
-          `| thread $${th.actualCostUSD.toFixed(4)} (saved $${th.totalSavingsUSD.toFixed(4)} ${th.totalCostReductionPercent}%)`
-      );
-    } else {
-      // Fallback to a compact request-level summary when thread id is unavailable
-      const efficiency = request.conversationTokens > 0
-        ? Math.round((request.cachedTokens / request.conversationTokens) * 100)
-        : 0;
-      console.log(
-        `Run: ${request.totalTokens.toLocaleString()} tokens ` +
-          `| ${request.cachedTokens.toLocaleString()} cached (${efficiency}%) ` +
-          `| cost $${request.actualCostUSD.toFixed(4)} ` +
-          `| saved $${request.costSavingsUSD.toFixed(4)} (${request.costReductionPercent}%)`
-      );
-    }
+    const promptFresh = request.inputTokens;
+    const promptCached = request.cachedTokens;
+    const promptContextTokens = request.conversationTokens; // matches usage.promptTokens (full context)
+    const completionTokens = request.outputTokens;
+    const usageTotalTokens = request.totalTokens; // matches usage.totalTokens
+    const cachedPctOfPrompt = promptContextTokens > 0 ? Math.round((promptCached / promptContextTokens) * 100) : 0;
+
+    const prefix = th?.id ? `🧵 Thread ${th.id}: ` : 'Run: ';
+
+    console.log(
+      `${prefix}` +
+      `prompt ${promptContextTokens.toLocaleString()} | completion ${completionTokens.toLocaleString()} | total ${usageTotalTokens.toLocaleString()}`
+    );
+
+    console.log(
+      `${prefix}` +
+      `cached ${promptCached.toLocaleString()} (${cachedPctOfPrompt}% of prompt) | fresh ${promptFresh.toLocaleString()}`
+    );
   }
 
   /**
