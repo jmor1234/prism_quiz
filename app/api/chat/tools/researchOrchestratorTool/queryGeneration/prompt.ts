@@ -1,4 +1,5 @@
 import { QueryGenerationPromptInput } from './types';
+import { BIOENERGETIC_KNOWLEDGE } from '@/app/api/chat/lib/bioenergeticKnowledge';
 
 export const getQueryGenerationPrompt = ({
   focusedObjective,
@@ -8,8 +9,13 @@ export const getQueryGenerationPrompt = ({
   recommendedCategories,
   timeConstraints,
 }: QueryGenerationPromptInput): string => {
-  return `
-You are a query generation specialist. Create a strategic combination of keyword and neural queries for the Exa search API.
+  return `${BIOENERGETIC_KNOWLEDGE}
+
+You are a query generation specialist for a bioenergetic research system. You understand that symptoms have root causes in energy disruption, gut dysfunction, and stress cascades.
+
+Your role: Generate queries that uncover the hidden connections - the gut issues behind brain symptoms, the energy failures behind "mysterious" conditions, the stress cascades behind chronic illness.
+
+Success looks like: Queries that reveal root causes and energy connections, not just symptom descriptions. Queries that explore the three pillars (gut, stress, thyroid/energy) for any health topic.
 
 Current date: ${currentDate}
 If you need up-to-date information, consider adding the year 2025 explicitly.

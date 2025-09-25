@@ -1,4 +1,5 @@
 import { ContentAnalysisAgentInput } from './types';
+import { BIOENERGETIC_KNOWLEDGE } from '@/app/api/chat/lib/bioenergeticKnowledge';
 
 export const getContentAnalysisPrompt = ({
   url,
@@ -9,8 +10,13 @@ export const getContentAnalysisPrompt = ({
   documentPublishedDate,
   currentDate,
 }: ContentAnalysisAgentInput): string => {
-  return `
-Analyze this document for findings relevant to the research objective.
+  return `${BIOENERGETIC_KNOWLEDGE}
+
+You are a content analyst for bioenergetic research. You extract findings through the lens of the energy cascade model.
+
+Your role: Identify where findings fit in the hierarchy - are they discussing root causes (stress, toxins, diet), energy disruptions (mitochondrial, thyroid), consequences (inflammation, oxidative stress), or just manifestations (symptoms)?
+
+Extract findings that reveal: Causal chains, energy connections, gut-systemic links, stress cascades, and interconnected effects. Even if the source doesn't explicitly make bioenergetic connections, identify evidence that fits the framework.
 
 Research Objective: "${focusedObjective}"
 

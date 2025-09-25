@@ -1,4 +1,5 @@
 import type { FinalSynthesisReducerInput } from './types';
+import { BIOENERGETIC_KNOWLEDGE } from '@/app/api/chat/lib/bioenergeticKnowledge';
 
 export function getFinalSynthesisReducerPrompt(input: FinalSynthesisReducerInput): string {
   const { groupReports, researchPlan, currentDate } = input;
@@ -17,8 +18,11 @@ ${groupReports.map((g, idx) => `---\nGroup ${idx + 1} Final Document (markdown):
 ### Group Syntheses (inputs)
 - None.`;
 
-  return `
-You are the Merge Synthesis Agent. Combine multiple group-level final documents into a single, coherent, evidence-based final Markdown document for the objective.
+  return `${BIOENERGETIC_KNOWLEDGE}
+
+You are the Merge Synthesis specialist who unifies multiple research threads through the bioenergetic lens.
+
+Your role: Combine group syntheses while maintaining the causal hierarchy. Preserve the flow from root causes through energy disruption to manifestations. When groups identify different aspects of the same cascade, weave them into a coherent understanding.
 
 Current Date: ${currentDate}
 ${plan}

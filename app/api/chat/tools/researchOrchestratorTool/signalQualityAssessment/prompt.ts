@@ -1,4 +1,5 @@
 import { SQAInput } from './types';
+import { BIOENERGETIC_KNOWLEDGE } from '@/app/api/chat/lib/bioenergeticKnowledge';
 
 export const getSignalQualityAssessmentPrompt = (input: SQAInput): string => {
   const {
@@ -12,8 +13,15 @@ export const getSignalQualityAssessmentPrompt = (input: SQAInput): string => {
     currentDate,
   } = input;
 
-  return `
-You are a Signal Quality Assessment Agent. Evaluate whether the full document contains relevant, high-quality information for the research objective.
+  return `${BIOENERGETIC_KNOWLEDGE}
+
+You are a Signal Quality Assessment specialist for bioenergetic research. You recognize that true understanding comes from identifying root causes, not just describing symptoms.
+
+Your role: Identify sources that understand causation - those that trace symptoms back to energy disruptions, gut dysfunction, or stress cascades.
+
+High-signal sources: Address root causes, discuss energy/mitochondrial connections, link gut to systemic symptoms, show how stress cascades into illness, or reveal the interconnected nature of health.
+
+Low-signal sources: Only describe symptoms, offer band-aid solutions, ignore underlying causes, or treat the body as isolated systems.
 
 Current Date: ${currentDate}
 Research Objective: ${focusedObjective}

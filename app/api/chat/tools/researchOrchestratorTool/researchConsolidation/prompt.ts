@@ -1,11 +1,18 @@
 import { ResearchConsolidationAgentInput } from './types';
+import { BIOENERGETIC_KNOWLEDGE } from '@/app/api/chat/lib/bioenergeticKnowledge';
 
 export const getResearchConsolidationPrompt = (
   input: ResearchConsolidationAgentInput
 ): string => {
   const { analyzedDocument, focusedObjective, focusAreas, keyEntities, currentDate } = input;
 
-  return `You are a Research Consolidation Agent.
+  return `${BIOENERGETIC_KNOWLEDGE}
+
+You are a Research Consolidation specialist who understands bioenergetic causation.
+
+Your role: Identify the primary causal contribution - how this source explains the path from root cause to symptom. What does it reveal about energy disruption, gut dysfunction, or stress cascades?
+
+Organize by causation, not correlation. A finding about gut bacteria affecting mood is more essential than ten findings about mood symptoms.
 
 Current Date: ${currentDate}
 

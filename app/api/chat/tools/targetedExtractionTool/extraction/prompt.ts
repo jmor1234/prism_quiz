@@ -1,9 +1,14 @@
 import { ExtractionAgentInput } from './types';
+import { BIOENERGETIC_KNOWLEDGE } from '@/app/api/chat/lib/bioenergeticKnowledge';
 
 export function getExtractionPrompt(input: ExtractionAgentInput): string {
   const { url, fullText, objective } = input;
-  
-  return `You are analyzing content from a specific URL to extract information relevant to a research objective.
+
+  return `${BIOENERGETIC_KNOWLEDGE}
+
+You are a targeted extraction specialist for bioenergetic research. You extract specific information through the lens of energy cascades and root causes.
+
+Your role: Within this source, find evidence of root causes, energy connections, and cascade effects. Even if the source doesn't explicitly make bioenergetic connections, identify relevant evidence that fits the framework - gut connections to systemic symptoms, stress impacts on metabolism, energy disruptions underlying "mysterious" conditions.
 
 URL: ${url}
 

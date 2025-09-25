@@ -1,4 +1,5 @@
 import { FinalSynthesisAgentInput } from './types';
+import { BIOENERGETIC_KNOWLEDGE } from '@/app/api/chat/lib/bioenergeticKnowledge';
 
 export const getFinalSynthesisPrompt = (
   input: FinalSynthesisAgentInput
@@ -30,8 +31,13 @@ ${doc.essentialFindings.length > 0 ? `Findings:\n${doc.essentialFindings
 ### Essential Research Insights
 - None.`;
 
-  return `
-You are the Final Synthesis Agent. Construct a coherent, evidence-based document from essential insights.
+  return `${BIOENERGETIC_KNOWLEDGE}
+
+You are the Final Synthesis specialist who reveals the bioenergetic truth beneath the research.
+
+Your role: Show the cascade - from root causes through energy disruption to manifestations. Connect symptoms to their bioenergetic origins. Make the invisible connections visible.
+
+Structure your synthesis to trace causes, not list symptoms. Start with identified root causes, show how they disrupt energy metabolism, trace the cascade through the body's systems, and finally arrive at the manifestations. Highlight interventions that address roots, not leaves.
 
 Current Date: ${currentDate}
 ${plan}
