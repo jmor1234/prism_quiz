@@ -12,13 +12,25 @@ app/api/chat/
 │                               # - Receives `{ id, messages }`; uses `id` as threadId for per-thread accounting
 │                               # - Returns createUIMessageStreamResponse({ stream })
 │
-├── systemPrompt.ts             # Primary agent instructions (concise, non-prescriptive)
+├── systemPrompt.ts             # Primary agent instructions (bioenergetic specialist)
+│                               # - Includes full bioenergetic knowledge framework
+│                               # - Operates with calm conviction in fundamental health truths
 │                               # - Iterative/parallel research guidance
 │                               # - Decision/stop criteria, source quality heuristics
 │                               # - Response style and citation expectations
 │                               # - Split architecture: stable instructions (cached 1h) + dynamic context (fresh)
 │
+├── data/
+│   └── knowledge.md            # Bioenergetic knowledge framework (7,200 tokens)
+│                               # - Three pillars: gut health, stress, thyroid/energy
+│                               # - Hierarchical cascade model
+│                               # - Root causes → Energy → Consequences → Manifestations
+│
 ├── lib/
+│   ├── bioenergeticKnowledge.ts # Central loader for bioenergetic framework
+│   │                           # - Loads knowledge.md once at module init
+│   │                           # - Exports BIOENERGETIC_KNOWLEDGE for all prompts
+│   │                           # - Used universally across all agents
 │   ├── cacheManager.ts         # Three-tier Anthropic caching orchestration
 │   │                           # - Tool schema caching with 1h TTL
 │   │                           # - System prompt split (stable cached/dynamic fresh)
@@ -86,7 +98,9 @@ app/api/chat/
     │   └── extraction/
     │       ├── agent.ts          # Gemini structured extraction
     │       │                     # - **Emits extraction progress per URL**
-    │       ├── prompt.ts
+    │       ├── prompt.ts         # Extraction through bioenergetic lens
+    │       │                     # - Finds root causes and energy connections
+    │       │                     # - Includes full bioenergetic knowledge
     │       ├── schema.ts
     │       └── types.ts
     │
@@ -119,33 +133,51 @@ app/api/chat/
         │
         ├── queryGeneration/
         │   ├── agent.ts            # Anthropic (Claude) → keyword + neural queries
-        │   ├── prompt.ts           # Query strategy guidance
+        │   ├── prompt.ts           # Query strategy with bioenergetic lens
+        │   │                       # - Seeks root causes and energy connections
+        │   │                       # - Includes full bioenergetic knowledge
         │   ├── schema.ts           # QueryGenerationOutput schema
         │   └── types.ts
         │
         ├── signalQualityAssessment/
         │   ├── agent.ts            # Gemini 2.5 flash-lite → relevance on full text
-        │   ├── prompt.ts           # Assessment policy (concise rationale)
+        │   ├── prompt.ts           # Assessment through bioenergetic framework
+        │   │                       # - Prioritizes root causes over symptoms
+        │   │                       # - Includes full bioenergetic knowledge
         │   ├── schema.ts           # isHighSignal + rationale
         │   └── types.ts            # SQAInput (with fullText) / SQAOutput
         │
         ├── contentAnalysis/
         │   ├── agent.ts            # Gemini 2.5 flash-lite → findings + evidence + summary
         │   ├── constants.ts        # Concurrency limits and batch delays
-        │   ├── prompt.ts           # Analysis policy (evidence discipline; concision)
+        │   ├── prompt.ts           # Analysis through energy cascade lens
+        │   │                       # - Works with calm certainty
+        │   │                       # - Reveals bioenergetic patterns
+        │   │                       # - Includes full bioenergetic knowledge
         │   ├── schema.ts           # Structured analysis output schema
         │   └── types.ts
         │
         ├── researchConsolidation/
         │   ├── agent.ts            # Gemini 2.5 flash-lite → essential contributions
-        │   ├── prompt.ts           # Consolidation policy (primary contribution; minimal findings)
+        │   ├── prompt.ts           # Consolidation with calm clarity
+        │   │                       # - Identifies causal contributions
+        │   │                       # - Includes full bioenergetic knowledge
         │   ├── schema.ts           # Consolidated document schema
         │   └── types.ts
         │
-        └── finalSynthesis/
-            ├── agent.ts            # Anthropic (Claude) → final Markdown report (generateText)
-            ├── prompt.ts           # Synthesis policy; output format; disciplined citations (inline [Title](URL))
-            └── types.ts            # FinalSynthesisAgentInput / FinalSynthesisAgentOutput (finalDocument only)
+        ├── finalSynthesis/
+        │   ├── agent.ts            # Anthropic (Claude) → final Markdown report (generateText)
+        │   ├── prompt.ts           # Synthesis with calm authority
+        │   │                       # - Reveals bioenergetic cascades
+        │   │                       # - Includes full bioenergetic knowledge
+        │   └── types.ts
+        │
+        └── finalSynthesisReducer/
+            ├── agent.ts            # Anthropic (Claude) → merged synthesis
+            ├── prompt.ts           # Merge with calm assurance
+            │                       # - Recognizes convergent truths
+            │                       # - Includes full bioenergetic knowledge
+            └── types.ts
 
 ---
 

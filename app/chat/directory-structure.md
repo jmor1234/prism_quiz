@@ -1,5 +1,7 @@
 # app/chat/directory-structure.md
 
+**Bioenergetic UI Integration**: The frontend reflects the system's specialization in tracing health symptoms to root causes through energy metabolism. Key UI elements reinforce this worldview through subtle branding, specialized placeholders, and bioenergetic phase descriptions.
+
 app/chat/
 │
 ├── layout.tsx                  # App shell for the chat UI
@@ -27,9 +29,13 @@ app/chat/
 │                               # - Message editing & branching (user + assistant)
 │                               # - Saves UIMessage[] snapshots to Dexie on completion
 │                               # - Rehydrates on thread load/switch
+│                               # - Empty state: "Your bioenergetic research agent"
 │
 └── components/                 # Chat-local UI pieces
     ├── chat-composer.tsx       # Bottom composer (attachments, voice, theme toggle)
+    │                           # - Bioenergetic placeholders:
+    │                           #   • Hero: "Ask about symptoms, conditions, or health connections..."
+    │                           #   • Regular: "Continue exploring..."
     ├── attachment-button.tsx   # Opens file dialog and wires into attachment context
     ├── voice-button.tsx        # Mic capture → /api/transcribe → inserts text
 └── message-renderer.tsx    # Renders message parts (text, reasoning, file) using markdown; inline citations are standard [Title](URL) links (no claim-span overlays)
@@ -39,6 +45,10 @@ app/chat/
 ## Shared UI and primitives
 
 components/
+│
+├── app-sidebar.tsx             # Thread list + actions + Bioenergetic branding
+│                               # - Energy gradient icon with "Bioenergetic" label
+│                               # - Properly centers in collapsed state
 │
 ├── ai-elements/                # Streaming-aware building blocks (used by chat UI)
 │   ├── conversation.tsx        # Provides chat container + context
@@ -58,6 +68,12 @@ components/
 │                               #            Searching displays summary chips (queries|hits|unique) and sample domains
 │                               # - Details: ObjectiveDetails shows full objective text and full lists
 │                               # - Multiple objectives can be open simultaneously; calm defaults for concurrency
+│                               # - Bioenergetic phase labels:
+│                               #   • "Exploring connections" (query generation)
+│                               #   • "Gathering evidence" (searching)
+│                               #   • "Tracing energy cascades" (analyzing)
+│                               #   • "Connecting root causes" (consolidating)
+│                               #   • "Revealing bioenergetic patterns" (synthesizing)
 │
 ├── extraction-progress.tsx     # Task-based extraction progress component
 │                               # - Shows extraction session (X/Y URLs) as URL rows inside a Task
@@ -87,9 +103,13 @@ lib/
 └── utils.ts                    # Generic helpers
 
 app/
+├── layout.tsx                  # Root layout with bioenergetic metadata
+│                               # - Title: "Bioenergetic Research System"
+│                               # - Description: Health tracing through energy cascades
 └── globals.css                 # Global styles + custom animations
                                # - shimmer animation for progress bars
                                # - animation delays for staggered effects
+                               # - Bioenergetic cascade color variables (root→symptom gradient)
 
 hooks/
 └── use-mobile.ts               # Mobile detection helpers for responsive behaviors

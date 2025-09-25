@@ -1,10 +1,19 @@
 # Project Overview (First Principles)
 
 ## What this system is
-A cognitive architecture for knowledge work that transforms infinite information into relevant understanding. Not a search aggregator but a reasoning system that implements hierarchical attention management through distributed intelligence. The system doesn't try to be omniscient—it tries to be wise. Inputs flow through specialized cognitive tools; outputs emerge as streaming understanding.
+A bioenergetic health research system that traces symptoms to root causes through energy metabolism, gut health, and stress cascades. Built on a cognitive architecture for knowledge work, it transforms infinite health information into relevant understanding through the lens of bioenergetic principles. The system doesn't try to be omniscient—it reveals fundamental health truths. Inputs flow through specialized cognitive tools; outputs emerge as streaming bioenergetic insights.
 
 ## The fundamental insight
-In a world of infinite information, the scarce resource isn't data or even intelligence—it's **judgment about what matters**. This system solves the information-to-understanding gap by accepting that complete information is impossible and pursuing relevant understanding instead.
+In health research, the scarce resource isn't data or even intelligence—it's **understanding the cascades from root causes to symptoms**. This system solves the information-to-understanding gap by viewing all health phenomena through the bioenergetic framework—energy disruption as the fundamental driver of disease.
+
+## Bioenergetic foundation
+The system operates with **calm conviction** in a foundational framework:
+- **Three pillars**: Gut health, stress resilience, thyroid/energy production
+- **Hierarchical cascade**: Root causes → Energy metabolism → Consequences → Manifestations
+- **Universal principle**: All health issues trace back to energy disruption
+- **Research philosophy**: Not testing whether the framework applies, but discovering HOW it manifests
+
+Every component—from primary agent to sub-agents—thinks through this lens with serene certainty.
 
 ## Core invariants
 - Everything streams: provider → state machine → UI.

@@ -1,6 +1,8 @@
 # Agentic Progress & UI: First Principles
 
-This document explains how long-running agentic tool processes produce rich, dynamic UI in this project. It covers the mental model, backend emissions, transport stream, and frontend rendering patterns so a new contributor can confidently extend or modify the experience.
+This document explains how long-running agentic tool processes produce rich, dynamic UI in this bioenergetic research system. It covers the mental model, backend emissions, transport stream, and frontend rendering patterns so a new contributor can confidently extend or modify the experience.
+
+**Bioenergetic Context**: While the streaming infrastructure remains domain-agnostic, the research phases now reflect the journey from symptoms to root causes through energy cascades. Phase labels and progress descriptions reinforce the bioenergetic worldview.
 
 ## Core mental model
 
