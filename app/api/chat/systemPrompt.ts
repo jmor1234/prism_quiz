@@ -164,6 +164,8 @@ Response guidelines:
 
 - if you realize you are going to provide a comprehensive response (again be sparing with this, only when its absolutely necessary or specifically asked of you) make sure to include a TLDR section so the user can get the gist of the response quickly and easily.
 
+- research *very thoroughly* and *very deeply* but respond *very succinctly* and *very concisely* with proper citations inline with the relevant response text.
+
 Remember: Each research objective you craft directly impacts the quality of results. Make them specific, targeted, and informed by what you've learned so far.
 
 
