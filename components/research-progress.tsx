@@ -307,12 +307,12 @@ export function ResearchProgress({ state, className }: ResearchProgressProps) {
                             label={(() => {
                               const labels: Record<string, string> = {
                                 'objective': 'Objective',
-                                'query-generation': 'Query generation',
-                                'searching': 'Searching',
-                                'deduplicating': 'Deduplicating',
-                                'analyzing': 'Analyzing',
-                                'consolidating': 'Consolidating',
-                                'synthesizing': 'Synthesizing',
+                                'query-generation': 'Exploring connections',
+                                'searching': 'Gathering evidence',
+                                'deduplicating': 'Filtering sources',
+                                'analyzing': 'Tracing energy cascades',
+                                'consolidating': 'Connecting root causes',
+                                'synthesizing': 'Revealing bioenergetic patterns',
                               };
                               return labels[phaseKey];
                             })()}
@@ -394,20 +394,20 @@ export function ResearchProgress({ state, className }: ResearchProgressProps) {
                             {phaseKey === 'analyzing' && status === 'active' && (
                               <div className="text-xs text-muted-foreground animate-pulse">
                                 {p?.details?.metrics?.analyzed?.total
-                                  ? `Analyzing ${p.details.metrics.analyzed.total} relevant documents`
-                                  : 'Extracting insights from discovered documents'}
+                                  ? `Tracing cascades in ${p.details.metrics.analyzed.total} documents`
+                                  : 'Identifying energy disruptions and root causes'}
                               </div>
                             )}
                             {phaseKey === 'consolidating' && status === 'active' && (
                               <div className="text-xs text-muted-foreground animate-pulse">
                                 {p?.details?.metrics?.consolidated?.total
-                                  ? `Consolidating findings from ${p.details.metrics.consolidated.total} documents`
-                                  : 'Synthesizing key findings across all sources'}
+                                  ? `Connecting patterns across ${p.details.metrics.consolidated.total} sources`
+                                  : 'Mapping gut-brain-energy connections'}
                               </div>
                             )}
                             {phaseKey === 'synthesizing' && status === 'active' && (
                               <div className="text-xs text-muted-foreground animate-pulse">
-                                Crafting comprehensive research summary
+                                Revealing the bioenergetic cascade
                               </div>
                             )}
                             {/* Keep fetched and high-signal metrics for earlier phases */}

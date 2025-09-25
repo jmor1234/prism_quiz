@@ -95,8 +95,16 @@ export function AppSidebar() {
   return (
     <Sidebar side="left" variant="sidebar" collapsible="icon" className="border-0">
       <SidebarHeader>
-        <div className="flex items-center gap-2">
-          <ModeToggle />
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center gap-2 group-data-[collapsible=icon]:justify-center">
+            <div className="h-7 w-7 rounded-lg bg-gradient-to-br from-emerald-500/20 to-blue-500/20 flex items-center justify-center">
+              <MessageSquare className="h-4 w-4 text-primary" />
+            </div>
+            <span className="text-sm font-medium group-data-[collapsible=icon]:hidden">Bioenergetic</span>
+          </div>
+          <div className="flex group-data-[collapsible=icon]:justify-center">
+            <ModeToggle />
+          </div>
         </div>
       </SidebarHeader>
       <SidebarContent>

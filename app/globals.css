@@ -45,6 +45,13 @@
 
 :root {
   --radius: 0.625rem;
+
+  /* Bioenergetic cascade colors */
+  --bio-root: 142 40% 45%;        /* Deep green - root causes */
+  --bio-energy: 45 70% 50%;       /* Amber - energy metabolism */
+  --bio-consequence: 25 65% 55%;  /* Orange - consequences */
+  --bio-symptom: 10 60% 50%;      /* Red-orange - symptoms */
+
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);
@@ -79,6 +86,12 @@
 }
 
 .dark {
+  /* Bioenergetic cascade colors (adjusted for dark mode) */
+  --bio-root: 142 35% 50%;        /* Green - root causes */
+  --bio-energy: 45 65% 55%;       /* Amber - energy metabolism */
+  --bio-consequence: 25 60% 60%;  /* Orange - consequences */
+  --bio-symptom: 10 55% 55%;      /* Red-orange - symptoms */
+
   --background: #262624;
   --foreground: oklch(0.985 0 0);
   --card: oklch(0.205 0 0);

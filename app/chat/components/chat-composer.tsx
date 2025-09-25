@@ -92,7 +92,7 @@ export function ChatComposer({ onSubmit, status, onStop, disabled, variant = "de
           <div className="flex-1">
             <PromptInputTextarea
               className="min-h-0 resize-none border-0 bg-transparent p-0 text-base placeholder:text-muted-foreground/70 focus-visible:ring-0 md:text-base"
-              placeholder={isHero ? "Ask anything" : "Message…"}
+              placeholder={isHero ? "Ask about symptoms, conditions, or health connections..." : "Continue exploring..."}
               rows={1}
               data-status={status}
             />

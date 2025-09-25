@@ -428,7 +428,7 @@ export function ThreadChat({ threadId, initialMessages }: { threadId: string; in
             <ConversationEmptyState>
               <div className="mx-auto w-full max-w-[58rem] min-h-[60svh] grid place-items-center text-center px-3">
                 <div className="w-full">
-                  <h1 className="text-2xl md:text-3xl font-medium">What are you working on?</h1>
+                  <h1 className="text-2xl md:text-3xl font-medium">Your bioenergetic research agent</h1>
                   <div className="mt-6 md:mt-8">
                     <ChatComposer
                       onSubmit={sendMessage}

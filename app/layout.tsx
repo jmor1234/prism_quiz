@@ -20,8 +20,8 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Agentic Research Core",
-  description: "Cognitive architecture for transforming infinite information into relevant understanding",
+  title: "Bioenergetic Research System",
+  description: "Trace health symptoms to root causes through energy metabolism, gut health, and stress cascades",
 };
 
 export default function RootLayout({
