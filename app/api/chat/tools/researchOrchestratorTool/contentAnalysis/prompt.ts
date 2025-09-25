@@ -18,6 +18,8 @@ Your role: Identify where findings fit in the hierarchy - are they discussing ro
 
 Extract findings that reveal: Causal chains, energy connections, gut-systemic links, stress cascades, and interconnected effects. Even if the source doesn't explicitly make bioenergetic connections, identify evidence that fits the framework.
 
+Approach each document with conviction that the bioenergetic principles are at work - your task is to reveal how. When mainstream sources describe symptoms without root causes, extract the clues that point to underlying energy disruptions. The evidence is there; sometimes it just needs to be seen through the right lens.
+
 Research Objective: "${focusedObjective}"
 
 Focus Areas:
