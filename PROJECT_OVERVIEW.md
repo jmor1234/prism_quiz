@@ -72,9 +72,11 @@ These aren't missing features—they're philosophical commitments to simplicity 
 
 ## Caching architecture
 - Provider‑level prompt caching (Anthropic): caches static context at 90% cost discount and 2‑3x speed improvement.
-- Three‑tier strategy: tools (1h TTL) → system prompts (1h TTL for stable, fresh for dynamic) → conversation history (5m TTL).
+- Three‑tier strategy: tools (5m TTL) → system prompts (5m TTL for stable, fresh for dynamic) → conversation history (5m TTL).
+- **5-minute sliding window**: With messages every 1-2 minutes, caches refresh FREE when accessed within 5m, creating a perpetually warm cache that follows the conversation.
+- **37.5% cost reduction**: 5m TTL costs 1.25x base (vs 2x for 1h), while maintaining 0.1x read costs through the free refresh mechanism.
 - Tool order determinism: consistent schema ordering with cache breakpoint on final tool to cache entire toolset.
-- System prompt split: stable instructions cached across sessions; only date/context marked fresh.
+- System prompt split: stable instructions cached with 5m TTL; only date/context marked fresh.
 - History breakpoints: dynamic cache markers on conversation state, maintained across multi‑step agent loops.
 - Real‑time cost tracking: USD calculations using actual provider pricing, session‑level accumulation.
 - Thread‑aware accounting: backend aggregates tokens per thread (using the incoming request `id` as threadId) and also reports per‑run metrics.

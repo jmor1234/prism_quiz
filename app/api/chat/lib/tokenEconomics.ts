@@ -6,9 +6,10 @@
  */
 
 // Claude Sonnet 4 pricing (per million tokens)
-const SONNET_4_INPUT_PRICE = 3.00;     // $3.00/MTok
-const SONNET_4_CACHE_PRICE = 0.30;     // $0.30/MTok (90% discount)
-const SONNET_4_OUTPUT_PRICE = 15.00;   // $15.00/MTok
+const SONNET_4_INPUT_PRICE = 3.00;         // $3.00/MTok
+const SONNET_4_CACHE_READ_PRICE = 0.30;    // $0.30/MTok (90% discount for reads)
+const SONNET_4_CACHE_WRITE_5M_PRICE = 3.75; // $3.75/MTok (1.25x for 5m TTL writes)
+const SONNET_4_OUTPUT_PRICE = 15.00;       // $15.00/MTok
 
 interface SessionTokens {
   totalRequests: number;
@@ -168,8 +169,8 @@ export class TokenEconomics {
     // - Cache creations are a subset of current input and should be billed at cache price, not added to fresh again
     const freshNonCacheInputTokens = Math.max(0, requestInputTokens - cacheCreateTokens);
     const freshNonCacheCost = (freshNonCacheInputTokens / 1_000_000) * SONNET_4_INPUT_PRICE;
-    const cacheReadCost = (cacheReadTokens / 1_000_000) * SONNET_4_CACHE_PRICE;
-    const cacheCreateCost = (cacheCreateTokens / 1_000_000) * SONNET_4_CACHE_PRICE;
+    const cacheReadCost = (cacheReadTokens / 1_000_000) * SONNET_4_CACHE_READ_PRICE;
+    const cacheCreateCost = (cacheCreateTokens / 1_000_000) * SONNET_4_CACHE_WRITE_5M_PRICE;
     const outputCost = (requestOutputTokens / 1_000_000) * SONNET_4_OUTPUT_PRICE;
     const totalCostWithCache = freshNonCacheCost + cacheReadCost + cacheCreateCost + outputCost;
 
@@ -301,6 +302,8 @@ export class TokenEconomics {
 
     const promptFresh = request.inputTokens;
     const promptCached = request.cachedTokens;
+    const cacheReadTokens = metrics.cacheReadTokens || 0;
+    const cacheWriteTokens = metrics.cacheCreateTokens || 0;
     const promptContextTokens = request.conversationTokens; // matches usage.promptTokens (full context)
     const completionTokens = request.outputTokens;
     const usageTotalTokens = request.totalTokens; // matches usage.totalTokens
@@ -308,15 +311,28 @@ export class TokenEconomics {
 
     const prefix = th?.id ? `🧵 Thread ${th.id}: ` : 'Run: ';
 
+    // First line: basic token counts
     console.log(
       `${prefix}` +
       `prompt ${promptContextTokens.toLocaleString()} | completion ${completionTokens.toLocaleString()} | total ${usageTotalTokens.toLocaleString()}`
     );
 
-    console.log(
-      `${prefix}` +
-      `cached ${promptCached.toLocaleString()} (${cachedPctOfPrompt}% of prompt) | fresh ${promptFresh.toLocaleString()}`
-    );
+    // Second line: cache breakdown with costs
+    const costDisplay = `cost $${request.actualCostUSD.toFixed(4)} (saved $${request.costSavingsUSD.toFixed(4)} = ${request.costReductionPercent}%)`;
+
+    if (cacheWriteTokens > 0) {
+      // Show cache reads vs writes separately when we have writes
+      console.log(
+        `${prefix}` +
+        `cache reads ${cacheReadTokens.toLocaleString()} (${cachedPctOfPrompt}%) | cache writes ${cacheWriteTokens.toLocaleString()} | fresh ${promptFresh.toLocaleString()} | ${costDisplay}`
+      );
+    } else {
+      // Simpler output when no cache writes
+      console.log(
+        `${prefix}` +
+        `cached ${promptCached.toLocaleString()} (${cachedPctOfPrompt}%) | fresh ${promptFresh.toLocaleString()} | ${costDisplay}`
+      );
+    }
   }
 
   /**

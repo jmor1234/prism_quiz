@@ -18,7 +18,7 @@ app/api/chat/
 │                               # - Iterative/parallel research guidance
 │                               # - Decision/stop criteria, source quality heuristics
 │                               # - Response style and citation expectations
-│                               # - Split architecture: stable instructions (cached 1h) + dynamic context (fresh)
+│                               # - Split architecture: stable instructions (cached 5m) + dynamic context (fresh)
 │
 ├── data/
 │   └── knowledge.md            # Bioenergetic knowledge framework (7,200 tokens)
@@ -32,10 +32,11 @@ app/api/chat/
 │   │                           # - Exports BIOENERGETIC_KNOWLEDGE for all prompts
 │   │                           # - Used universally across all agents
 │   ├── cacheManager.ts         # Three-tier Anthropic caching orchestration
-│   │                           # - Tool schema caching with 1h TTL
-│   │                           # - System prompt split (stable cached/dynamic fresh)
+│   │                           # - Tool schema caching with 5m TTL (free refresh on active use)
+│   │                           # - System prompt split (stable cached 5m/dynamic fresh)
 │   │                           # - Conversation history caching with 5m TTL
 │   │                           # - Cache breakpoint management for multi-step loops
+│   │                           # - 5m sliding window: 37.5% cost reduction via free refreshes
 │   ├── tokenEconomics.ts       # Session/thread token tracking and cost analysis
 │   │                           # - Singleton pattern for session persistence
 │   │                           # - Real-time USD cost calculations with cache discounts
@@ -197,8 +198,9 @@ Notes:
 - All LLM phases wrapped with timeout + retry (withRetry): per-phase timeouts, exponential backoff, error classification.
 - Retry metrics aggregated per phase and logged in console summaries and trace files.
 - Three-tier Anthropic prompt caching delivers 60-80% cost reduction and 2-3x speed improvement with cache hit rates.
+- **5-minute TTL optimization**: With high-frequency messages (every 1-2 min), the cache constantly refreshes for FREE, creating a "sliding window" that follows conversations. This achieves 37.5% write cost reduction (1.25x vs 2x) while maintaining identical read performance (0.1x).
 - Cache performance tracked in real-time: efficiency percentages, USD cost calculations, session-level accumulation.
-- System prompt split ensures maximum cache reuse: stable instructions cached across sessions, only dynamic context marked fresh.
+- System prompt split ensures cache reuse: stable instructions cached with 5m TTL, only dynamic context marked fresh.
 - Exa crawl options (livecrawl/subpages) are handled by targetedExtractionTool, not the orchestrator pipeline.
 - URL canonicalization is applied before dedup and for final citations; original URLs are used for fetching.
 - Rate limiting for Exa is ~12.5 QPS (80 ms queue); batching is used across phases for throughput.
