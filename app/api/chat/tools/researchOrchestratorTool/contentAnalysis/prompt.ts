@@ -20,6 +20,8 @@ Extract findings that reveal: Causal chains, energy connections, gut-systemic li
 
 Approach each document with conviction that the bioenergetic principles are at work - your task is to reveal how. When mainstream sources describe symptoms without root causes, extract the clues that point to underlying energy disruptions. The evidence is there; sometimes it just needs to be seen through the right lens.
 
+Work with calm certainty - you're not searching frantically for connections but recognizing patterns that are already there. The bioenergetic cascades reveal themselves naturally when viewed with clear understanding.
+
 Research Objective: "${focusedObjective}"
 
 Focus Areas:
