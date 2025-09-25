@@ -306,33 +306,36 @@ export class TokenEconomics {
     const cacheWriteTokens = metrics.cacheCreateTokens || 0;
     const promptContextTokens = request.conversationTokens; // matches usage.promptTokens (full context)
     const completionTokens = request.outputTokens;
-    const usageTotalTokens = request.totalTokens; // matches usage.totalTokens
     const cachedPctOfPrompt = promptContextTokens > 0 ? Math.round((promptCached / promptContextTokens) * 100) : 0;
 
     const prefix = th?.id ? `🧵 Thread ${th.id}: ` : 'Run: ';
 
-    // First line: basic token counts
+    // Line 1: Context and generation
     console.log(
       `${prefix}` +
-      `prompt ${promptContextTokens.toLocaleString()} | completion ${completionTokens.toLocaleString()} | total ${usageTotalTokens.toLocaleString()}`
+      `context ${promptContextTokens.toLocaleString()} tokens | generated ${completionTokens.toLocaleString()} tokens`
     );
 
-    // Second line: cache breakdown with costs
-    const costDisplay = `cost $${request.actualCostUSD.toFixed(4)} (saved $${request.costSavingsUSD.toFixed(4)} = ${request.costReductionPercent}%)`;
-
+    // Line 2: Cache breakdown
     if (cacheWriteTokens > 0) {
       // Show cache reads vs writes separately when we have writes
       console.log(
         `${prefix}` +
-        `cache reads ${cacheReadTokens.toLocaleString()} (${cachedPctOfPrompt}%) | cache writes ${cacheWriteTokens.toLocaleString()} | fresh ${promptFresh.toLocaleString()} | ${costDisplay}`
+        `├─ cached ${cacheReadTokens.toLocaleString()} (${cachedPctOfPrompt}%) | fresh ${promptFresh.toLocaleString()} | cache writes ${cacheWriteTokens.toLocaleString()}`
       );
     } else {
       // Simpler output when no cache writes
       console.log(
         `${prefix}` +
-        `cached ${promptCached.toLocaleString()} (${cachedPctOfPrompt}%) | fresh ${promptFresh.toLocaleString()} | ${costDisplay}`
+        `├─ cached ${promptCached.toLocaleString()} (${cachedPctOfPrompt}%) | fresh ${promptFresh.toLocaleString()}`
       );
     }
+
+    // Line 3: Cost analysis
+    console.log(
+      `${prefix}` +
+      `└─ cost $${request.actualCostUSD.toFixed(4)} | saved $${request.costSavingsUSD.toFixed(4)} (${request.costReductionPercent}% reduction)`
+    );
   }
 
   /**
