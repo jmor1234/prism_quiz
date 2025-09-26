@@ -370,7 +370,7 @@ export async function orchestrateResearchExecution(
   }));
 
   const allSqa: SQAOutput[] = [];
-  const BATCH = 100;
+  const BATCH = 200;
   for (let i = 0; i < sqaInputs.length; i += BATCH) {
     const batch = sqaInputs.slice(i, i + BATCH);
     const batchNumber = Math.floor(i / BATCH) + 1;
@@ -498,7 +498,7 @@ export async function orchestrateResearchExecution(
     currentDate,
   }));
   const consolidatedDocuments: ConsolidatedDocument[] = [];
-  const CONS_BATCH = 100;
+  const CONS_BATCH = 200;
   for (let i = 0; i < consolidationInputs.length; i += CONS_BATCH) {
     const batch = consolidationInputs.slice(i, i + CONS_BATCH);
     const batchNumber = Math.floor(i / CONS_BATCH) + 1;
