@@ -8,7 +8,7 @@ import { withRetry } from '@/app/api/chat/lib/llmRetry';
 import { getPhaseTimeoutMs } from '@/app/api/chat/lib/retryConfig';
 
 const TOOL_NAME = 'finalSynthesisReducerAgent';
-const LLM_MODEL_NAME = 'gemini-2.5-flash-lite';
+const LLM_MODEL_NAME = 'gemini-2.5-flash-lite-latest';
 
 export async function generateMergedFinalReport(
   input: FinalSynthesisReducerInput
