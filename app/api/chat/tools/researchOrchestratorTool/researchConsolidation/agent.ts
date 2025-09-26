@@ -8,7 +8,7 @@ import { withRetry } from '@/app/api/chat/lib/llmRetry';
 import { getPhaseTimeoutMs } from '@/app/api/chat/lib/retryConfig';
 
 const TOOL_NAME = 'researchConsolidationAgent';
-const LLM_MODEL_NAME = 'gemini-2.5-flash-lite-latest';
+const LLM_MODEL_NAME = 'gemini-2.5-flash-lite-preview-09-2025';
 
 export async function consolidateDocument(
   input: ResearchConsolidationAgentInput

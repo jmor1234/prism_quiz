@@ -2,7 +2,7 @@ export const TOOL_NAME = 'targetedExtractionTool';
 export const AGENT_NAME = 'targetedExtractionAgent';
 
 // Model configuration
-export const EXTRACTION_MODEL = 'gemini-2.5-flash-lite-latest';
+export const EXTRACTION_MODEL = 'gemini-2.5-flash-lite-preview-09-2025';
 
 // Processing limits
 export const MAX_URLS_PER_REQUEST = 5;

@@ -43,7 +43,7 @@ Focus Areas: ${input.focusAreas.length} areas defined
     const { object: result, usage } = await withRetry(
       (signal) =>
         generateObject({
-          model: google('gemini-2.5-flash-lite-latest'),
+          model: google('gemini-2.5-flash-lite-preview-09-2025'),
           schema: queryGenerationOutputSchema,
           prompt: getQueryGenerationPrompt(inputWithDefaults),
           abortSignal: signal,
