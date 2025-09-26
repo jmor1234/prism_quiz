@@ -251,11 +251,17 @@ export class TokenEconomics {
 
       // Settled context detection algorithm
       if (opts?.hasTools) {
-        // Context inflated with ephemeral tool results
-        // Keep previous persistentContextTokens
+        // Tools active - estimate persistent context by subtracting tool overhead
+        // Primary agent input tokens already exclude tool internal LLM calls
+        // When tools run, context includes tool results (~30% overhead empirically)
+        const estimatedToolOverhead = Math.floor(requestInputTokens * 0.3);
+        t.persistentContextTokens = Math.max(
+          t.persistentContextTokens,
+          conversationContextTokens - estimatedToolOverhead
+        );
         t.hasToolsInCurrentRequest = true;
       } else {
-        // This is "settled" context - no tool results
+        // This is "settled" context - no tool results (most accurate)
         // UPDATE persistent context
         t.persistentContextTokens = conversationContextTokens;
         t.lastSettledContext = conversationContextTokens;

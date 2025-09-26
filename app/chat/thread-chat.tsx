@@ -19,12 +19,12 @@ import { ChatComposer } from "./components/chat-composer";
 import { MessageRenderer } from "./components/message-renderer";
 import { canonicalizeUrlForDedupe } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { ChevronDown, ChevronUp } from "lucide-react";
-import { saveThread, loadThread } from "@/lib/thread-store";
+import { ChevronDown, ChevronUp, ArrowRight } from "lucide-react";
+import { saveThread, loadThread, createThread } from "@/lib/thread-store";
 import { ResearchProgress } from "@/components/research-progress";
 import { ExtractionProgress } from "@/components/extraction-progress";
 import { ErrorBanner } from "@/components/error-banner";
-import { extractMessageContent } from "@/lib/message-utils";
+import { extractMessageContent, extractMessageText } from "@/lib/message-utils";
 import type {
   ResearchState,
   ResearchSessionData,
@@ -290,6 +290,52 @@ export function ThreadChat({ threadId, initialMessages }: { threadId: string; in
     },
   });
 
+  // Client-side token estimation (refresh-resilient fallback)
+  const estimatedTokens = useMemo(() => {
+    if (messages.length === 0) return 3000;
+    const allText = messages.map(m => extractMessageText(m)).join(' ');
+    return 3000 + Math.floor(allText.length / 4);
+  }, [messages]);
+
+  // Effective context warning (server data wins, client estimation as fallback)
+  const effectiveContextWarning = useMemo(() => {
+    if (contextWarning) return contextWarning;
+
+    if (estimatedTokens > 100_000) {
+      return {
+        level: 'critical' as const,
+        persistentTokens: estimatedTokens,
+        message: 'Conversation has reached maximum context size.',
+        timestamp: Date.now(),
+      };
+    }
+    if (estimatedTokens > 95_000) {
+      return {
+        level: 'critical' as const,
+        persistentTokens: estimatedTokens,
+        message: 'Conversation approaching maximum context limit.',
+        timestamp: Date.now(),
+      };
+    }
+    if (estimatedTokens > 85_000) {
+      return {
+        level: 'warning' as const,
+        persistentTokens: estimatedTokens,
+        message: 'Conversation context getting large. Consider starting a new thread soon.',
+        timestamp: Date.now(),
+      };
+    }
+    if (estimatedTokens > 70_000) {
+      return {
+        level: 'notice' as const,
+        persistentTokens: estimatedTokens,
+        message: 'Conversation context is growing. Keep an eye on length.',
+        timestamp: Date.now(),
+      };
+    }
+    return null;
+  }, [contextWarning, estimatedTokens]);
+
   // Compute planning indicator after status is defined
   useEffect(() => {
     const next = (
@@ -456,32 +502,49 @@ export function ThreadChat({ threadId, initialMessages }: { threadId: string; in
     setDismissedError(true);
   }, []);
 
+  const handleNewThread = useCallback(async () => {
+    const newThreadId = await createThread();
+    router.push(`/chat/${newThreadId}`);
+  }, [router]);
+
+  // Parse 413 errors to extract accurate token counts
+  useEffect(() => {
+    if (error && error.message) {
+      const is413 = error.message.includes('413');
+      const isContextError = error.message.toLowerCase().includes('context limit');
+
+      if (is413 || isContextError) {
+        try {
+          const jsonMatch = error.message.match(/\{.*\}/);
+          if (jsonMatch) {
+            const errorData = JSON.parse(jsonMatch[0]);
+            if (errorData.persistentTokens) {
+              setContextWarning({
+                level: 'critical',
+                persistentTokens: errorData.persistentTokens,
+                message: errorData.message || 'Conversation approaching maximum context limit.',
+                timestamp: Date.now(),
+              });
+            }
+          }
+        } catch {
+          if (estimatedTokens >= 100_000) {
+            setContextWarning({
+              level: 'critical',
+              persistentTokens: estimatedTokens,
+              message: 'Conversation has reached maximum context size.',
+              timestamp: Date.now(),
+            });
+          }
+        }
+      }
+    }
+  }, [error, estimatedTokens]);
+
   const emptyState = (messages as UIMessage[]).length === 0;
 
   return (
     <div className="flex flex-1 min-h-0 flex-col">
-      {/* Context warning banner */}
-      {contextWarning && (
-        <div className={`px-4 py-2 mb-2 rounded-md mx-4 md:mx-6 mt-2 ${
-          contextWarning.level === 'critical' ? 'bg-red-100 text-red-900 dark:bg-red-900/20 dark:text-red-400' :
-          contextWarning.level === 'warning' ? 'bg-orange-100 text-orange-900 dark:bg-orange-900/20 dark:text-orange-400' :
-          'bg-yellow-100 text-yellow-900 dark:bg-yellow-900/20 dark:text-yellow-400'
-        }`}>
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-medium">{contextWarning.message}</span>
-            <span className="text-xs">
-              {Math.round(contextWarning.persistentTokens / 1000)}k tokens
-            </span>
-          </div>
-          {contextWarning.level === 'critical' && (
-            <div className="mt-2">
-              <Button onClick={() => router.push('/chat')} size="sm" variant="outline">
-                Start New Thread
-              </Button>
-            </div>
-          )}
-        </div>
-      )}
       <Conversation className={`mx-auto w-full ${emptyState ? "max-w-[840px]" : "max-w-[840px]"} flex-1 min-h-0 px-4 md:px-6`}>
         <ConversationContent>
           {messages.length === 0 ? (
@@ -632,12 +695,59 @@ export function ThreadChat({ threadId, initialMessages }: { threadId: string; in
         <ConversationScrollButton />
       </Conversation>
 
-      {error && !dismissedError && (
-        <ErrorBanner
-          error={error}
-          onRetry={handleRetry}
-          onDismiss={handleDismissError}
-        />
+      {error && !dismissedError && (() => {
+        const isContextLimitError =
+          error.message?.includes('Context limit') ||
+          error.message?.includes('context limit') ||
+          error.message?.includes('413') ||
+          estimatedTokens >= 100_000;
+
+        if (isContextLimitError) {
+          return null;
+        }
+
+        return (
+          <ErrorBanner
+            error={error}
+            onRetry={handleRetry}
+            onDismiss={handleDismissError}
+          />
+        );
+      })()}
+
+      {messages.length > 0 && effectiveContextWarning && (
+        <div className="mx-auto w-full max-w-3xl px-3 pb-2">
+          <div className={`
+            relative overflow-hidden rounded-lg border backdrop-blur-sm
+            transition-all duration-200
+            ${effectiveContextWarning.level === 'critical'
+              ? 'bg-red-50/80 border-red-200 dark:bg-red-950/40 dark:border-red-900/50'
+              : effectiveContextWarning.level === 'warning'
+              ? 'bg-orange-50/80 border-orange-200 dark:bg-orange-950/40 dark:border-orange-900/50'
+              : 'bg-yellow-50/80 border-yellow-200 dark:bg-yellow-950/40 dark:border-yellow-900/50'
+            }
+          `}>
+            <div className="flex items-center justify-between gap-3 px-4 py-3">
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium">
+                  {effectiveContextWarning.message}
+                </p>
+                <p className="text-xs mt-0.5">
+                  {Math.round(effectiveContextWarning.persistentTokens / 1000)}k tokens used
+                </p>
+              </div>
+              <Button
+                onClick={handleNewThread}
+                size="sm"
+                variant="outline"
+                className="shrink-0 gap-1.5"
+              >
+                New thread
+                <ArrowRight className="size-3.5" />
+              </Button>
+            </div>
+          </div>
+        </div>
       )}
 
       {messages.length > 0 && (
