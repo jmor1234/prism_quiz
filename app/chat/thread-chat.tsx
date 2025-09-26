@@ -23,6 +23,8 @@ import { ChevronDown, ChevronUp } from "lucide-react";
 import { saveThread, loadThread } from "@/lib/thread-store";
 import { ResearchProgress } from "@/components/research-progress";
 import { ExtractionProgress } from "@/components/extraction-progress";
+import { ErrorBanner } from "@/components/error-banner";
+import { extractMessageContent } from "@/lib/message-utils";
 import type {
   ResearchState,
   ResearchSessionData,
@@ -77,6 +79,9 @@ export function ThreadChat({ threadId, initialMessages }: { threadId: string; in
 
   // Context warning state (separate from research state)
   const [contextWarning, setContextWarning] = useState<ContextWarningData | null>(null);
+
+  // Error state with dismissal tracking
+  const [dismissedError, setDismissedError] = useState(false);
 
   // Research progress state
   const [researchState, setResearchState] = useState<ResearchState>({
@@ -415,6 +420,7 @@ export function ThreadChat({ threadId, initialMessages }: { threadId: string; in
         sourcesByObjective: {},
       });
       setContextWarning(null);
+      setDismissedError(false);
     }
   }, [status]);
 
@@ -428,6 +434,27 @@ export function ThreadChat({ threadId, initialMessages }: { threadId: string; in
     }
     prevStatusRef.current = status;
   }, [status, messages, threadId]);
+
+  const handleRetry = useCallback(() => {
+    const lastUserMessage = [...messages].reverse().find(m => m.role === 'user');
+    if (lastUserMessage) {
+      const { text, files } = extractMessageContent(lastUserMessage);
+      setDismissedError(false);
+      stop();
+
+      if (text && files.length > 0) {
+        sendMessage({ text, files });
+      } else if (text) {
+        sendMessage({ text });
+      } else if (files.length > 0) {
+        sendMessage({ files });
+      }
+    }
+  }, [messages, sendMessage, stop]);
+
+  const handleDismissError = useCallback(() => {
+    setDismissedError(true);
+  }, []);
 
   const emptyState = (messages as UIMessage[]).length === 0;
 
@@ -605,6 +632,14 @@ export function ThreadChat({ threadId, initialMessages }: { threadId: string; in
         <ConversationScrollButton />
       </Conversation>
 
+      {error && !dismissedError && (
+        <ErrorBanner
+          error={error}
+          onRetry={handleRetry}
+          onDismiss={handleDismissError}
+        />
+      )}
+
       {messages.length > 0 && (
         <ChatComposer
           onSubmit={sendMessage}
@@ -612,10 +647,6 @@ export function ThreadChat({ threadId, initialMessages }: { threadId: string; in
           onStop={stop}
         />
       )}
-
-      {error ? (
-        <div className="p-2 text-center text-xs text-red-600">{error.message}</div>
-      ) : null}
     </div>
   );
 }
