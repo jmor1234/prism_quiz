@@ -97,6 +97,14 @@ export interface ToolStatusData {
   timestamp: number;
 }
 
+// Context warning for persistent token tracking
+export interface ContextWarningData {
+  level: 'notice' | 'warning' | 'critical';
+  persistentTokens: number;
+  message: string;
+  timestamp: number;
+}
+
 // Extraction session overview (persistent)
 export interface ExtractionSessionData {
   status: 'starting' | 'active' | 'complete' | 'error';
@@ -152,6 +160,7 @@ export type ResearchUIMessage = UIMessage<
     'search-progress': SearchProgressData;
     'research-error': ResearchErrorData;
     'tool-status': ToolStatusData;
+    'context-warning': ContextWarningData;
     'extraction-session': ExtractionSessionData;
     'extraction-url': ExtractionUrlData;
     'research-collection': ResearchCollectionData;
@@ -168,6 +177,7 @@ export type ResearchDataPart =
   | { type: 'data-search-progress'; data: SearchProgressData; transient: true }
   | { type: 'data-research-error'; data: ResearchErrorData; transient: true }
   | { type: 'data-tool-status'; data: ToolStatusData; transient: true }
+  | { type: 'data-context-warning'; data: ContextWarningData }
   | { type: 'data-extraction-session'; data: ExtractionSessionData; id?: string }
   | { type: 'data-extraction-url'; data: ExtractionUrlData; id: string }
   | { type: 'data-research-collection'; data: ResearchCollectionData; id: string }
@@ -189,4 +199,5 @@ export interface ResearchState {
   collections?: Record<string, { kind: ResearchCollectionKind; total?: number; items: { url: string; title?: string; domain?: string }[] }>;
   sourcesByObjective?: Record<string, { items: { url: string; title?: string; domain?: string }[] }>;
   // claimSpansByObjective removed
+  // Note: contextWarning is handled as local component state in thread-chat.tsx, not in this global state
 }

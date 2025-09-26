@@ -4,10 +4,12 @@ app/api/chat/
 │
 ├── route.ts                    # Main API route (POST) - CLEAN ORCHESTRATION
 │                               # - Initializes services (Logger, CacheManager, TokenEconomics)
+│                               # - **Context limit enforcement**: Checks persistent tokens before processing; blocks at 100k (HTTP 413)
 │                               # - Prepares cached components via CacheManager
-│                               # - Creates stream callbacks via dependency injection
+│                               # - Creates stream callbacks via dependency injection (includes hasToolsRef)
 │                               # - **Wraps streamText with createUIMessageStream for progress streaming**
 │                               # - **Injects stream writer into TraceLogger for tool progress emissions**
+│                               # - **Emits context warnings** (70k/85k/95k thresholds) at stream start
 │                               # - Configures streamText with tools and Anthropic options
 │                               # - Receives `{ id, messages }`; uses `id` as threadId for per-thread accounting
 │                               # - Returns createUIMessageStreamResponse({ stream })
@@ -40,11 +42,13 @@ app/api/chat/
 │   ├── tokenEconomics.ts       # Session/thread token tracking and cost analysis
 │   │                           # - Singleton pattern for session persistence
 │   │                           # - Real-time USD cost calculations with cache discounts
-│   │                           # - Cache efficiency metrics (multiplier, true efficiency)
-│   │                           # - Provider metadata preferred for cache counts; fallback to usage only if needed
-│   │                           # - Console output: single concise line per run (thread totals + this-run cost)
+│   │                           # - **Persistent context tracking**: Extracts PRIMARY AGENT tokens from anthropic.usage.input_tokens
+│   │                           # - **Settled context algorithm**: Freezes persistent count during tool use, updates only when settled
+│   │                           # - Context limit warnings at 70k/85k/95k; hard block at 100k tokens
+│   │                           # - Console output: 4-line format with persistent tokens, cache breakdown, cost analysis
 │   ├── streamCallbacks.ts      # Stream event handlers with dependency injection
-│   │                           # - onFinish: cache metrics and final response (per-thread + per-run)
+│   │                           # - Tool tracking: hasToolsRef tracks whether tools executed in current request
+│   │                           # - onFinish: cache metrics and final response (per-thread + per-run); passes hasTools flag
 │   │                           # - onError/onAbort: proper log finalization
 │   │                           # - prepareStep: cache breakpoint maintenance
 │   ├── traceLogger.ts          # Structured per-request tracing (AsyncLocalStorage)
@@ -55,6 +59,7 @@ app/api/chat/
 │   │                           #   • Research: emitSessionProgress, emitObjectiveProgress, emitPhaseProgress
 │   │                           #   • Extraction: emitExtractionSession, emitExtractionUrl
 │   │                           #   • Tools: emitToolStatus for think/memory tools
+│   │                           #   • Context: emitContextWarning for persistent token tracking
 │   │                           #   • Operations: emitOperation, emitSearchProgress, emitError
 │   │                           #   • Collections: emitCollectionUpdate(id, { kind, action, total?, items })
 │   │                           #   • Sources: emitSources(objectiveId?, { items }) for curated Sources tab

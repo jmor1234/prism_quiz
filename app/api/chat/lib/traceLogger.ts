@@ -396,6 +396,22 @@ export class TraceLogger {
         });
     }
 
+    // Emit context warning for persistent token tracking
+    emitContextWarning(data: {
+        level: 'notice' | 'warning' | 'critical';
+        persistentTokens: number;
+        message: string;
+    }): void {
+        if (!this.streamWriter) return;
+        this.streamWriter.write({
+            type: 'data-context-warning',
+            data: {
+                ...data,
+                timestamp: Date.now(),
+            }
+        });
+    }
+
     // Emit extraction session progress
     emitExtractionSession(data: {
         status: 'starting' | 'active' | 'complete' | 'error';

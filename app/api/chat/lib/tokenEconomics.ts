@@ -34,12 +34,22 @@ interface ThreadTokens {
   totalCostWithoutCache: number;
   totalCostSavings: number;
   startedAt: Date;
+  persistentContextTokens: number;
+  lastSettledContext: number;
+  hasToolsInCurrentRequest: boolean;
 }
 
 interface AnthropicCacheMetadata {
   cache_read_input_tokens?: number;
   cache_creation_input_tokens?: number;
   [key: string]: unknown;
+}
+
+interface AnthropicUsage {
+  input_tokens?: number;
+  output_tokens?: number;
+  cache_read_input_tokens?: number;
+  cache_creation_input_tokens?: number;
 }
 
 interface EventWithMetadata {
@@ -139,27 +149,40 @@ export class TokenEconomics {
   /**
    * Updates session metrics from a streaming event and returns cache metrics
    */
-  updateFromEvent(event: EventWithMetadata, opts?: { threadId?: string }): CacheMetrics {
-    // Extract token data
-    const requestInputTokens = event.totalUsage?.inputTokens || 0;
-    const requestOutputTokens = event.totalUsage?.outputTokens || 0;
+  updateFromEvent(event: EventWithMetadata, opts?: { threadId?: string; hasTools?: boolean }): CacheMetrics {
+    // CRITICAL: Extract PRIMARY AGENT tokens from anthropic.usage, not totalUsage aggregate
+    const providerMeta = event.providerMetadata as {
+      anthropic?: {
+        usage?: AnthropicUsage;
+        cache_read_input_tokens?: number;
+        cache_creation_input_tokens?: number;
+        [key: string]: unknown;
+      };
+    };
+
+    const anthropicUsage = providerMeta?.anthropic?.usage;
+
+    // Input: Primary agent only (excludes tool internal LLM calls)
+    const requestInputTokens = anthropicUsage?.input_tokens ?? event.totalUsage?.inputTokens ?? 0;
+
+    // Output: Actual response to user (use aggregate as this is the full response)
+    const requestOutputTokens = event.totalUsage?.outputTokens ?? 0;
     const requestTotalTokens = requestInputTokens + requestOutputTokens;
 
-    // Extract cache metadata (prefer provider metadata; fall back to usage)
-    const anthroMeta = event.providerMetadata?.anthropic;
+    // Extract cache metadata from anthropic.usage first, then fall back to metadata
     let cacheReadTokens = 0;
     let cacheCreateTokens = 0;
 
-    if (
-      anthroMeta &&
-      (typeof anthroMeta.cache_read_input_tokens === 'number' ||
-        typeof anthroMeta.cache_creation_input_tokens === 'number')
-    ) {
-      // Authoritative split when metadata present
-      cacheReadTokens = anthroMeta.cache_read_input_tokens || 0;
-      cacheCreateTokens = anthroMeta.cache_creation_input_tokens || 0;
+    if (anthropicUsage) {
+      // Prefer usage object for cache tokens
+      cacheReadTokens = anthropicUsage.cache_read_input_tokens || 0;
+      cacheCreateTokens = anthropicUsage.cache_creation_input_tokens || 0;
+    } else if (providerMeta?.anthropic) {
+      // Fallback to metadata fields
+      cacheReadTokens = providerMeta.anthropic.cache_read_input_tokens || 0;
+      cacheCreateTokens = providerMeta.anthropic.cache_creation_input_tokens || 0;
     } else {
-      // Fallback: treat usage.cachedInputTokens as cache reads only (unknown split)
+      // Last resort: use totalUsage cached tokens
       const usageCachedTokens = event.totalUsage?.cachedInputTokens || 0;
       cacheReadTokens = usageCachedTokens;
       cacheCreateTokens = 0;
@@ -174,8 +197,8 @@ export class TokenEconomics {
     const outputCost = (requestOutputTokens / 1_000_000) * SONNET_4_OUTPUT_PRICE;
     const totalCostWithCache = freshNonCacheCost + cacheReadCost + cacheCreateCost + outputCost;
 
-    // Context passed to the model this run = current input (includes creations) + cached reads
-    const conversationContextTokens = requestInputTokens + cacheReadTokens;
+    // CRITICAL: Context = input + cache reads + cache writes (all three components)
+    const conversationContextTokens = requestInputTokens + cacheReadTokens + cacheCreateTokens;
     // Cost without caching (all context treated as fresh input)
     const allInputCost = (conversationContextTokens / 1_000_000) * SONNET_4_INPUT_PRICE;
     const totalCostWithoutCache = allInputCost + outputCost;
@@ -209,6 +232,9 @@ export class TokenEconomics {
           totalCostWithoutCache: 0,
           totalCostSavings: 0,
           startedAt: new Date(),
+          persistentContextTokens: 3000,
+          lastSettledContext: 3000,
+          hasToolsInCurrentRequest: false,
         };
         this.threadTokens.set(id, t);
       }
@@ -222,6 +248,19 @@ export class TokenEconomics {
       t.totalActualCost += totalCostWithCache;
       t.totalCostWithoutCache += totalCostWithoutCache;
       t.totalCostSavings += realCostSavings;
+
+      // Settled context detection algorithm
+      if (opts?.hasTools) {
+        // Context inflated with ephemeral tool results
+        // Keep previous persistentContextTokens
+        t.hasToolsInCurrentRequest = true;
+      } else {
+        // This is "settled" context - no tool results
+        // UPDATE persistent context
+        t.persistentContextTokens = conversationContextTokens;
+        t.lastSettledContext = conversationContextTokens;
+        t.hasToolsInCurrentRequest = false;
+      }
 
       const tContext = t.totalContextTokens;
       const tEfficiency = tContext > 0 ? t.totalCachedTokens / tContext : 0;
@@ -286,7 +325,7 @@ export class TokenEconomics {
         totalCostReductionPercent: this.sessionTokens.totalCostWithoutCache > 0 ? Math.round((this.sessionTokens.totalCostSavings / this.sessionTokens.totalCostWithoutCache) * 100 * 10) / 10 : 0,
         uptimeMinutes: sessionUptime,
       },
-      metadata: anthroMeta,
+      metadata: providerMeta?.anthropic as AnthropicCacheMetadata | undefined,
       cacheCreateTokens,
       cacheReadTokens,
       thread: threadMetrics,
@@ -310,13 +349,27 @@ export class TokenEconomics {
 
     const prefix = th?.id ? `🧵 Thread ${th.id}: ` : 'Run: ';
 
+    // Get persistent context info
+    const persistentInfo = th?.id ? this.threadTokens.get(th.id) : null;
+    const persistentTokens = persistentInfo?.persistentContextTokens || 0;
+    const isSettled = persistentInfo ? !persistentInfo.hasToolsInCurrentRequest : false;
+
     // Line 1: Context and generation
     console.log(
       `${prefix}` +
       `context ${promptContextTokens.toLocaleString()} tokens | generated ${completionTokens.toLocaleString()} tokens`
     );
 
-    // Line 2: Cache breakdown
+    // Line 2: Persistent context (if available)
+    if (persistentInfo) {
+      console.log(
+        `${prefix}` +
+        `├─ persistent ${persistentTokens.toLocaleString()} tokens` +
+        (isSettled ? ' ✓ (settled)' : ' (tools active, not updated)')
+      );
+    }
+
+    // Line 3: Cache breakdown
     if (cacheWriteTokens > 0) {
       // Show cache reads vs writes separately when we have writes
       console.log(
@@ -331,11 +384,48 @@ export class TokenEconomics {
       );
     }
 
-    // Line 3: Cost analysis
+    // Line 4: Cost analysis
     console.log(
       `${prefix}` +
       `└─ cost $${request.actualCostUSD.toFixed(4)} | saved $${request.costSavingsUSD.toFixed(4)} (${request.costReductionPercent}% reduction)`
     );
+  }
+
+  /**
+   * Returns persistent context warning for a thread
+   */
+  getPersistentContextWarning(threadId: string): {
+    level: 'none' | 'notice' | 'warning' | 'critical' | 'blocked';
+    persistentTokens: number;
+    message: string;
+  } {
+    const thread = this.threadTokens.get(threadId);
+    if (!thread) {
+      return { level: 'none', persistentTokens: 0, message: '' };
+    }
+
+    const tokens = thread.persistentContextTokens;
+    let level: 'none' | 'notice' | 'warning' | 'critical' | 'blocked';
+    let message: string;
+
+    if (tokens > 100_000) {
+      level = 'blocked';
+      message = 'Context limit exceeded. Please start a new thread.';
+    } else if (tokens > 95_000) {
+      level = 'critical';
+      message = 'Conversation approaching maximum context limit.';
+    } else if (tokens > 85_000) {
+      level = 'warning';
+      message = 'Conversation context getting large. Consider starting a new thread soon.';
+    } else if (tokens > 70_000) {
+      level = 'notice';
+      message = 'Conversation context is growing. Keep an eye on length.';
+    } else {
+      level = 'none';
+      message = '';
+    }
+
+    return { level, persistentTokens: tokens, message };
   }
 
   /**

@@ -4,6 +4,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useChat } from "@ai-sdk/react";
 import type { UIMessage } from "ai";
 import {
@@ -30,6 +31,7 @@ import type {
   ResearchOperationData,
   SearchProgressData,
   ResearchErrorData,
+  ContextWarningData,
 } from "@/lib/streaming-types";
 import { Sources, SourcesTrigger, SourcesContent, SourceList } from "@/components/ai-elements/sources";
 import { ToolStatus } from "@/components/ai-elements/tool-status";
@@ -71,6 +73,11 @@ function useMessageVisibility(messages: UIMessage[]) {
 }
 
 export function ThreadChat({ threadId, initialMessages }: { threadId: string; initialMessages: UIMessage[] }) {
+  const router = useRouter();
+
+  // Context warning state (separate from research state)
+  const [contextWarning, setContextWarning] = useState<ContextWarningData | null>(null);
+
   // Research progress state
   const [researchState, setResearchState] = useState<ResearchState>({
     session: null,
@@ -201,6 +208,9 @@ export function ThreadChat({ threadId, initialMessages }: { threadId: string; in
             }));
             setToolStatusExiting(false);
           }, 1600);
+          break;
+        case 'data-context-warning':
+          setContextWarning(data as ContextWarningData);
           break;
         case 'data-extraction-session':
           setResearchState((prev) => ({
@@ -404,6 +414,7 @@ export function ThreadChat({ threadId, initialMessages }: { threadId: string; in
         collections: {},
         sourcesByObjective: {},
       });
+      setContextWarning(null);
     }
   }, [status]);
 
@@ -422,6 +433,28 @@ export function ThreadChat({ threadId, initialMessages }: { threadId: string; in
 
   return (
     <div className="flex flex-1 min-h-0 flex-col">
+      {/* Context warning banner */}
+      {contextWarning && (
+        <div className={`px-4 py-2 mb-2 rounded-md mx-4 md:mx-6 mt-2 ${
+          contextWarning.level === 'critical' ? 'bg-red-100 text-red-900 dark:bg-red-900/20 dark:text-red-400' :
+          contextWarning.level === 'warning' ? 'bg-orange-100 text-orange-900 dark:bg-orange-900/20 dark:text-orange-400' :
+          'bg-yellow-100 text-yellow-900 dark:bg-yellow-900/20 dark:text-yellow-400'
+        }`}>
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-medium">{contextWarning.message}</span>
+            <span className="text-xs">
+              {Math.round(contextWarning.persistentTokens / 1000)}k tokens
+            </span>
+          </div>
+          {contextWarning.level === 'critical' && (
+            <div className="mt-2">
+              <Button onClick={() => router.push('/chat')} size="sm" variant="outline">
+                Start New Thread
+              </Button>
+            </div>
+          )}
+        </div>
+      )}
       <Conversation className={`mx-auto w-full ${emptyState ? "max-w-[840px]" : "max-w-[840px]"} flex-1 min-h-0 px-4 md:px-6`}>
         <ConversationContent>
           {messages.length === 0 ? (

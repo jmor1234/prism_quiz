@@ -25,6 +25,8 @@ app/chat/
 │                               # - useChat() from AI SDK UI (streaming state machine)
 │                               # - onData callback handles research progress data parts
 │                               # - ResearchState management (session/objectives/phases/collections/sources)
+│                               # - **Context warning state**: Local state for persistent token warnings (70k/85k/95k/100k)
+│                               # - **Context warning banner**: Color-coded (yellow/orange/red) with token count and "Start New Thread" button
 │                               # - useMessageVisibility(): latest user→assistant pair focus
 │                               # - Message editing & branching (user + assistant)
 │                               # - Saves UIMessage[] snapshots to Dexie on completion
@@ -95,9 +97,10 @@ lib/
 │                               # - Research types: ResearchSessionData, ResearchObjectiveData, ResearchPhaseData
 │                               # - Extraction types: ExtractionSessionData, ExtractionUrlData
 │                               # - Tool status types: ToolStatusData for simple tools
+│                               # - **Context warning types**: ContextWarningData (level, persistentTokens, message, timestamp)
 │                               # - Transient types: ResearchOperationData, SearchProgressData, ResearchErrorData
 │                               # - ResearchUIMessage type with complete data part schemas
-│                               # - ResearchState for comprehensive frontend state management
+│                               # - ResearchState for comprehensive frontend state management (excludes contextWarning)
 │
 ├── message-utils.ts            # UIMessage text extraction (excludes reasoning where needed)
 └── utils.ts                    # Generic helpers

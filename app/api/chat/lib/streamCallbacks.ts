@@ -50,13 +50,14 @@ interface StreamCallbackDeps {
   cache: CacheManager;
   stepIndexRef: { current: number };
   threadId?: string;
+  hasToolsRef: { current: boolean };
 }
 
 /**
  * Creates all streaming event callbacks with proper dependency injection
  */
 export function createStreamCallbacks(deps: StreamCallbackDeps) {
-  const { logger, economics, cache, stepIndexRef, threadId } = deps;
+  const { logger, economics, cache, stepIndexRef, threadId, hasToolsRef } = deps;
 
   return {
     /**
@@ -64,6 +65,11 @@ export function createStreamCallbacks(deps: StreamCallbackDeps) {
      */
     onStepFinish: (step: StepFinishEvent) => {
       stepIndexRef.current += 1;
+
+      // Track if tools were used in this request
+      if (step.toolCalls.length > 0) {
+        hasToolsRef.current = true;
+      }
 
       // Log step details to trace
       logger.logToolInternalStep('primary_agent', 'STEP_FINISH', {
@@ -101,9 +107,15 @@ export function createStreamCallbacks(deps: StreamCallbackDeps) {
      * Handles stream completion with metrics and logging
      */
     onFinish: async (event: FinishEvent) => {
-      // Calculate and log cache metrics
-      const metrics = economics.updateFromEvent(event as EventWithMetadata, { threadId });
+      // Calculate and log cache metrics (pass tool usage flag)
+      const metrics = economics.updateFromEvent(event as EventWithMetadata, {
+        threadId,
+        hasTools: hasToolsRef.current
+      });
       economics.formatConsoleOutput(metrics);
+
+      // Reset tool flag for next request
+      hasToolsRef.current = false;
 
       // Log cache performance to trace
       logger.logToolInternalStep('primary_agent', 'CACHE_PERFORMANCE', {

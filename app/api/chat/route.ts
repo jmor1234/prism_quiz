@@ -36,6 +36,23 @@ export async function POST(req: Request) {
   const cache = new CacheManager();
   const economics = TokenEconomics.getInstance();
 
+  // Check persistent context warning before processing
+  if (id) {
+    const contextWarning = economics.getPersistentContextWarning(id);
+
+    // Block if over 100k tokens
+    if (contextWarning.level === 'blocked') {
+      return new Response(JSON.stringify({
+        error: 'Context limit exceeded',
+        message: 'This conversation has reached the maximum context size. Please start a new thread.',
+        persistentTokens: contextWarning.persistentTokens
+      }), {
+        status: 413,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+  }
+
   return await asyncLocalStorage.run(logger, async () => {
     // Format date for system prompt
     const currentDate = new Date();
@@ -61,12 +78,14 @@ export async function POST(req: Request) {
 
     // Create stream callbacks with dependency injection
     const stepIndexRef = { current: 0 };
+    const hasToolsRef = { current: false };
     const callbacks = createStreamCallbacks({
       logger,
       economics,
       cache,
       stepIndexRef,
       threadId: id,
+      hasToolsRef,
     });
 
     // Create UI message stream with research progress capabilities
@@ -76,6 +95,18 @@ export async function POST(req: Request) {
         logger.setStreamWriter({
           write: (data: unknown) => writer.write(data as Parameters<typeof writer.write>[0])
         });
+
+        // Emit context warning if needed
+        if (id) {
+          const contextWarning = economics.getPersistentContextWarning(id);
+          if (contextWarning.level !== 'none') {
+            logger.emitContextWarning({
+              level: contextWarning.level as 'notice' | 'warning' | 'critical',
+              persistentTokens: contextWarning.persistentTokens,
+              message: contextWarning.message
+            });
+          }
+        }
 
         // Stream with clean configuration (preserving all existing config)
         const result = streamText({
