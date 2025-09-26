@@ -69,11 +69,11 @@ Key files:
 
 - The backend prints a 4-line concise format per run:
   - Line 1: `context X tokens | generated Y tokens`
-  - Line 2: `├─ persistent Z tokens ✓ (settled)` or `(tools active, not updated)`
+  - Line 2: `├─ persistent Z tokens ✓ (settled)` or `(estimated during tool use)`
   - Line 3: `├─ cached A (B%) | fresh C | cache writes D`
   - Line 4: `└─ cost $E | saved $F (G% reduction)`
 - **Persistent context tracking**: Extracts PRIMARY AGENT tokens from `anthropic.usage.input_tokens` (not aggregate with tool internals).
-- **Settled context algorithm**: Persistent count freezes during tool use, updates only when tools inactive (no ephemeral inflation).
+- **Estimation with overhead algorithm**: Estimates persistent context during tool use by subtracting ~30% tool overhead, updates precisely when settled (no ephemeral inflation).
 - Thread id comes from the request `id` sent by `useChat()`; the backend aggregates cumulative thread totals and shows per-run metrics.
 - Cached token counts prefer Anthropic provider metadata (`cache_read_input_tokens`, `cache_creation_input_tokens`); fallback to `cachedInputTokens` only if metadata is unavailable, avoiding double counting.
 
@@ -89,7 +89,7 @@ This enables low-latency, incremental UI updates without extra HTTP calls.
 ## Frontend flow (how events render)
 
 1) `useChat()` (`app/chat/thread-chat.tsx`) receives events in `onData` and updates a `ResearchState` store (session/objectives/phases/collections/sources).
-2) **Context warning banner**: Separate local state displays color-coded warnings (yellow/orange/red) at 70k/85k/95k thresholds with token count and "Start New Thread" button.
+2) **Context warning banner**: Multi-layer defense system displays progressive warnings (yellow/orange/red) at 70k/85k/95k thresholds. Positioned above composer with backdrop blur, token count, and "New thread" CTA that explicitly creates fresh thread. Uses `effectiveContextWarning` (server data preferred, client estimation fallback for refresh resilience). Parses 413 errors for accurate token counts. Suppresses raw error banner for context limits.
 3) `components/research-progress.tsx` renders a Task‑based UI:
    - Pipeline (default): Objective step (full objective + chips for key entities/focus areas/categories), Query‑generation query chips with "Show all" (opens Details), Searching summary chips (queries|hits|unique) and sample domains.
    - Details (on demand): `ObjectiveDetails` full timeline; long lists virtualized; full objective context and full query list are shown.

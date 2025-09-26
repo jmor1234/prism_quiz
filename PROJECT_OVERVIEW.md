@@ -104,13 +104,13 @@ Each tool solves a specific cognitive limitation while preserving the primary ag
 - Phase summaries include duration and compact stats.
 - Never log raw long content; sample sparsely; prefer counts and sizes.
 - Real‑time cache performance metrics: efficiency percentages, cost savings in USD, session‑level and thread‑level accumulation.
-- **Persistent context tracking**: Tracks primary agent tokens (not aggregate with tool internals); uses "settled context" algorithm—context freezes during tool use, updates only when tools inactive. Prevents runaway costs on long conversations.
+- **Persistent context tracking**: Tracks primary agent tokens (not aggregate with tool internals); uses "estimation with overhead" algorithm—estimates persistent context during tool use by subtracting ~30% tool overhead, updates precisely when settled. Prevents runaway costs on long conversations.
 - Token economics visibility: concise console summary per run:
   - Line 1: `context X tokens | generated Y tokens`
-  - Line 2: `├─ persistent Z tokens ✓ (settled)` or `(tools active, not updated)`
+  - Line 2: `├─ persistent Z tokens ✓ (settled)` or `(estimated during tool use)`
   - Line 3: `├─ cached A (B%) | fresh C | cache writes D`
   - Line 4: `└─ cost $E | saved $F (G% reduction)`
-- Context limit enforcement: Hard block at 100k tokens with warnings at 70k/85k/95k thresholds.
+- Context limit enforcement: Multi-layer defense system with hard block at 100k tokens and progressive warnings at 70k/85k/95k thresholds. Banner positioned above composer with contextual feedback and "New thread" CTA. Client-side estimation provides refresh resilience when backend data unavailable.
 
 ## UX principles
 - Lead with the direct answer; support with minimal citations.

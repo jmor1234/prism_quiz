@@ -43,8 +43,8 @@ app/api/chat/
 │   │                           # - Singleton pattern for session persistence
 │   │                           # - Real-time USD cost calculations with cache discounts
 │   │                           # - **Persistent context tracking**: Extracts PRIMARY AGENT tokens from anthropic.usage.input_tokens
-│   │                           # - **Settled context algorithm**: Freezes persistent count during tool use, updates only when settled
-│   │                           # - Context limit warnings at 70k/85k/95k; hard block at 100k tokens
+│   │                           # - **Estimation with overhead algorithm**: Estimates persistent context during tool use by subtracting ~30% overhead, updates precisely when settled
+│   │                           # - Context limit warnings at 70k/85k/95k; hard block at 100k tokens (HTTP 413)
 │   │                           # - Console output: 4-line format with persistent tokens, cache breakdown, cost analysis
 │   ├── streamCallbacks.ts      # Stream event handlers with dependency injection
 │   │                           # - Tool tracking: hasToolsRef tracks whether tools executed in current request

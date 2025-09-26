@@ -25,8 +25,10 @@ app/chat/
 │                               # - useChat() from AI SDK UI (streaming state machine)
 │                               # - onData callback handles research progress data parts
 │                               # - ResearchState management (session/objectives/phases/collections/sources)
-│                               # - **Context warning state**: Local state for persistent token warnings (70k/85k/95k/100k)
-│                               # - **Context warning banner**: Color-coded (yellow/orange/red) with token count and "Start New Thread" button
+│                               # - **Context warning state**: Multi-layer defense with server streaming + client estimation fallback (3000 base + ~4 chars/token)
+│                               # - **effectiveContextWarning**: Prefers server data, falls back to estimation for refresh resilience
+│                               # - **Context warning banner**: Positioned above composer with progressive colors (yellow/orange/red), backdrop blur, token count, and "New thread" CTA
+│                               # - **413 error parsing**: Extracts accurate token count from backend error responses, suppresses raw error banner for context limits
 │                               # - **Error recovery**: dismissedError state; handleRetry extracts last user message (text+files) and resends
 │                               # - useMessageVisibility(): latest user→assistant pair focus
 │                               # - Message editing & branching (user + assistant)
