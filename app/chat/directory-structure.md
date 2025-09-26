@@ -27,6 +27,7 @@ app/chat/
 │                               # - ResearchState management (session/objectives/phases/collections/sources)
 │                               # - **Context warning state**: Local state for persistent token warnings (70k/85k/95k/100k)
 │                               # - **Context warning banner**: Color-coded (yellow/orange/red) with token count and "Start New Thread" button
+│                               # - **Error recovery**: dismissedError state; handleRetry extracts last user message (text+files) and resends
 │                               # - useMessageVisibility(): latest user→assistant pair focus
 │                               # - Message editing & branching (user + assistant)
 │                               # - Saves UIMessage[] snapshots to Dexie on completion
@@ -80,6 +81,12 @@ components/
 ├── extraction-progress.tsx     # Task-based extraction progress component
 │                               # - Shows extraction session (X/Y URLs) as URL rows inside a Task
 │
+├── error-banner.tsx            # Error recovery UI component
+│                               # - Classifies errors: transient (overload, timeout, network) vs permanent (context limit, auth)
+│                               # - Transient: yellow/orange banner with Retry button
+│                               # - Permanent: red banner, no retry (would fail again)
+│                               # - Positioned above composer for immediate visibility after send
+│
 ├── app-sidebar.tsx             # Thread list + actions (New, Rename, Delete, Delete all)
 └── ui/                         # shadcn/ui primitives (button, input, sheet, sidebar, etc.)
 
@@ -102,7 +109,10 @@ lib/
 │                               # - ResearchUIMessage type with complete data part schemas
 │                               # - ResearchState for comprehensive frontend state management (excludes contextWarning)
 │
-├── message-utils.ts            # UIMessage text extraction (excludes reasoning where needed)
+├── message-utils.ts            # UIMessage content extraction utilities
+│                               # - extractMessageText: text parts only (excludes reasoning)
+│                               # - extractMessageFiles: file parts only
+│                               # - extractMessageContent: both text+files for retry
 └── utils.ts                    # Generic helpers
 
 app/
@@ -150,7 +160,8 @@ hooks/
 - useChat() manages streaming states (idle→loading→streaming→idle)
 - Edit controls hidden while streaming; single edit active at a time
 - Copy excludes reasoning by default; citations rendered via ai-elements/sources when present
- - Planning gaps are covered by `ToolStatus` with a 200 ms deferred show to avoid flash; exits animate
+- Planning gaps are covered by `ToolStatus` with a 200 ms deferred show to avoid flash; exits animate
+- **Error recovery**: transient errors show banner above composer with one-click retry; permanent errors show dismissal only; errors auto-clear on new stream
 
 ---
 
