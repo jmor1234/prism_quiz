@@ -545,21 +545,16 @@ export function ThreadChat({ threadId, initialMessages }: { threadId: string; in
 
   return (
     <div className="flex flex-1 min-h-0 flex-col">
-      <Conversation className={`mx-auto w-full ${emptyState ? "max-w-[840px]" : "max-w-[840px]"} flex-1 min-h-0 px-4 md:px-6`}>
-        <ConversationContent>
-          {messages.length === 0 ? (
+      <Conversation className="mx-auto w-full max-w-[var(--container-max-w)] flex-1 min-h-0 px-4 md:px-6">
+        <ConversationContent className={emptyState ? "p-0" : "p-4 pb-[calc(var(--composer-offset)+env(safe-area-inset-bottom))]"}>
+          {emptyState ? (
             <ConversationEmptyState>
               <div className="mx-auto w-full max-w-[58rem] min-h-[60svh] grid place-items-center text-center px-3">
                 <div className="w-full">
                   <h1 className="text-2xl md:text-3xl font-medium">Your bioenergetic research agent</h1>
-                  <div className="mt-6 md:mt-8">
-                    <ChatComposer
-                      onSubmit={sendMessage}
-                      status={status}
-                      onStop={stop}
-                      variant="hero"
-                    />
-                  </div>
+                  <p className="mt-4 text-muted-foreground text-sm md:text-base">
+                    Ask about symptoms, conditions, or energetic cascades to begin.
+                  </p>
                 </div>
               </div>
             </ConversationEmptyState>
@@ -716,7 +711,7 @@ export function ThreadChat({ threadId, initialMessages }: { threadId: string; in
       })()}
 
       {messages.length > 0 && effectiveContextWarning && (
-        <div className="mx-auto w-full max-w-3xl px-3 pb-2">
+        <div className="mx-auto w-full max-w-[var(--container-max-w)] px-3 pb-2">
           <div className={`
             relative overflow-hidden rounded-lg border backdrop-blur-sm
             transition-all duration-200
@@ -750,13 +745,13 @@ export function ThreadChat({ threadId, initialMessages }: { threadId: string; in
         </div>
       )}
 
-      {messages.length > 0 && (
-        <ChatComposer
-          onSubmit={sendMessage}
-          status={status}
-          onStop={stop}
-        />
-      )}
+      <ChatComposer
+        onSubmit={sendMessage}
+        status={status}
+        onStop={stop}
+        disabled={estimatedTokens >= 100_000}
+        variant="hero"
+      />
     </div>
   );
 }

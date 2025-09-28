@@ -9,6 +9,7 @@ import {
   PromptInputSubmit,
   PromptInputAttachments,
   PromptInputAttachment,
+  PromptInputToolbar,
 } from "@/components/ai-elements/prompt-input";
 import { VoiceButton } from "./voice-button";
 import { AttachmentButton } from "./attachment-button";
@@ -66,8 +67,8 @@ export function ChatComposer({ onSubmit, status, onStop, disabled, variant = "de
   const isHero = variant === "hero";
 
   const containerClasses = isHero
-    ? "mx-auto w-full max-w-[52rem] px-3 py-0"
-    : "mx-auto w-full max-w-3xl px-3 py-3";
+    ? "fixed left-0 right-0 bottom-0 z-30 w-screen px-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] md:sticky md:bottom-0 md:left-auto md:right-auto md:z-30 md:w-full md:mx-auto md:px-3 md:py-3 md:max-w-[var(--container-max-w)]"
+    : "mx-auto w-full px-3 py-3 md:max-w-3xl";
 
   return (
     <div className={containerClasses}>
@@ -75,8 +76,8 @@ export function ChatComposer({ onSubmit, status, onStop, disabled, variant = "de
         className={cn(
           "border bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60",
           isHero
-            ? "border-black/15 shadow-md dark:border-white/10 dark:shadow-sm dark:ring-1 dark:ring-inset dark:ring-white/5"
-            : "border-border/60 shadow-sm"
+            ? "rounded-xl border-black/15 shadow-md dark:rounded-xl dark:border-white/10 dark:shadow-sm dark:ring-1 dark:ring-inset dark:ring-white/5 md:rounded-xl md:border-border/60 md:dark:ring-0 md:border-t md:shadow-[0_-8px_24px_-12px_hsl(var(--border))]"
+            : "rounded-xl border-border/60 shadow-sm"
         )}
         multiple
         accept="image/*,application/pdf,text/*"
@@ -87,31 +88,57 @@ export function ChatComposer({ onSubmit, status, onStop, disabled, variant = "de
             <PromptInputAttachment key={attachment.id} data={attachment} />
           )}
         </PromptInputAttachments>
-        <div className="flex items-center gap-3 px-4 py-2">
-          <AttachmentButton disabled={disabled} />
-          <div className="flex-1">
-            <PromptInputTextarea
-              className="min-h-0 resize-none border-0 bg-transparent p-0 text-base placeholder:text-muted-foreground/70 focus-visible:ring-0 md:text-base"
-              placeholder={isHero ? "Ask about symptoms, conditions, or health connections..." : "Continue exploring..."}
-              rows={1}
-              data-status={status}
+        {isHero ? (
+          <>
+            <div className="px-4 pt-2">
+              <PromptInputTextarea
+                className="min-h-0 max-h-[40svh] resize-none border-0 bg-transparent p-0 text-base placeholder:text-muted-foreground/70 focus-visible:ring-0 md:text-base"
+                placeholder="Ask about symptoms, conditions, or health connections..."
+                rows={1}
+                data-status={status}
+              />
+            </div>
+            <PromptInputToolbar className="flex items-center justify-between px-2 pb-2 pt-1">
+              <div className="flex items-center gap-1">
+                <AttachmentButton disabled={disabled} />
+                <VoiceButton
+                  onTranscriptionComplete={handleTranscription}
+                  disabled={disabled}
+                />
+              </div>
+              <PromptInputSubmit
+                className="h-9 rounded-lg bg-foreground px-4 text-background hover:bg-foreground/90"
+                variant="default"
+                status={status}
+                onClick={handleStopClick}
+                disabled={disabled}
+              />
+            </PromptInputToolbar>
+          </>
+        ) : (
+          <div className="flex items-center gap-3 px-4 py-2">
+            <AttachmentButton disabled={disabled} />
+            <div className="flex-1 min-w-0">
+              <PromptInputTextarea
+                className="min-h-0 resize-none border-0 bg-transparent p-0 text-base placeholder:text-muted-foreground/70 focus-visible:ring-0 md:text-base"
+                placeholder="Continue exploring..."
+                rows={1}
+                data-status={status}
+              />
+            </div>
+            <VoiceButton
+              onTranscriptionComplete={handleTranscription}
+              disabled={disabled}
+            />
+            <PromptInputSubmit
+              className="bg-foreground text-background hover:bg-foreground/90"
+              variant="default"
+              status={status}
+              onClick={handleStopClick}
+              disabled={disabled}
             />
           </div>
-          <VoiceButton 
-            onTranscriptionComplete={handleTranscription}
-            disabled={disabled}
-          />
-          <PromptInputSubmit
-            className={
-              isHero
-                ? "bg-black text-white hover:bg-black/90 dark:bg-white dark:text-black dark:hover:bg-white/90"
-                : "bg-foreground text-background hover:bg-foreground/90"
-            }
-            variant="default"
-            status={status}
-            onClick={handleStopClick}
-          />
-        </div>
+        )}
       </PromptInput>
     </div>
   );

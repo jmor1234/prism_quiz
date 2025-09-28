@@ -46,6 +46,10 @@
 :root {
   --radius: 0.625rem;
 
+  /* Layout tokens */
+  --container-max-w: 840px;
+  --composer-offset: 8rem;
+
   /* Bioenergetic cascade colors */
   --bio-root: 142 40% 45%;        /* Deep green - root causes */
   --bio-energy: 45 70% 50%;       /* Amber - energy metabolism */
