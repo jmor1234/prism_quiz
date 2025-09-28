@@ -4,6 +4,7 @@ import {
   AvatarImage,
 } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
+import { useIsMobile } from "@/hooks/use-mobile";
 import type { UIMessage } from "ai";
 import { cva, type VariantProps } from "class-variance-authority";
 import type { ComponentProps, HTMLAttributes } from "react";
@@ -63,24 +64,36 @@ export const MessageContent = ({
   message,
   onEdit,
   ...props
-}: MessageContentProps) => (
-  <div className="relative flex flex-col">
-    <div
-      className={cn(messageContentVariants({ variant, className }))}
-      {...props}
-    >
-      {children}
-    </div>
-    {message && (
-      <div className="opacity-0 transition-opacity group-hover:opacity-100 mt-1 flex items-center gap-1">
-        {onEdit && (
-          <MessageEditButton message={message} onEdit={onEdit} />
-        )}
-        <MessageCopyButton message={message} />
+}: MessageContentProps) => {
+  const isMobile = useIsMobile();
+  
+  return (
+    <div className="relative flex flex-col">
+      <div
+        className={cn(messageContentVariants({ variant, className }))}
+        {...props}
+      >
+        {children}
       </div>
-    )}
-  </div>
-);
+      {message && (
+        <div 
+          className={cn(
+            "mt-1 flex items-center gap-1 transition-opacity",
+            // On mobile: always visible, on desktop: show on hover
+            isMobile 
+              ? "opacity-100" 
+              : "opacity-0 group-hover:opacity-100"
+          )}
+        >
+          {onEdit && (
+            <MessageEditButton message={message} onEdit={onEdit} />
+          )}
+          <MessageCopyButton message={message} />
+        </div>
+      )}
+    </div>
+  );
+};
 
 export type MessageAvatarProps = ComponentProps<typeof Avatar> & {
   src: string;
