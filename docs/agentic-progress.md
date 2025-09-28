@@ -89,12 +89,13 @@ This enables low-latency, incremental UI updates without extra HTTP calls.
 ## Frontend flow (how events render)
 
 1) `useChat()` (`app/chat/thread-chat.tsx`) receives events in `onData` and updates a `ResearchState` store (session/objectives/phases/collections/sources).
-2) **Context warning banner**: Multi-layer defense system displays progressive warnings (yellow/orange/red) at 70k/85k/95k thresholds. Positioned above composer with backdrop blur, token count, and "New thread" CTA that explicitly creates fresh thread. Uses `effectiveContextWarning` (server data preferred, client estimation fallback for refresh resilience). Parses 413 errors for accurate token counts. Suppresses raw error banner for context limits.
-3) `components/research-progress.tsx` renders a Task‑based UI:
+2) **Context warning banner**: Multi-layer defense system displays progressive warnings (yellow/orange/red) at 70k/85k/95k thresholds. Positioned above composer with backdrop blur, token count, and "New thread" CTA that explicitly creates fresh thread. Uses `effectiveContextWarning` (server data preferred, client estimation fallback for refresh resilience). Parses 413 errors for accurate token counts. Suppresses raw error banner for context limits. The banner width tracks `var(--container-max-w)` so it aligns with the conversation and composer shell.
+3) **Composer ergonomics**: `app/chat/components/chat-composer.tsx` now renders a single hero variant for all thread states. On mobile it is fixed to the bottom with safe-area padding; on desktop it sticks to the conversation footer. The textarea lives in its own row (rows=1, max height ~40svh) with a dedicated toolbar row (attachments + mic left, submit right) to keep controls stable while the textarea expands.
+4) `components/research-progress.tsx` renders a Task‑based UI:
    - Pipeline (default): Objective step (full objective + chips for key entities/focus areas/categories), Query‑generation query chips with "Show all" (opens Details), Searching summary chips (queries|hits|unique) and sample domains.
    - Details (on demand): `ObjectiveDetails` full timeline; long lists virtualized; full objective context and full query list are shown.
-4) `MessageRenderer` renders assistant `Response`/`Reasoning` using markdown. Inline citations in the answer are the model's own `[Title](URL)` links; no hover-card overlay is used.
-5) `ToolStatus` renders lightweight, transient feedback:
+5) `MessageRenderer` renders assistant `Response`/`Reasoning` using markdown. Inline citations in the answer are the model's own `[Title](URL)` links; no hover-card overlay is used.
+6) `ToolStatus` renders lightweight, transient feedback:
    - For `data-tool-status` events from think/memory tools.
    - As a fallback planning indicator when streaming but no tool/session/extraction/operation is active. It defers showing by ~200 ms to avoid flashes and uses subtle slide/fade transitions (spinner or 3‑dot variant).
 

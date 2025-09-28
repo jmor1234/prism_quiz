@@ -37,10 +37,10 @@ app/chat/
 │                               # - Empty state: "Your bioenergetic research agent"
 │
 └── components/                 # Chat-local UI pieces
-    ├── chat-composer.tsx       # Bottom composer (attachments, voice, theme toggle)
-    │                           # - Bioenergetic placeholders:
-    │                           #   • Hero: "Ask about symptoms, conditions, or health connections..."
-    │                           #   • Regular: "Continue exploring..."
+    ├── chat-composer.tsx       # Bottom composer (hero-only, attachments, voice, theme toggle)
+    │                           # - Single hero variant runs in all states; fixed on mobile, sticky on desktop
+    │                           # - Textarea in its own row (rows=1, max-h 40svh); toolbar row below with attachments/mic + submit
+    │                           # - Bioenergetic placeholder: "Ask about symptoms, conditions, or health connections..."
     ├── attachment-button.tsx   # Opens file dialog and wires into attachment context
     ├── voice-button.tsx        # Mic capture → /api/transcribe → inserts text
 └── message-renderer.tsx    # Renders message parts (text, reasoning, file) using markdown; inline citations are standard [Title](URL) links (no claim-span overlays)
