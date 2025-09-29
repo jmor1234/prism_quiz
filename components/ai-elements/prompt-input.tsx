@@ -550,7 +550,38 @@ export const PromptInputTextarea = ({
   placeholder = "What would you like to know?",
   ...props
 }: PromptInputTextareaProps) => {
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const attachments = usePromptInputAttachments();
+
+  useEffect(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+
+    let supports = false;
+    try { 
+      supports = typeof CSS !== "undefined" && CSS.supports?.("field-sizing: content"); 
+    } catch { 
+      supports = false; 
+    }
+    if (supports) return; // browsers with native support keep CSS path
+
+    const autosize = () => { 
+      el.style.height = "auto"; 
+      el.style.height = `${el.scrollHeight}px`; 
+    };
+    autosize();
+    el.addEventListener("input", autosize);
+    const form = el.form;
+    const handleReset = () => requestAnimationFrame(autosize);
+    if (form) form.addEventListener("reset", handleReset);
+    const handleResize = () => requestAnimationFrame(autosize);
+    window.addEventListener("resize", handleResize);
+    return () => {
+      el.removeEventListener("input", autosize);
+      if (form) form.removeEventListener("reset", handleReset);
+      window.removeEventListener("resize", handleResize);
+    };
+  }, []);
 
   const handleKeyDown: KeyboardEventHandler<HTMLTextAreaElement> = (e) => {
     if (e.key === "Enter") {
@@ -604,6 +635,8 @@ export const PromptInputTextarea = ({
 
   return (
     <Textarea
+      ref={textareaRef}
+      rows={1}
       className={cn(
         "w-full resize-none rounded-none border-none p-3 shadow-none outline-none ring-0",
         "field-sizing-content bg-transparent dark:bg-transparent",
