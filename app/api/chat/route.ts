@@ -110,7 +110,7 @@ export async function POST(req: Request) {
 
         // Stream with clean configuration (preserving all existing config)
         const result = streamText({
-          model: anthropic('claude-sonnet-4-20250514'),
+          model: anthropic('claude-sonnet-4-5-20250929'),
           messages: initialMessages,
           tools: cachedTools,
           stopWhen: stepCountIs(50),
