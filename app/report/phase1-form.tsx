@@ -33,6 +33,7 @@ export function Phase1ReportForm() {
   const [error, setError] = useState<Error | null>(null);
   const [restoredDraft, setRestoredDraft] = useState(false);
   const [caseId, setCaseId] = useState<string | null>(null);
+  const [analysis, setAnalysis] = useState<string | null>(null);
 
   const autosaveTimer = useRef<NodeJS.Timeout | null>(null);
 
@@ -143,6 +144,7 @@ export function Phase1ReportForm() {
     setStatus("idle");
     setRestoredDraft(false);
     setCaseId(null);
+    setAnalysis(null);
 
     if (typeof window !== "undefined") {
       window.localStorage.removeItem(STORAGE_KEYS.questionnaire);
@@ -156,6 +158,7 @@ export function Phase1ReportForm() {
     setStatus("submitting");
     setError(null);
     setCaseId(null);
+    setAnalysis(null);
 
     try {
       const attachmentIds = (() => {
@@ -186,10 +189,22 @@ export function Phase1ReportForm() {
         throw new Error(errorBody || `Request failed with ${response.status}`);
       }
 
-      const data = (await response.json()) as { caseId?: string };
-      if (data?.caseId) {
-        setCaseId(data.caseId);
+      const submissionData = (await response.json()) as { caseId: string };
+      setCaseId(submissionData.caseId);
+
+      const analysisResponse = await fetch("/api/report/phase1", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ caseId: submissionData.caseId }),
+      });
+
+      if (!analysisResponse.ok) {
+        const errorBody = await analysisResponse.text();
+        throw new Error(errorBody || `Analysis failed with ${analysisResponse.status}`);
       }
+
+      const analysisData = (await analysisResponse.json()) as { rootCauseReport: string };
+      setAnalysis(analysisData.rootCauseReport);
 
       setStatus("success");
     } catch (err) {
@@ -361,6 +376,18 @@ export function Phase1ReportForm() {
           {status === "submitting" && (
             <div className="h-1 w-full overflow-hidden rounded-full bg-muted">
               <div className="h-full w-1/2 animate-shimmer rounded-full bg-gradient-to-r from-bio-energy via-bio-consequence to-bio-symptom" />
+            </div>
+          )}
+
+          {status === "success" && analysis && (
+            <div className="rounded-2xl border border-border/60 bg-card/80 p-6 shadow-sm">
+              <h2 className="text-lg font-semibold">Root-cause narrative</h2>
+              <p className="mt-2 text-xs text-muted-foreground">
+                Stored for Phase 2. Regenerate to refresh analysis after making edits.
+              </p>
+              <article className="prose prose-sm dark:prose-invert mt-4 whitespace-pre-wrap">
+                {analysis}
+              </article>
             </div>
           )}
         </div>
