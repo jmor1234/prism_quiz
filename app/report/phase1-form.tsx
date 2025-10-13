@@ -251,8 +251,8 @@ export function Phase1ReportForm() {
               value={questionnaireText}
               onChange={(event) => handleQuestionnaireChange(event.currentTarget.value)}
               minLength={1}
-              rows={12}
-              className="min-h-[220px] resize-y text-sm leading-relaxed"
+              rows={10}
+              className="min-h-[160px] max-h-[320px] resize-y text-sm leading-relaxed"
             />
             <p className="text-xs text-muted-foreground">
               Paste the raw questionnaire export. Ratings of (1) are ignored during analysis.
@@ -271,8 +271,8 @@ export function Phase1ReportForm() {
               value={takehomeText}
               onChange={(event) => handleTakehomeChange(event.currentTarget.value)}
               minLength={1}
-              rows={10}
-              className="min-h-[180px] resize-y text-sm leading-relaxed"
+              rows={8}
+              className="min-h-[140px] max-h-[300px] resize-y text-sm leading-relaxed"
             />
             <p className="text-xs text-muted-foreground">
               Include the raw numeric entries, ratings, and any narrative responses.
@@ -292,7 +292,7 @@ export function Phase1ReportForm() {
               onChange={(event) => handleAdvisorChange(event.currentTarget.value)}
               minLength={1}
               rows={8}
-              className="min-h-[160px] resize-y text-sm leading-relaxed"
+              className="min-h-[140px] max-h-[300px] resize-y text-sm leading-relaxed"
             />
             <p className="text-xs text-muted-foreground">
               Required. Include the advisor's full notes—these shape the root-cause assessment.
