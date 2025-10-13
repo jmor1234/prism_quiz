@@ -1,0 +1,10 @@
+{
+  "caseId": "1d3348f8-f8b9-4b89-9cee-dbeff6612635",
+  "createdAt": "2025-10-13T20:35:08.883Z",
+  "updatedAt": "2025-10-13T20:35:08.883Z",
+  "submission": {
+    "questionnaireText": "testing for the questionnaire",
+    "takehomeText": "testing for the Take-home assessment",
+    "advisorNotesText": "testing for the consult notes."
+  }
+}

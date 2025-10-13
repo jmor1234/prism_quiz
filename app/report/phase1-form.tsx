@@ -1,15 +1,18 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Loader2, Upload, X, Download, Copy } from "lucide-react";
-import ReactMarkdown from "react-markdown";
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { Input } from "@/components/ui/input";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Separator } from "@/components/ui/separator";
-import { cn } from "@/lib/utils";
-import { ErrorBanner } from "@/components/error-banner";
+import { Loader2, Upload, X } from "lucide-react";
+import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
+import { Input } from '@/components/ui/input';
+import { Separator } from '@/components/ui/separator';
+import { ErrorBanner } from '@/components/error-banner';
+import {
+  MAX_PHASE1_FIELD_CHARS,
+  MAX_PHASE1_IMAGE_ATTACHMENTS,
+  MAX_PHASE1_LAB_ATTACHMENTS,
+  phase1SubmissionSchema,
+} from '@/lib/schemas/phase1';
 
 const STORAGE_KEYS = {
   questionnaire: "phase1.questionnaire",
@@ -17,7 +20,6 @@ const STORAGE_KEYS = {
   advisor: "phase1.advisor",
 } as const;
 
-const MAX_FIELD_CHARS = 100_000;
 const AUTOSAVE_MS = 1_000;
 
 export function Phase1ReportForm() {
@@ -29,8 +31,8 @@ export function Phase1ReportForm() {
 
   const [status, setStatus] = useState<"idle" | "submitting" | "success" | "error">("idle");
   const [error, setError] = useState<Error | null>(null);
-  const [result, setResult] = useState<string>("");
   const [restoredDraft, setRestoredDraft] = useState(false);
+  const [caseId, setCaseId] = useState<string | null>(null);
 
   const autosaveTimer = useRef<NodeJS.Timeout | null>(null);
 
@@ -69,19 +71,19 @@ export function Phase1ReportForm() {
   );
 
   const handleQuestionnaireChange = (value: string) => {
-    if (value.length > MAX_FIELD_CHARS) return;
+    if (value.length > MAX_PHASE1_FIELD_CHARS) return;
     setQuestionnaireText(value);
     scheduleAutosave(STORAGE_KEYS.questionnaire, value);
   };
 
   const handleTakehomeChange = (value: string) => {
-    if (value.length > MAX_FIELD_CHARS) return;
+    if (value.length > MAX_PHASE1_FIELD_CHARS) return;
     setTakehomeText(value);
     scheduleAutosave(STORAGE_KEYS.takehome, value);
   };
 
   const handleAdvisorChange = (value: string) => {
-    if (value.length > MAX_FIELD_CHARS) return;
+    if (value.length > MAX_PHASE1_FIELD_CHARS) return;
     setAdvisorNotesText(value);
     scheduleAutosave(STORAGE_KEYS.advisor, value);
   };
@@ -99,12 +101,12 @@ export function Phase1ReportForm() {
     if (type === "images") {
       setImages((prev) => {
         const next = [...prev, ...accepted];
-        return next.slice(0, 8);
+        return next.slice(0, MAX_PHASE1_IMAGE_ATTACHMENTS);
       });
     } else {
       setLabs((prev) => {
         const next = [...prev, ...accepted];
-        return next.slice(0, 5);
+        return next.slice(0, MAX_PHASE1_LAB_ATTACHMENTS);
       });
     }
   }, []);
@@ -137,10 +139,10 @@ export function Phase1ReportForm() {
     setAdvisorNotesText("");
     setImages([]);
     setLabs([]);
-    setResult("");
     setError(null);
     setStatus("idle");
     setRestoredDraft(false);
+    setCaseId(null);
 
     if (typeof window !== "undefined") {
       window.localStorage.removeItem(STORAGE_KEYS.questionnaire);
@@ -149,42 +151,31 @@ export function Phase1ReportForm() {
     }
   };
 
-  const copyResult = async () => {
-    if (!result.trim()) return;
-    try {
-      await navigator.clipboard.writeText(result);
-    } catch (err) {
-      console.error("Failed to copy", err);
-    }
-  };
-
-  const downloadResult = () => {
-    if (!result.trim()) return;
-    const blob = new Blob([result], { type: "text/markdown" });
-    const url = URL.createObjectURL(blob);
-    const anchor = document.createElement("a");
-    anchor.href = url;
-    anchor.download = "phase1-root-cause.md";
-    anchor.click();
-    URL.revokeObjectURL(url);
-  };
-
   const submitForm = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setStatus("submitting");
     setError(null);
-    setResult("");
+    setCaseId(null);
 
     try {
-      const payload = {
+      const attachmentIds = (() => {
+        const imageIds = images.map((file) => file.name);
+        const labIds = labs.map((file) => file.name);
+        if (!imageIds.length && !labIds.length) return undefined;
+        return {
+          images: imageIds.length ? imageIds : undefined,
+          labs: labIds.length ? labIds : undefined,
+        };
+      })();
+
+      const payload = phase1SubmissionSchema.parse({
         questionnaireText: questionnaireText.trim(),
         takehomeText: takehomeText.trim(),
-        advisorNotesText: advisorNotesText.trim() || undefined,
-        imageIds: images.length ? images.map((file) => file.name) : undefined,
-        labIds: labs.length ? labs.map((file) => file.name) : undefined,
-      } satisfies Record<string, unknown>;
+        advisorNotesText: advisorNotesText.trim(),
+        attachmentIds,
+      });
 
-      const response = await fetch("/api/reports/phase1", {
+      const response = await fetch("/api/report/phase1", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -195,25 +186,11 @@ export function Phase1ReportForm() {
         throw new Error(errorBody || `Request failed with ${response.status}`);
       }
 
-      const contentType = response.headers.get("content-type");
-      let text = "";
-
-      if (contentType?.includes("application/json")) {
-        const data = await response.json();
-        if (typeof data === "string") {
-          text = data;
-        } else if (typeof data?.report === "string") {
-          text = data.report;
-        } else if (typeof data?.result === "string") {
-          text = data.result;
-        } else {
-          text = JSON.stringify(data, null, 2);
-        }
-      } else {
-        text = await response.text();
+      const data = (await response.json()) as { caseId?: string };
+      if (data?.caseId) {
+        setCaseId(data.caseId);
       }
 
-      setResult(text.trim());
       setStatus("success");
     } catch (err) {
       setStatus("error");
@@ -244,7 +221,7 @@ export function Phase1ReportForm() {
               <label htmlFor="questionnaire" className="text-sm font-medium">
                 Client questionnaire <span className="text-destructive">*</span>
               </label>
-              <span className="text-xs text-muted-foreground">{questionCharCount.toLocaleString()} / {MAX_FIELD_CHARS.toLocaleString()}</span>
+              <span className="text-xs text-muted-foreground">{questionCharCount.toLocaleString()} / {MAX_PHASE1_FIELD_CHARS.toLocaleString()}</span>
             </div>
             <Textarea
               id="questionnaire"
@@ -264,7 +241,7 @@ export function Phase1ReportForm() {
               <label htmlFor="takehome" className="text-sm font-medium">
                 Take-home assessment <span className="text-destructive">*</span>
               </label>
-              <span className="text-xs text-muted-foreground">{takehomeCharCount.toLocaleString()} / {MAX_FIELD_CHARS.toLocaleString()}</span>
+              <span className="text-xs text-muted-foreground">{takehomeCharCount.toLocaleString()} / {MAX_PHASE1_FIELD_CHARS.toLocaleString()}</span>
             </div>
             <Textarea
               id="takehome"
@@ -284,7 +261,7 @@ export function Phase1ReportForm() {
               <label htmlFor="advisor" className="text-sm font-medium">
                 Advisor consultation notes <span className="text-destructive">*</span>
               </label>
-              <span className="text-xs text-muted-foreground">{advisorCharCount.toLocaleString()} / {MAX_FIELD_CHARS.toLocaleString()}</span>
+              <span className="text-xs text-muted-foreground">{advisorCharCount.toLocaleString()} / {MAX_PHASE1_FIELD_CHARS.toLocaleString()}</span>
             </div>
             <Textarea
               id="advisor"
@@ -295,7 +272,7 @@ export function Phase1ReportForm() {
               className="min-h-[140px] max-h-[300px] resize-y text-sm leading-relaxed"
             />
             <p className="text-xs text-muted-foreground">
-              Required. Include the advisor's full notes—these shape the root-cause assessment.
+              Required. Include the advisor&rsquo;s full notes—these shape the root-cause assessment.
             </p>
           </div>
         </div>
@@ -346,16 +323,22 @@ export function Phase1ReportForm() {
             />
           )}
 
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-center gap-3 text-xs text-muted-foreground">
-              <span className="inline-flex items-center gap-1">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-col gap-3 text-xs text-muted-foreground">
+              <div className="inline-flex items-center gap-1">
                 <span className="size-2 rounded-full bg-bio-root"></span>
                 Root causes drive downstream recommendations
-              </span>
-              <span className="inline-flex items-center gap-1">
+              </div>
+              <div className="inline-flex items-center gap-1">
                 <span className="size-2 rounded-full bg-bio-energy"></span>
                 Expect 20–40s processing time
-              </span>
+              </div>
+              {caseId && (
+                <div className="flex items-center gap-2 rounded-md border border-success/40 bg-success/10 px-3 py-2 text-[11px] text-success-foreground">
+                  <span className="font-semibold uppercase tracking-wide">Saved</span>
+                  <code className="rounded bg-background/60 px-1.5 py-0.5 font-mono text-[11px]">{caseId}</code>
+                </div>
+              )}
             </div>
 
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
