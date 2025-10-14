@@ -33,7 +33,8 @@ export function Phase1ReportForm() {
   const [error, setError] = useState<Error | null>(null);
   const [restoredDraft, setRestoredDraft] = useState(false);
   const [caseId, setCaseId] = useState<string | null>(null);
-  const [analysis, setAnalysis] = useState<string | null>(null);
+  // Placeholder for future agent streaming output (unused for now).
+  const [/* analysis */, setAnalysis] = useState<string | null>(null);
 
   const autosaveTimer = useRef<NodeJS.Timeout | null>(null);
 
@@ -191,20 +192,8 @@ export function Phase1ReportForm() {
 
       const submissionData = (await response.json()) as { caseId: string };
       setCaseId(submissionData.caseId);
-
-      const analysisResponse = await fetch("/api/report/phase1", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ caseId: submissionData.caseId }),
-      });
-
-      if (!analysisResponse.ok) {
-        const errorBody = await analysisResponse.text();
-        throw new Error(errorBody || `Analysis failed with ${analysisResponse.status}`);
-      }
-
-      const analysisData = (await analysisResponse.json()) as { rootCauseReport: string };
-      setAnalysis(analysisData.rootCauseReport);
+      // Analysis no longer auto-runs. An iterative agent will handle Phase 1 execution later.
+      setAnalysis(null);
 
       setStatus("success");
     } catch (err) {
@@ -379,17 +368,7 @@ export function Phase1ReportForm() {
             </div>
           )}
 
-          {status === "success" && analysis && (
-            <div className="rounded-2xl border border-border/60 bg-card/80 p-6 shadow-sm">
-              <h2 className="text-lg font-semibold">Root-cause narrative</h2>
-              <p className="mt-2 text-xs text-muted-foreground">
-                Stored for Phase 2. Regenerate to refresh analysis after making edits.
-              </p>
-              <article className="prose prose-sm dark:prose-invert mt-4 whitespace-pre-wrap">
-                {analysis}
-              </article>
-            </div>
-          )}
+          {/* Analysis output will be shown in a later step once the iterative agent is wired. */}
         </div>
       </form>
     </section>
