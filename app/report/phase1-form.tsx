@@ -3,6 +3,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Loader2, Upload, X } from "lucide-react";
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -25,6 +26,8 @@ const STORAGE_KEYS = {
 const AUTOSAVE_MS = 1_000;
 
 export function Phase1ReportForm() {
+  const router = useRouter();
+
   const [questionnaireText, setQuestionnaireText] = useState("");
   const [takehomeText, setTakehomeText] = useState("");
   const [advisorNotesText, setAdvisorNotesText] = useState("");
@@ -194,10 +197,17 @@ export function Phase1ReportForm() {
 
       const submissionData = (await response.json()) as { caseId: string };
       setCaseId(submissionData.caseId);
-      // Analysis no longer auto-runs. An iterative agent will handle Phase 1 execution later.
-      setAnalysis(null);
-
       setStatus("success");
+
+      // Clear drafts from localStorage
+      if (typeof window !== "undefined") {
+        window.localStorage.removeItem(STORAGE_KEYS.questionnaire);
+        window.localStorage.removeItem(STORAGE_KEYS.takehome);
+        window.localStorage.removeItem(STORAGE_KEYS.advisor);
+      }
+
+      // Navigate to analysis page
+      router.push(`/report/analysis/${submissionData.caseId}`);
     } catch (err) {
       setStatus("error");
       setError(err instanceof Error ? err : new Error("Unexpected error"));

@@ -1,0 +1,40 @@
+// app/report/analysis/[caseId]/page.tsx
+
+"use client";
+
+import { useParams } from "next/navigation";
+import { ReportAnalysisStream } from "./report-analysis-stream";
+
+export default function AnalysisPage() {
+  const params = useParams();
+  const caseId = params?.caseId as string;
+
+  if (!caseId) {
+    return (
+      <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6 px-4 pb-16 pt-10">
+        <p className="text-sm text-muted-foreground">Invalid case ID</p>
+      </main>
+    );
+  }
+
+  return (
+    <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6 px-4 pb-16 pt-10">
+      <header className="space-y-2">
+        <p className="text-xs uppercase tracking-[0.26em] text-muted-foreground">
+          Phase 1 Analysis
+        </p>
+        <h1 className="text-2xl font-semibold tracking-tight">
+          Root Cause Analysis
+        </h1>
+        <p className="text-sm text-muted-foreground">
+          Case ID:{" "}
+          <code className="rounded bg-muted px-1.5 py-0.5 text-xs">
+            {caseId}
+          </code>
+        </p>
+      </header>
+
+      <ReportAnalysisStream caseId={caseId} />
+    </main>
+  );
+}
