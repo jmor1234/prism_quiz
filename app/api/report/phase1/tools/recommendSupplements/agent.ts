@@ -72,12 +72,6 @@ ${input.objective}
 
 **Your job:** Match database supplements/pharmaceuticals to root causes and select the most impactful ones for resolution.
 
-**Critical:** For each recommendation, you MUST extract and return:
-- The supplement/pharmaceutical name from Column 1
-- Your custom rationale explaining the connection to the root cause
-- The complete "Dosage/Notes" text from Column 4 (copy exactly as written in CSV)
-- The complete "Provider" text from Column 5 (copy exactly as written in CSV, including any discount codes)
-
 **Selection philosophy:** Prioritize supplements with the strongest root cause impact. When multiple options exist, favor those addressing high-severity causes or the client's primary concerns.
 
 **Note:** Think clearly from first principles about which supplements will create the most meaningful impact on the underlying mechanisms.`;
