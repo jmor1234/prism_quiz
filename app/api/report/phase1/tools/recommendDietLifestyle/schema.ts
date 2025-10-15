@@ -59,14 +59,6 @@ export const recommendDietLifestyleOutputSchema = z.object({
         rootCauseAddressed: z
           .string()
           .describe("Which specific root cause this intervention targets"),
-        expectedImpact: z
-          .enum(["high", "moderate"])
-          .describe("Expected impact on root cause resolution based on mechanism"),
-        implementationPriority: z
-          .enum(["immediate", "important"])
-          .describe(
-            "Immediate: most critical for root cause resolution. Important: strong supporting impact."
-          ),
         notes: z
           .string()
           .optional()

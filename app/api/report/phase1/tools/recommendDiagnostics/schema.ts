@@ -59,14 +59,6 @@ export const recommendDiagnosticsOutputSchema = z.object({
         rootCauseAddressed: z
           .string()
           .describe("Which specific root cause this diagnostic targets"),
-        expectedImpact: z
-          .enum(["high", "moderate"])
-          .describe("Expected value for root cause investigation based on mechanism"),
-        implementationPriority: z
-          .enum(["immediate", "important"])
-          .describe(
-            "Immediate: most critical for understanding root cause. Important: strong supporting value."
-          ),
         whereToGet: z
           .string()
           .describe("Provider or lab source from the 'Where to get' column in CSV database (empty string if not available)"),

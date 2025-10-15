@@ -59,14 +59,6 @@ export const recommendSupplementsOutputSchema = z.object({
         rootCauseAddressed: z
           .string()
           .describe("Which specific root cause this supplement targets"),
-        expectedImpact: z
-          .enum(["high", "moderate"])
-          .describe("Expected impact on root cause resolution based on mechanism"),
-        implementationPriority: z
-          .enum(["immediate", "important"])
-          .describe(
-            "Immediate: most critical for root cause resolution. Important: strong supporting impact."
-          ),
         dosageNotes: z
           .string()
           .describe("Dosage instructions and important notes from the 'Dosage/Notes' column in CSV database"),
