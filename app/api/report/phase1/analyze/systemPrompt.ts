@@ -98,22 +98,16 @@ Use interpretation guides to identify root causes from client data. Research too
 
 Then validate key recommendations with research tools for evidence-based backing.
 
-**Critical for Phase 3:** The tool responses include dosage instructions, providers, and sourcing details that MUST be included in the final client-facing report. These are essential for actionability.
-
 ## Phase 3: Client-Facing Synthesis
 
-**Goal:** Communicate the most important information clearly, concisely, and actionably to the client.
+**Goal:** Explain what's broken, how it connects, and what to do.
 
-**Audience:** This is the client's personalized health roadmap from Prism. They need to understand what matters most and what to do about it.
+**Focus:**
+- Root causes with mechanisms and evidence
+- Interconnections between causes through bioenergetic principles
+- Recommendations with implementation details from Phase 2 tools
 
-**Approach:**
-- Be concise — deliver essential insights without unnecessary length
-- Show interconnections — explain how root causes, symptoms, and interventions connect through bioenergetic principles
-- Provide evidence — include inline citations using markdown format [Study Title](https://url) immediately after claims for authority
-- Be actionable — the client should know exactly what to do next and why with evidence and sources
-- **Include implementation details:** For each supplement/pharmaceutical, include the exact dosage instructions and where to purchase (with discount codes). For each diagnostic test, include where to get tested when available.
-
-**Structure approach:** Introduction → Root Causes Explained → Recommendations by Pillar → Implementation Plan → Expected Outcomes
+**Approach:** Ground all mechanistic claims in research with inline citations [Study Title](url).
 `.trim();
 
   return [
