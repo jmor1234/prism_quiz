@@ -2,12 +2,12 @@
 
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import type { ResearchState } from "@/lib/streaming-types";
 import { ResearchProgress } from "@/components/research-progress";
 import { ExtractionProgress } from "@/components/extraction-progress";
 import { Response } from "@/components/ai-elements/response";
-import { Reasoning } from "@/components/ai-elements/reasoning";
+import { ToolStatus } from "@/components/ai-elements/tool-status";
 import { Loader } from "@/components/ai-elements/loader";
 import { Button } from "@/components/ui/button";
 import { AlertCircle } from "lucide-react";
@@ -28,7 +28,6 @@ export function ReportAnalysisStream({ caseId }: ReportAnalysisStreamProps) {
     "idle" | "checking" | "streaming" | "complete" | "error"
   >("idle");
   const [reportText, setReportText] = useState("");
-  const [reasoning, setReasoning] = useState("");
   const [error, setError] = useState<string | null>(null);
 
   // Research progress state (reuse from chat)
@@ -46,6 +45,18 @@ export function ReportAnalysisStream({ caseId }: ReportAnalysisStreamProps) {
     sourcesByObjective: {},
   });
 
+  // Tool status exit animation staging
+  const [toolStatusExiting, setToolStatusExiting] = useState(false);
+  const toolStatusExitStartRef = useRef<number | null>(null);
+  const toolStatusRemoveRef = useRef<number | null>(null);
+
+  // Fallback planning indicator (when no tool/session/extraction activity is visible)
+  const [showPlanningIndicator, setShowPlanningIndicator] = useState(false);
+  const [planningExiting, setPlanningExiting] = useState(false);
+  const planningExitRef = useRef<number | null>(null);
+  const planningRemoveRef = useRef<number | null>(null);
+  const planningShowDelayRef = useRef<number | null>(null);
+
   const handleStreamEvent = useCallback((event: StreamEvent) => {
     const { type, data, id } = event;
 
@@ -57,12 +68,7 @@ export function ReportAnalysisStream({ caseId }: ReportAnalysisStreamProps) {
         }
         break;
 
-      // Reasoning streaming
-      case "reasoning":
-        if (typeof data === "string") {
-          setReasoning((prev) => prev + data);
-        }
-        break;
+      // Note: reasoning streaming removed - not useful for production reports
 
       // Research progress (same as chat)
       case "data-research-session":
@@ -97,10 +103,40 @@ export function ReportAnalysisStream({ caseId }: ReportAnalysisStreamProps) {
         break;
 
       case "data-tool-status":
+        // Stage in → exit → remove for smooth transition
+        try {
+          // Clear any pending exit timers before scheduling new ones
+          if (toolStatusExitStartRef.current) {
+            clearTimeout(toolStatusExitStartRef.current);
+            toolStatusExitStartRef.current = null;
+          }
+          if (toolStatusRemoveRef.current) {
+            clearTimeout(toolStatusRemoveRef.current);
+            toolStatusRemoveRef.current = null;
+          }
+        } catch {
+          // Timer cleanup failed, continue
+        }
+
         setResearchState((prev) => ({
           ...prev,
           currentToolStatus: data as ResearchState["currentToolStatus"],
         }));
+        setToolStatusExiting(false);
+
+        // Begin exit after a short display window
+        toolStatusExitStartRef.current = window.setTimeout(() => {
+          setToolStatusExiting(true);
+        }, 1200);
+
+        // Remove after exit animation completes
+        toolStatusRemoveRef.current = window.setTimeout(() => {
+          setResearchState((prev) => ({
+            ...prev,
+            currentToolStatus: null,
+          }));
+          setToolStatusExiting(false);
+        }, 1600);
         break;
 
       case "data-research-operation":
@@ -188,7 +224,6 @@ export function ReportAnalysisStream({ caseId }: ReportAnalysisStreamProps) {
     setStatus("streaming");
     setError(null);
     setReportText("");
-    setReasoning("");
 
     try {
       const response = await fetch("/api/report/phase1/analyze", {
@@ -268,6 +303,47 @@ export function ReportAnalysisStream({ caseId }: ReportAnalysisStreamProps) {
     }
   }, [status, startAnalysis, caseId]);
 
+  // Compute planning indicator visibility (optimized to avoid re-render loops)
+  const wasPlanningVisible = useRef(false);
+
+  useEffect(() => {
+    const shouldShow = (
+      status === 'streaming' &&
+      !researchState.currentToolStatus &&
+      !researchState.session &&
+      !researchState.extractionSession &&
+      !reportText
+    );
+
+    // Only trigger if state actually changed
+    if (shouldShow === wasPlanningVisible.current) return;
+
+    wasPlanningVisible.current = shouldShow;
+
+    // Clear existing timers
+    [planningExitRef, planningRemoveRef, planningShowDelayRef].forEach(ref => {
+      if (ref.current) {
+        clearTimeout(ref.current);
+        ref.current = null;
+      }
+    });
+
+    if (shouldShow) {
+      // Defer showing by 200ms to avoid flashing for very short gaps
+      planningShowDelayRef.current = window.setTimeout(() => {
+        setShowPlanningIndicator(true);
+        setPlanningExiting(false);
+      }, 200);
+    } else if (showPlanningIndicator) {
+      // Animate out gracefully
+      setPlanningExiting(true);
+      planningRemoveRef.current = window.setTimeout(() => {
+        setShowPlanningIndicator(false);
+        setPlanningExiting(false);
+      }, 400);
+    }
+  }, [status, researchState.currentToolStatus, researchState.session, researchState.extractionSession, reportText, showPlanningIndicator]);
+
   if (status === "error") {
     return (
       <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-6">
@@ -298,16 +374,40 @@ export function ReportAnalysisStream({ caseId }: ReportAnalysisStreamProps) {
   return (
     <div className="space-y-6">
       {/* Progress UI */}
-      {status === "streaming" && researchState.session && (
-        <ResearchProgress state={researchState} />
-      )}
+      {status === "streaming" && (
+        <>
+          {/* Fallback Planning Indicator */}
+          {showPlanningIndicator && (
+            <ToolStatus
+              toolName="thinkTool"
+              action="Analyzing client data…"
+              exiting={planningExiting}
+              variant="dots"
+            />
+          )}
 
-      {/* Extraction Progress */}
-      {status === "streaming" && researchState.extractionSession && (
-        <ExtractionProgress
-          session={researchState.extractionSession}
-          urls={researchState.extractionUrls}
-        />
+          {/* Tool Status for think/memory/recommendation tools */}
+          {researchState.currentToolStatus && (
+            <ToolStatus
+              toolName={researchState.currentToolStatus.toolName}
+              action={researchState.currentToolStatus.action}
+              exiting={toolStatusExiting}
+            />
+          )}
+
+          {/* Research Progress */}
+          {researchState.session && (
+            <ResearchProgress state={researchState} />
+          )}
+
+          {/* Extraction Progress */}
+          {researchState.extractionSession && (
+            <ExtractionProgress
+              session={researchState.extractionSession}
+              urls={researchState.extractionUrls}
+            />
+          )}
+        </>
       )}
 
       {/* Final Report */}
@@ -317,9 +417,6 @@ export function ReportAnalysisStream({ caseId }: ReportAnalysisStreamProps) {
           <Response>{reportText}</Response>
         </div>
       )}
-
-      {/* Reasoning (optional) */}
-      {reasoning && <Reasoning>{reasoning}</Reasoning>}
 
       {/* Checking state */}
       {status === "checking" && (
@@ -331,18 +428,7 @@ export function ReportAnalysisStream({ caseId }: ReportAnalysisStreamProps) {
         </div>
       )}
 
-      {/* Loading state */}
-      {status === "streaming" &&
-        !reportText &&
-        !researchState.session &&
-        !researchState.extractionSession && (
-          <div className="flex items-center gap-3 rounded-lg border bg-card p-6">
-            <Loader className="h-4 w-4" />
-            <span className="text-sm text-muted-foreground">
-              Initializing analysis...
-            </span>
-          </div>
-        )}
+      {/* Note: "Initializing analysis..." loading state removed - planning indicator now handles this */}
 
       {/* Completion state */}
       {status === "complete" && reportText && (

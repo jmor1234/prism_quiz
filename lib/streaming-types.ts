@@ -90,10 +90,10 @@ export interface ResearchErrorData {
   timestamp: number;
 }
 
-// Simple tool status (transient) - for think, memory tools
+// Simple tool status (transient) - for think, memory, and recommendation tools
 export interface ToolStatusData {
-  toolName: 'thinkTool' | 'researchMemoryTool';
-  action: string; // "Thinking about research strategy..." or "Recording research note..."
+  toolName: 'thinkTool' | 'researchMemoryTool' | 'recommendDiagnosticsTool' | 'recommendDietLifestyleTool' | 'recommendSupplementsTool';
+  action: string; // "Thinking about research strategy..." or "Recording research note..." or "Matching diagnostic tests to root causes..."
   timestamp: number;
 }
 

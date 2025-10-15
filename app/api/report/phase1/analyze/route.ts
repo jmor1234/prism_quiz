@@ -139,6 +139,22 @@ export async function POST(req: Request) {
           }
         })();
 
+        // Stream other events but filter out reasoning
+        (async () => {
+          try {
+            const uiStream = result.toUIMessageStream();
+            for await (const part of uiStream) {
+              // Filter out reasoning parts - keep thinking enabled for agent but don't send to frontend
+              if (part.type === 'reasoning-start' || part.type === 'reasoning-delta' || part.type === 'reasoning-end') {
+                continue;
+              }
+              writer.write(part);
+            }
+          } catch (error) {
+            console.error("Error streaming UI parts:", error);
+          }
+        })();
+
         // Save result when complete
         try {
           const finalText = await result.text;

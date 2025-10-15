@@ -4,7 +4,7 @@ import { Loader } from "./loader";
 import { cn } from "@/lib/utils";
 
 export type ToolStatusProps = {
-  toolName: "thinkTool" | "researchMemoryTool";
+  toolName: string;
   action: string;
   exiting?: boolean;
   variant?: "spinner" | "dots";
@@ -19,8 +19,23 @@ const Dots = () => (
   </span>
 );
 
+const getToolLabel = (toolName: string): string => {
+  const labels: Record<string, string> = {
+    thinkTool: "Thinking",
+    researchMemoryTool: "Recording notes",
+    recommendDiagnosticsTool: "Selecting diagnostic tests",
+    recommendDietLifestyleTool: "Selecting diet and lifestyle interventions",
+    recommendSupplementsTool: "Selecting supplements",
+  };
+  return labels[toolName] || "Processing";
+};
+
 export const ToolStatus = ({ toolName, action, exiting = false, variant = "spinner", className }: ToolStatusProps) => {
-  const label = toolName === "thinkTool" ? "Thinking" : "Recording";
+  const label = getToolLabel(toolName);
+
+  // Only announce when entering, not when exiting
+  const liveRegion = !exiting ? "polite" : "off";
+
   return (
     <div
       className={cn(
@@ -29,6 +44,9 @@ export const ToolStatus = ({ toolName, action, exiting = false, variant = "spinn
       )}
     >
       <div
+        role="status"
+        aria-live={liveRegion}
+        aria-atomic="true"
         className={cn(
           "not-prose mb-3 w-full rounded-xl border shadow-sm",
           "bg-gradient-to-b from-blue-500/[0.05] to-blue-500/[0.02] border-blue-500/20",
@@ -43,11 +61,11 @@ export const ToolStatus = ({ toolName, action, exiting = false, variant = "spinn
           exiting && "opacity-70"
         )}>
           {variant === "spinner" ? (
-            <Loader size={14} className="mr-1 text-blue-600 dark:text-violet-400" />
+            <Loader size={14} className="mr-1 text-blue-600 dark:text-violet-400" aria-hidden="true" />
           ) : (
             <span className="mr-1 inline-flex w-4 justify-center" aria-hidden="true" />
           )}
-          <span className="font-medium">{label}</span>
+          <span className="font-medium" aria-hidden="true">{label}</span>
           <span className="opacity-90">
             {action}
             {variant === "dots" && <Dots />}
