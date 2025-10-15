@@ -83,11 +83,6 @@ ${input.objective}
     model: anthropic("claude-sonnet-4-5-20250929"),
     schema: recommendDiagnosticsOutputSchema,
     prompt,
-    providerOptions: {
-      anthropic: {
-        thinking: { type: "enabled", budgetTokens: 8000 },
-      },
-    },
   });
 
   logger?.logToolInternalStep("recommendDiagnosticsTool", "SUB_AGENT_COMPLETE", {

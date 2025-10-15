@@ -80,11 +80,6 @@ ${input.objective}
     model: anthropic("claude-sonnet-4-5-20250929"),
     schema: recommendDietLifestyleOutputSchema,
     prompt,
-    providerOptions: {
-      anthropic: {
-        thinking: { type: "enabled", budgetTokens: 8000 },
-      },
-    },
   });
 
   logger?.logToolInternalStep("recommendDietLifestyleTool", "SUB_AGENT_COMPLETE", {
