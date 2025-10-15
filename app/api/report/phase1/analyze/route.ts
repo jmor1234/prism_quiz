@@ -125,8 +125,19 @@ export async function POST(req: Request) {
           },
         });
 
-        // Merge streams
-        writer.merge(result.toUIMessageStream());
+        // Manually stream text chunks in the format frontend expects
+        (async () => {
+          try {
+            for await (const chunk of result.textStream) {
+              writer.write({
+                type: 'data-report-text' as const,
+                data: chunk,
+              });
+            }
+          } catch (error) {
+            console.error("Error streaming text:", error);
+          }
+        })();
 
         // Save result when complete
         try {

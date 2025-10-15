@@ -25,7 +25,7 @@ interface StreamEvent {
 
 export function ReportAnalysisStream({ caseId }: ReportAnalysisStreamProps) {
   const [status, setStatus] = useState<
-    "idle" | "streaming" | "complete" | "error"
+    "idle" | "checking" | "streaming" | "complete" | "error"
   >("idle");
   const [reportText, setReportText] = useState("");
   const [reasoning, setReasoning] = useState("");
@@ -50,8 +50,8 @@ export function ReportAnalysisStream({ caseId }: ReportAnalysisStreamProps) {
     const { type, data, id } = event;
 
     switch (type) {
-      // Text streaming
-      case "text":
+      // Text streaming (custom event format)
+      case "data-report-text":
         if (typeof data === "string") {
           setReportText((prev) => prev + data);
         }
@@ -239,12 +239,34 @@ export function ReportAnalysisStream({ caseId }: ReportAnalysisStreamProps) {
     }
   }, [caseId, handleStreamEvent]);
 
-  // Auto-start analysis on mount
+  // Check for existing result first, then start analysis if needed
   useEffect(() => {
     if (status === "idle") {
-      startAnalysis();
+      // First check if result already exists
+      const checkExistingResult = async () => {
+        try {
+          setStatus("checking");
+          const response = await fetch(`/api/report/phase1/result?caseId=${caseId}`);
+
+          if (response.ok) {
+            const data = await response.json() as { report: string };
+            setReportText(data.report);
+            setStatus("complete");
+          } else if (response.status === 404) {
+            // No existing result, start analysis
+            startAnalysis();
+          } else {
+            throw new Error("Failed to check for existing result");
+          }
+        } catch (err) {
+          console.warn("Could not check for existing result, starting analysis:", err);
+          startAnalysis();
+        }
+      };
+
+      checkExistingResult();
     }
-  }, [status, startAnalysis]);
+  }, [status, startAnalysis, caseId]);
 
   if (status === "error") {
     return (
@@ -298,6 +320,16 @@ export function ReportAnalysisStream({ caseId }: ReportAnalysisStreamProps) {
 
       {/* Reasoning (optional) */}
       {reasoning && <Reasoning>{reasoning}</Reasoning>}
+
+      {/* Checking state */}
+      {status === "checking" && (
+        <div className="flex items-center gap-3 rounded-lg border bg-card p-6">
+          <Loader className="h-4 w-4" />
+          <span className="text-sm text-muted-foreground">
+            Loading analysis...
+          </span>
+        </div>
+      )}
 
       {/* Loading state */}
       {status === "streaming" &&
