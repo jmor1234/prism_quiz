@@ -33,7 +33,7 @@ import { getPhase1Case } from "@/server/phase1Cases";
 import { savePhase1Result } from "@/server/phase1Results";
 import { buildPhase1SystemPrompt } from "./systemPrompt";
 
-export const maxDuration = 300; // 5 minutes
+export const maxDuration = 900; // 15 minutes
 
 export async function POST(req: Request) {
   let caseId: string;
