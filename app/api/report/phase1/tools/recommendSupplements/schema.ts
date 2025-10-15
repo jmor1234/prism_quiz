@@ -67,10 +67,12 @@ export const recommendSupplementsOutputSchema = z.object({
           .describe(
             "Immediate: most critical for root cause resolution. Important: strong supporting impact."
           ),
-        notes: z
+        dosageNotes: z
           .string()
-          .optional()
-          .describe("Dosing guidance, sourcing details, or important context from database"),
+          .describe("Dosage instructions and important notes from the 'Dosage/Notes' column in CSV database"),
+        provider: z
+          .string()
+          .describe("Where to purchase from the 'Provider' column in CSV database (include discount codes if present)"),
       })
     )
     .max(7)

@@ -67,10 +67,9 @@ export const recommendDiagnosticsOutputSchema = z.object({
           .describe(
             "Immediate: most critical for understanding root cause. Important: strong supporting value."
           ),
-        notes: z
+        whereToGet: z
           .string()
-          .optional()
-          .describe("Additional context, interpretation guidance, or important details from database"),
+          .describe("Provider or lab source from the 'Where to get' column in CSV database (empty string if not available)"),
       })
     )
     .max(7)

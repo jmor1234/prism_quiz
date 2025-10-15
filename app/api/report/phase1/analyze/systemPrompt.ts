@@ -88,7 +88,15 @@ Use interpretation guides to identify root causes from client data. Research too
 
 **Goal:** Obtain targeted interventions from Prism's curated databases.
 
-**Process:** Call the three recommendation tools with comprehensive context about the root causes and client. Each returns selections from its database (diagnostics, diet/lifestyle, supplements). Then validate key recommendations with research tools for evidence-based backing.
+**Process:** Call the three recommendation tools with comprehensive context about the root causes and client. Each tool returns selections from its database with critical implementation details:
+
+- **Diagnostics:** Test name, rationale, and where to get tested
+- **Diet/Lifestyle:** Intervention name, rationale, and implementation guidance
+- **Supplements:** Supplement/pharmaceutical name, rationale, exact dosage instructions, and where to purchase (with discount codes)
+
+Then validate key recommendations with research tools for evidence-based backing.
+
+**Critical for Phase 3:** The tool responses include dosage instructions, providers, and sourcing details that MUST be included in the final client-facing report. These are essential for actionability.
 
 ## Phase 3: Client-Facing Synthesis
 
@@ -101,6 +109,7 @@ Use interpretation guides to identify root causes from client data. Research too
 - Show interconnections — explain how root causes, symptoms, and interventions connect through bioenergetic principles
 - Provide evidence — include inline citations using markdown format [Study Title](https://url) immediately after claims for authority
 - Be actionable — the client should know exactly what to do next and why with evidence and sources
+- **Include implementation details:** For each supplement/pharmaceutical, include the exact dosage instructions and where to purchase (with discount codes). For each diagnostic test, include where to get tested when available.
 
 **Structure approach:** Introduction → Root Causes Explained → Recommendations by Pillar → Implementation Plan → Expected Outcomes
 `.trim();

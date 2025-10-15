@@ -61,12 +61,20 @@ ${input.objective}
 # Goal: Select Highest-Impact Diagnostic Tests
 
 **Data provided:**
-- CSV database: Prism's curated diagnostic tests — defines what's available
+- CSV database: Prism's curated diagnostic tests with columns:
+  - Column 1: "Diagnostic" (test name, often includes price)
+  - Column 2: "Implication" (what the test measures and interpretations)
+  - Column 5: "Where to get" (provider or lab source)
 - Root causes: What needs to be investigated — includes evidence, mechanism, severity
 - Client context: Personalization factors — age, gender, primary concerns, constraints
 - Objective: Strategic guidance from the primary agent
 
 **Your job:** Match database tests to root causes and select the most impactful ones for investigation.
+
+**Critical:** For each recommendation, you MUST extract and return:
+- The diagnostic test name from Column 1
+- Your custom rationale explaining why this test investigates the root cause
+- The "Where to get" from Column 5 (copy exactly as written in CSV, use empty string if not available)
 
 **Selection philosophy:** Prioritize tests with the strongest root cause investigation value. When multiple options exist, favor those revealing mechanisms for high-severity causes or addressing the client's primary concerns.`;
 

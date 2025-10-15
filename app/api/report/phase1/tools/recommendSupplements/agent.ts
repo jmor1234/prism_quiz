@@ -61,12 +61,22 @@ ${input.objective}
 # Goal: Select Highest-Impact Supplements & Pharmaceuticals
 
 **Data provided:**
-- CSV database: Prism's curated supplements and pharmaceuticals — defines what's available
+- CSV database: Prism's curated supplements and pharmaceuticals with columns:
+  - Column 1: "Supplement or Pharmaceuticals" (name)
+  - Column 2: "Rationale" (mechanism and use cases)
+  - Column 4: "Dosage/Notes" (dosing instructions and important notes)
+  - Column 5: "Provider" (where to purchase, including discount codes)
 - Root causes: What needs to be addressed — includes evidence, mechanism, severity
 - Client context: Personalization factors — age, gender, primary concerns, constraints
 - Objective: Strategic guidance from the primary agent
 
 **Your job:** Match database supplements/pharmaceuticals to root causes and select the most impactful ones for resolution.
+
+**Critical:** For each recommendation, you MUST extract and return:
+- The supplement/pharmaceutical name from Column 1
+- Your custom rationale explaining the connection to the root cause
+- The complete "Dosage/Notes" text from Column 4 (copy exactly as written in CSV)
+- The complete "Provider" text from Column 5 (copy exactly as written in CSV, including any discount codes)
 
 **Selection philosophy:** Prioritize supplements with the strongest root cause impact. When multiple options exist, favor those addressing high-severity causes or the client's primary concerns.`;
 
