@@ -27,7 +27,7 @@
   - Written when Phase 1 agent completes analysis.
 - **Identifiers:** `caseId` is returned to the UI and becomes the join key for later phases.
 
-## 3. Current Implementation Snapshot (Phase 1)
+## 3. Current Implementation Snapshot (Full Three-Phase System)
 
 ### Frontend
 
@@ -50,29 +50,46 @@
 **`app/api/report/phase1/route.ts`** (Submit endpoint)
 - Ingests submissions (validates + persists) and returns `{ caseId }`.
 
-**`app/api/report/phase1/analyze/route.ts`** (Streaming agent)
+**`app/api/report/phase1/analyze/route.ts`** (Three-phase streaming agent)
 - Accepts `{ caseId }` and loads submission from storage.
 - Builds system prompt with bioenergetic knowledge + interpretation guides + client data.
-- Runs streaming agent with tools: `thinkTool`, `researchMemoryTool`, `executeResearchPlanTool`, `targetedExtractionTool`.
+- Runs streaming agent with 7 tools:
+  - **Chat tools:** `thinkTool`, `researchMemoryTool`, `executeResearchPlanTool`, `targetedExtractionTool`
+  - **Recommendation tools:** `recommendDiagnosticsTool`, `recommendDietLifestyleTool`, `recommendSupplementsTool`
 - Streams real-time progress via `TraceLogger`.
+- Executes full 3-phase workflow:
+  - **Phase 1:** Identify root causes using interpretation guides (PRIMARY) + research (SECONDARY)
+  - **Phase 2:** Call recommendation tools → get CSV-matched interventions → validate with research
+  - **Phase 3:** Synthesize client-facing report with inline citations
 - Saves final report to `storage/phase1-results/<caseId>.json`.
 - Max duration: 5 minutes.
 
 **`app/api/report/phase1/analyze/systemPrompt.ts`**
 - Loads interpretation guides from `data/` directory (questionnaire.md, takehome.md).
-- Builds system prompt with XML-tagged structure:
-  - Bioenergetic knowledge framework
+- Builds 3-phase system prompt:
+  - Prism context and bioenergetic knowledge framework
   - Interpretation guides (questionnaire + takehome)
   - Client data (questionnaire responses, takehome assessment, advisor notes)
-  - Analysis approach instructions
-  - Tool descriptions
+  - Phase 1: Root cause identification with authority hierarchy
+  - Phase 2: Recommendation generation via tools
+  - Phase 3: Concise client-facing synthesis with interconnections and citations
+
+**`app/api/report/phase1/tools/`** (Recommendation sub-agents)
+- **`recommendDiagnostics/`** - Matches diagnostic tests from CSV to root causes (max 7)
+- **`recommendDietLifestyle/`** - Matches diet/lifestyle interventions from CSV to root causes (max 7)
+- **`recommendSupplements/`** - Matches supplements/pharma from CSV to root causes (max 7)
+- Each tool:
+  - Loads its CSV database (cached after first load)
+  - Receives root causes + client context + objective from primary agent
+  - Uses Claude Sonnet sub-agent with `generateObject` for structured selection
+  - Returns highest-impact recommendations based on severity and client concerns
 
 **`app/api/report/phase1/data/`**
-- `questionaire.md` - Maps questionnaire responses to bioenergetic implications
-- `takehome.md` - Interprets take-home test results
-- `Prsim Data - Diagnostics_implications.csv` - Diagnostic tests database (not yet used)
-- `Prsim Data - Diet & Lifestyle.csv` - Interventions database (not yet used)
-- `Prsim Data - Supplements & Pharmaceuticals.csv` - Supplements database (not yet used)
+- `questionaire.md` - Maps questionnaire responses to bioenergetic implications (PRIMARY authority for Phase 1)
+- `takehome.md` - Interprets take-home test results (PRIMARY authority for Phase 1)
+- `Prsim Data - Diagnostics_implications.csv` - Diagnostic tests database (used by recommendDiagnosticsTool)
+- `Prsim Data - Diet & Lifestyle.csv` - Interventions database (used by recommendDietLifestyleTool)
+- `Prsim Data - Supplements & Pharmaceuticals.csv` - Supplements database (used by recommendSupplementsTool)
 
 ### Shared Schema
 
@@ -93,42 +110,58 @@
 2. Backend stores the submission and returns `caseId`.
 3. Frontend navigates to `/report/analysis/<caseId>`.
 4. Analysis page automatically initiates streaming agent by calling `/api/report/phase1/analyze`.
-5. Agent loads submission, builds system prompt, and runs with tools.
-6. Real-time progress streams to frontend (research phases, tool status, etc.).
-7. Final report generated and saved to storage.
-8. Frontend displays complete root-cause analysis report.
+5. Agent loads submission, builds 3-phase system prompt, and executes:
+   - **Phase 1:** Analyze client data → identify 2-5 root causes using interpretation guides + research
+   - **Phase 2:** Call 3 recommendation tools with root cause context → get CSV-matched interventions (max 7 each) → validate with research for evidence
+   - **Phase 3:** Synthesize concise client-facing report showing interconnections with inline citations
+6. Real-time progress streams to frontend:
+   - Research sessions/objectives/phases (executeResearchPlanTool)
+   - Tool status (think, memory, recommendation tools)
+   - Extraction progress (targetedExtractionTool)
+7. Final comprehensive report generated and saved to storage.
+8. Frontend displays complete 3-phase report.
 
 Files written:
 - `storage/phase1-submissions/<caseId>.json` (submission data)
-- `storage/phase1-results/<caseId>.json` (analysis output)
+- `storage/phase1-results/<caseId>.json` (full 3-phase report)
 
-## 5. Next Steps & Open Questions
-1. **Phase 1 Refinement**
-   - Refine system prompt with clearer objectives and output structure.
-   - Improve agent instructions for using interpretation guides effectively.
-   - Optimize research strategy and citation integration.
+## 5. Current Status & Next Steps
 
-2. **Phase 2: Recommendation Synthesis**
-   - Build 3 sub-agent tools (diagnostics, diet/lifestyle, supplements/pharma).
-   - Each sub-agent receives Phase 1 root causes + full context + its CSV database.
-   - Sub-agents use research tools for evidence-based backing.
-   - Outputs combined into Phase 2 results.
+### ✅ Completed (As of Implementation)
+1. **Full 3-Phase Pipeline** - Implemented in single streaming session
+   - Phase 1: Root cause identification with interpretation guides
+   - Phase 2: Three recommendation sub-agent tools with CSV matching
+   - Phase 3: Client-facing synthesis with interconnections and citations
 
-3. **Phase 3: Final Report Assembly**
-   - Synthesis agent weaves Phase 1 + Phase 2 together.
-   - Creates coherent narrative with interconnections.
-   - Final deliverable for advisor review with client.
+2. **Recommendation Tools Architecture**
+   - Schema-driven with `.max(7)` constraints for focused recommendations
+   - CSV database caching for performance
+   - Sub-agents use `generateObject` for structured output
+   - Streaming tool status for UX visibility
 
-4. **Attachment Storage Integration**
-   - Replace placeholder attachment IDs with durable storage (S3/GCS) and reference links.
+3. **Prompt Design Philosophy**
+   - Clear separation: Prompt = intent, Schema = contract
+   - Data definitions (what each section IS)
+   - Authority hierarchy (PRIMARY vs SECONDARY)
+   - Non-prescriptive approach enabling agent autonomy
 
-5. **QA & Testing**
-   - Build automated tests or manual QA checklist.
-   - Validate idempotency and streaming UX.
+### 🔄 Next Steps
+1. **Testing & Validation**
+   - Test with real client data
+   - Validate 3-phase output quality
+   - Iterate on prompts based on results
+   - Verify streaming UX performs well
 
-6. **Auth & Editing Lifecycle**
-   - Decide who can view/run analyses.
-   - Handle re-runs and versioning.
+2. **Optimization**
+   - Fine-tune recommendation selection quality
+   - Optimize research strategy for Phase 1 and Phase 2 validation
+   - Refine citation integration
+
+3. **Future Enhancements**
+   - Attachment storage integration (S3/GCS)
+   - Structured output from Phase 1 for programmatic access
+   - Auth & editing lifecycle
+   - Re-run and versioning capabilities
 
 ## 6. Key Files & Entry Points
 
@@ -138,8 +171,9 @@ Files written:
 
 ### Backend
 - Submit API: `app/api/report/phase1/route.ts`
-- Analyze API: `app/api/report/phase1/analyze/route.ts`
-- System prompt: `app/api/report/phase1/analyze/systemPrompt.ts`
+- Analyze API (3-phase): `app/api/report/phase1/analyze/route.ts`
+- System prompt (3-phase): `app/api/report/phase1/analyze/systemPrompt.ts`
+- Recommendation tools: `app/api/report/phase1/tools/` (3 sub-agent tools)
 - Data: `app/api/report/phase1/data/` (interpretation guides + CSV databases)
 
 ### Shared/Server
@@ -154,11 +188,34 @@ Files written:
 - UI: `components/research-progress.tsx`, `components/extraction-progress.tsx`
 
 ## 7. Implementation Notes
-- **Two-step pattern**: Submit (persist) → Analyze (stream agent execution)
-- **Option B architecture**: Separate endpoints enable retry/resume without data loss
-- **Tool reuse**: All chat route tools work identically in report context
-- **System prompt differentiates**: Same tools, different strategic context
-- **Real-time visibility**: 2-5 minute executions tolerable with streaming progress
-- **Deterministic persistence**: Single source of truth for each phase
+- **Two-step pattern**: Submit (persist) → Analyze (stream 3-phase execution)
+- **Single-session architecture**: All 3 phases execute in one streaming session for coherent context
+- **Tool composition**: Chat tools (research) + Recommendation tools (CSV matching)
+- **System prompt differentiates**: Report context with 3-phase structure vs chat's open-ended exploration
+- **Real-time visibility**: 2-5 minute executions with streaming progress (research, tool status, extractions)
+- **Deterministic persistence**: Single source of truth - submission + final comprehensive report
+- **Sub-agent isolation**: Recommendation tools are blind (only see their inputs) - no research tools, no memory
+- **Authority hierarchy**: PRIMARY (interpretation guides, CSV databases) vs SECONDARY (research validation)
+- **Prompt philosophy**: Intent over prescription, schema handles contract, enabling agent autonomy
 
-Reading this document should give a new engineer full context on what the "reports" project does today, how data flows through the system, and what work remains to complete the multi-phase pipeline.
+## 8. Architecture Principles
+
+### Cognitive Architecture
+- **Primary agent**: Orchestrates all 3 phases with full context and all tools
+- **Sub-agents**: Specialized CSV matchers - receive structured input, return structured output
+- **Tools as cognitive extensions**: Each tool extends specific capability (think, memory, research, extraction, recommendation)
+- **Context flows downward**: Primary agent provides comprehensive context to sub-agents who are otherwise blind
+
+### Prompt Design
+- **Separation of concerns**: Prompt defines intent and data, Schema defines contract
+- **No overlap**: Avoid repeating schema descriptions in prompts
+- **Data clarity**: Explicitly state what each injected section IS
+- **Enable autonomy**: Philosophy over rigid steps, let intelligence emerge
+
+### Quality Constraints
+- **Max 7 per domain**: Hard schema limit forces prioritization and selection judgment
+- **Evidence-based**: Research tools validate recommendations with citations
+- **Interconnected**: Final synthesis explains how root causes, interventions, and bioenergetic principles connect
+- **Actionable**: Client knows what to do next
+
+Reading this document should give a new engineer full context on what the "reports" project does today, how data flows through the system, and the architectural principles guiding implementation.

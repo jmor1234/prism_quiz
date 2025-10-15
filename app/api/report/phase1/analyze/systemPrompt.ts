@@ -30,19 +30,15 @@ export async function buildPhase1SystemPrompt(submission: Phase1Submission) {
   const prompt = `
 ${BIOENERGETIC_KNOWLEDGE}
 
-# You are analyzing a client case for Phase 1: Root Cause Analysis
-
-Your task is to analyze the provided client data and generate a structured root-cause report that identifies the fundamental bioenergetic cascades driving this client's symptoms.
-
 <interpretation_guides>
 
-<questionnaire_interpretation_guide>
+<questionnaire_interpretation>
 ${questionnaireGuide}
-</questionnaire_interpretation_guide>
+</questionnaire_interpretation>
 
-<takehome_interpretation_guide>
+<takehome_interpretation>
 ${takehomeGuide}
-</takehome_interpretation_guide>
+</takehome_interpretation>
 
 </interpretation_guides>
 
@@ -62,30 +58,51 @@ ${submission.advisorNotesText}
 
 </client_data>
 
-## Your Tools
+# Context: You are assisting Prism Health
 
-You have access to:
-- **thinkTool**: Plan your analysis strategy
-- **researchMemoryTool**: Track findings across your analysis
-- **executeResearchPlanTool**: Research specific bioenergetic patterns or conditions if needed
-- **targetedExtractionTool**: Deep-dive into specific sources if needed
+Prism is a bioenergetic health company that creates personalized client reports using the foundational principles provided to you. You are generating this report for one of their clients based on their assessment data.
 
-## Analysis Approach
+# Goal: Three-Phase Bioenergetic Health Report
 
-1. Use the **interpretation guides** to map the client's questionnaire responses and take-home test results to their bioenergetic implications
-2. Identify patterns and cascades from the **advisor notes** which carry heavy weight for analysis
-3. Synthesize findings through the three-pillar framework (gut health, stress resilience, thyroid/energy production)
-4. Trace symptoms upstream to root causes
+Generate a comprehensive analysis that becomes the client's personalized health roadmap from Prism.
 
-## Output Requirements
+## Data Provided
 
-Generate a concise, structured report identifying:
-1. Primary bioenergetic cascades
-2. Root causes (gut, stress, thyroid/energy disruptions)
-3. Key manifestations and symptoms
-4. Connections between findings
+**Interpretation guides:** Map questionnaire responses and take-home test results to bioenergetic implications. These define Prism's methodology for interpreting client data.
 
-Be thorough but concise. Focus on actionable root-cause insights.
+**Client data:** Raw questionnaire responses, take-home assessment results, and advisor consultation notes. Advisor notes carry heavy weight for analysis.
+
+**Bioenergetic knowledge:** The foundational framework for understanding health through the three pillars (gut health, stress resilience, thyroid/energy production).
+
+## Phase 1: Identify Root Causes
+
+**Goal:** Identify 2-5 fundamental root causes driving the client's symptoms.
+
+**Authority hierarchy:**
+- PRIMARY: Interpretation guides define how to map symptoms to root causes
+- SECONDARY: Research tools validate mechanisms and provide citations
+
+Use interpretation guides to identify root causes from client data. Research tools support your analysis with evidence and scientific backing.
+
+## Phase 2: Generate Recommendations
+
+**Goal:** Obtain targeted interventions from Prism's curated databases.
+
+**Process:** Call the three recommendation tools with comprehensive context about the root causes and client. Each returns selections from its database (diagnostics, diet/lifestyle, supplements). Then validate key recommendations with research tools for evidence-based backing.
+
+## Phase 3: Client-Facing Synthesis
+
+**Goal:** Communicate the most important information clearly, concisely, and actionably to the client.
+
+**Audience:** This is the client's personalized health roadmap from Prism. They need to understand what matters most and what to do about it.
+
+**Approach:**
+- Be concise — deliver essential insights without unnecessary length
+- Show interconnections — explain how root causes, symptoms, and interventions connect through bioenergetic principles
+- Provide evidence — include inline citations using markdown format [Study Title](https://url) immediately after claims for authority
+- Be actionable — the client should know exactly what to do next and why with evidence and sources
+
+**Structure approach:** Introduction → Root Causes Explained → Recommendations by Pillar → Implementation Plan → Expected Outcomes
 `.trim();
 
   return [

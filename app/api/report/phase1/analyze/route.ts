@@ -14,6 +14,11 @@ import { researchMemoryTool } from "@/app/api/chat/tools/researchMemoryTool/rese
 import { targetedExtractionTool } from "@/app/api/chat/tools/targetedExtractionTool/targetedExtractionTool";
 import { executeResearchPlanTool } from "@/app/api/chat/tools/executeResearchPlanTool/executeResearchPlanTool";
 
+// Import recommendation tools
+import { recommendDiagnosticsTool } from "../tools/recommendDiagnostics/tool";
+import { recommendDietLifestyleTool } from "../tools/recommendDietLifestyle/tool";
+import { recommendSupplementsTool } from "../tools/recommendSupplements/tool";
+
 // Reuse streaming infrastructure
 import {
   TraceLogger,
@@ -71,12 +76,15 @@ export async function POST(req: Request) {
     // Build system prompt with submission context
     const systemMessages = await buildPhase1SystemPrompt(caseRecord.submission);
 
-    // Prepare cached tools (same as chat)
+    // Prepare cached tools (chat tools + recommendation tools)
     const cachedTools = cache.prepareCachedTools({
       thinkTool,
       researchMemoryTool,
       targetedExtractionTool,
       executeResearchPlanTool,
+      recommendDiagnosticsTool,
+      recommendDietLifestyleTool,
+      recommendSupplementsTool,
     });
 
     // No conversation history - just system prompt
