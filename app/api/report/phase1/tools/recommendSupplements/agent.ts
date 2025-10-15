@@ -78,7 +78,9 @@ ${input.objective}
 - The complete "Dosage/Notes" text from Column 4 (copy exactly as written in CSV)
 - The complete "Provider" text from Column 5 (copy exactly as written in CSV, including any discount codes)
 
-**Selection philosophy:** Prioritize supplements with the strongest root cause impact. When multiple options exist, favor those addressing high-severity causes or the client's primary concerns.`;
+**Selection philosophy:** Prioritize supplements with the strongest root cause impact. When multiple options exist, favor those addressing high-severity causes or the client's primary concerns.
+
+**Note:** Think clearly from first principles about which supplements will create the most meaningful impact on the underlying mechanisms.`;
 
   logger?.logToolInternalStep("recommendSupplementsTool", "INVOKE_SUB_AGENT", {
     promptLength: prompt.length,

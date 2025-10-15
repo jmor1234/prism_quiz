@@ -66,6 +66,8 @@ Prism is a bioenergetic health company that creates personalized client reports 
 
 Generate a comprehensive analysis that becomes the client's personalized health roadmap from Prism.
 
+**Note:** Think clearly from first principles about the underlying bioenergetic mechanisms connecting symptoms, root causes, and interventions.
+
 ## Data Provided
 
 **Interpretation guides:** Map questionnaire responses and take-home test results to bioenergetic implications. These define Prism's methodology for interpreting client data.

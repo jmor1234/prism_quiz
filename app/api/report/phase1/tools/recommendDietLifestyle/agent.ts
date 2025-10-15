@@ -68,7 +68,9 @@ ${input.objective}
 
 **Your job:** Match database interventions to root causes and select the most impactful ones for resolution.
 
-**Selection philosophy:** Prioritize interventions with the strongest root cause impact. When multiple options exist, favor those addressing high-severity causes or the client's primary concerns.`;
+**Selection philosophy:** Prioritize interventions with the strongest root cause impact. When multiple options exist, favor those addressing high-severity causes or the client's primary concerns.
+
+**Note:** Think clearly from first principles about which interventions will create the most meaningful impact on the underlying mechanisms.`;
 
   logger?.logToolInternalStep("recommendDietLifestyleTool", "INVOKE_SUB_AGENT", {
     promptLength: prompt.length,

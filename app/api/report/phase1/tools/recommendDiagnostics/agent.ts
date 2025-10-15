@@ -76,7 +76,9 @@ ${input.objective}
 - Your custom rationale explaining why this test investigates the root cause
 - The "Where to get" from Column 5 (copy exactly as written in CSV, use empty string if not available)
 
-**Selection philosophy:** Prioritize tests with the strongest root cause investigation value. When multiple options exist, favor those revealing mechanisms for high-severity causes or addressing the client's primary concerns.`;
+**Selection philosophy:** Prioritize tests with the strongest root cause investigation value. When multiple options exist, favor those revealing mechanisms for high-severity causes or addressing the client's primary concerns.
+
+**Note:** Think clearly from first principles about which tests provide the most meaningful insights into the underlying mechanisms.`;
 
   logger?.logToolInternalStep("recommendDiagnosticsTool", "INVOKE_SUB_AGENT", {
     promptLength: prompt.length,
