@@ -27,18 +27,22 @@ app/report/
   - Displays case ID and mounts `ReportAnalysisStream` component.
 
 - `analysis/[caseId]/report-analysis-stream.tsx`
+  - Checks for existing result via `/api/report/phase1/result` before initiating new analysis.
+  - If result exists: Loads from cache instantly (no re-run).
+  - If not found: Initiates streaming analysis.
   - Manually consumes SSE stream from `/api/report/phase1/analyze`.
-  - Manages streaming state (idle → streaming → complete → error).
+  - Manages streaming state (idle → checking → streaming → complete → error).
   - Parses typed stream events:
     - `data-research-session`, `data-research-objective`, `data-research-phase`
     - `data-extraction-session`, `data-extraction-url`
     - `data-tool-status`, `data-research-collection`, `data-research-sources`
-    - `text` (report content), `reasoning` (visible thinking)
+    - `data-report-text` (report content chunks)
+    - `reasoning` (visible thinking)
   - Updates `ResearchState` for progress UI.
   - Renders:
     - `ResearchProgress` component (reused from chat)
     - `ExtractionProgress` component (reused from chat)
-    - Final report in markdown (`Response` component)
+    - Final report in markdown (`Response` component) - streamed in real-time
     - Reasoning panel (`Reasoning` component)
   - Error handling with retry functionality.
 

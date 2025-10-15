@@ -40,15 +40,21 @@
 - Analysis page that displays case ID and mounts streaming component.
 
 **`app/report/analysis/[caseId]/report-analysis-stream.tsx`**
+- Checks for existing result before initiating new analysis (prevents re-running on refresh).
 - Manually consumes SSE stream from analyze endpoint.
-- Parses streaming events (research progress, extraction progress, tool status).
+- Parses streaming events (research progress, extraction progress, tool status, report text).
 - Renders real-time progress using `ResearchProgress` and `ExtractionProgress` components.
-- Displays final markdown report when complete.
+- Displays final markdown report when complete (streamed in real-time or loaded from cache).
 
 ### Backend
 
 **`app/api/report/phase1/route.ts`** (Submit endpoint)
 - Ingests submissions (validates + persists) and returns `{ caseId }`.
+
+**`app/api/report/phase1/result/route.ts`** (Result retrieval endpoint)
+- GET endpoint that retrieves existing analysis results by `caseId`.
+- Returns `{ report, createdAt }` if found, 404 if not found.
+- Used by frontend to check for cached results before re-running analysis.
 
 **`app/api/report/phase1/analyze/route.ts`** (Three-phase streaming agent)
 - Accepts `{ caseId }` and loads submission from storage.
@@ -57,12 +63,13 @@
   - **Chat tools:** `thinkTool`, `researchMemoryTool`, `executeResearchPlanTool`, `targetedExtractionTool`
   - **Recommendation tools:** `recommendDiagnosticsTool`, `recommendDietLifestyleTool`, `recommendSupplementsTool`
 - Streams real-time progress via `TraceLogger`.
+- Streams report text via custom `data-report-text` events (manually consumed from `result.textStream`).
 - Executes full 3-phase workflow:
   - **Phase 1:** Identify root causes using interpretation guides (PRIMARY) + research (SECONDARY)
   - **Phase 2:** Call recommendation tools → get CSV-matched interventions → validate with research
   - **Phase 3:** Synthesize client-facing report with inline citations
 - Saves final report to `storage/phase1-results/<caseId>.json`.
-- Max duration: 5 minutes.
+- Max duration: 15 minutes.
 
 **`app/api/report/phase1/analyze/systemPrompt.ts`**
 - Loads interpretation guides from `data/` directory (questionnaire.md, takehome.md).
@@ -109,7 +116,9 @@
 1. User completes the Phase 1 form and submits.
 2. Backend stores the submission and returns `caseId`.
 3. Frontend navigates to `/report/analysis/<caseId>`.
-4. Analysis page automatically initiates streaming agent by calling `/api/report/phase1/analyze`.
+4. Analysis page checks for existing result:
+   - **If exists:** Loads cached report from storage (instant display, no re-run)
+   - **If not found:** Initiates streaming agent by calling `/api/report/phase1/analyze`
 5. Agent loads submission, builds 3-phase system prompt, and executes:
    - **Phase 1:** Analyze client data → identify 2-5 root causes using interpretation guides + research
    - **Phase 2:** Call 3 recommendation tools with root cause context → get CSV-matched interventions (max 7 each) → validate with research for evidence
@@ -118,8 +127,10 @@
    - Research sessions/objectives/phases (executeResearchPlanTool)
    - Tool status (think, memory, recommendation tools)
    - Extraction progress (targetedExtractionTool)
+   - Report text chunks (data-report-text events)
 7. Final comprehensive report generated and saved to storage.
-8. Frontend displays complete 3-phase report.
+8. Frontend displays complete 3-phase report as it streams in real-time.
+9. On page refresh: Cached result loads instantly from storage (no re-analysis).
 
 Files written:
 - `storage/phase1-submissions/<caseId>.json` (submission data)
@@ -127,30 +138,40 @@ Files written:
 
 ## 5. Current Status & Next Steps
 
-### ✅ Completed (As of Implementation)
+### ✅ Completed (Validated with Real Client Data)
 1. **Full 3-Phase Pipeline** - Implemented in single streaming session
    - Phase 1: Root cause identification with interpretation guides
    - Phase 2: Three recommendation sub-agent tools with CSV matching
    - Phase 3: Client-facing synthesis with interconnections and citations
+   - **Status:** Validated end-to-end with real client data, produces production-quality reports
 
 2. **Recommendation Tools Architecture**
    - Schema-driven with `.max(7)` constraints for focused recommendations
    - CSV database caching for performance
    - Sub-agents use `generateObject` for structured output
    - Streaming tool status for UX visibility
+   - **Status:** All 3 tools (diagnostics, diet/lifestyle, supplements) functioning correctly
 
-3. **Prompt Design Philosophy**
+3. **Streaming & Caching**
+   - Real-time text streaming via custom `data-report-text` events
+   - Progress UI updates (research, tool status, extractions)
+   - Result caching prevents re-analysis on page refresh
+   - Instant load from storage for existing results
+   - **Status:** Fully functional with proper event format alignment
+
+4. **Prompt Design Philosophy**
    - Clear separation: Prompt = intent, Schema = contract
    - Data definitions (what each section IS)
    - Authority hierarchy (PRIMARY vs SECONDARY)
    - Non-prescriptive approach enabling agent autonomy
+   - **Status:** Produces high-quality, personalized, evidence-based reports
 
 ### 🔄 Next Steps
-1. **Testing & Validation**
-   - Test with real client data
-   - Validate 3-phase output quality
-   - Iterate on prompts based on results
-   - Verify streaming UX performs well
+1. **Continued Validation**
+   - Test with additional diverse client cases
+   - Monitor output consistency and quality
+   - Gather feedback from advisors on report usefulness
+   - Track execution times and costs
 
 2. **Optimization**
    - Fine-tune recommendation selection quality
@@ -171,6 +192,7 @@ Files written:
 
 ### Backend
 - Submit API: `app/api/report/phase1/route.ts`
+- Result retrieval API: `app/api/report/phase1/result/route.ts`
 - Analyze API (3-phase): `app/api/report/phase1/analyze/route.ts`
 - System prompt (3-phase): `app/api/report/phase1/analyze/systemPrompt.ts`
 - Recommendation tools: `app/api/report/phase1/tools/` (3 sub-agent tools)
@@ -192,7 +214,7 @@ Files written:
 - **Single-session architecture**: All 3 phases execute in one streaming session for coherent context
 - **Tool composition**: Chat tools (research) + Recommendation tools (CSV matching)
 - **System prompt differentiates**: Report context with 3-phase structure vs chat's open-ended exploration
-- **Real-time visibility**: 2-5 minute executions with streaming progress (research, tool status, extractions)
+- **Real-time visibility**: 2-5 minute executions with streaming progress (research, tool status, extractions, report text)
 - **Deterministic persistence**: Single source of truth - submission + final comprehensive report
 - **Sub-agent isolation**: Recommendation tools are blind (only see their inputs) - no research tools, no memory
 - **Authority hierarchy**: PRIMARY (interpretation guides, CSV databases) vs SECONDARY (research validation)

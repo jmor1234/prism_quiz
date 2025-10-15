@@ -4,6 +4,8 @@
 app/api/report/
 └── phase1/
     ├── route.ts              # Submit endpoint: ingests submission, returns caseId
+    ├── result/
+    │   └── route.ts          # Result retrieval endpoint: returns cached analysis by caseId
     ├── analyze/
     │   ├── route.ts          # Three-phase streaming agent endpoint
     │   └── systemPrompt.ts   # Builds 3-phase system prompt with context + interpretation guides
@@ -36,6 +38,13 @@ app/api/report/
   - Persists to `storage/phase1-submissions/<caseId>.json`.
   - Returns `{ caseId }` to frontend.
 
+### Result Retrieval
+- `phase1/result/route.ts`
+  - GET endpoint accepting `caseId` query parameter.
+  - Retrieves existing analysis result via `getPhase1Result(caseId)`.
+  - Returns `{ report, createdAt }` if found (200), or 404 if not found.
+  - Used by frontend to check for cached results before initiating new analysis.
+
 ### Analysis Flow (Three-Phase Pipeline)
 - `phase1/analyze/route.ts`
   - Three-phase streaming agent endpoint (POST with `{ caseId }`).
@@ -56,12 +65,13 @@ app/api/report/
     - `CacheManager` (three-tier caching)
     - `TokenEconomics` (cost tracking)
     - `createStreamCallbacks` (step handlers)
+  - Streams report text via custom `data-report-text` events (manually iterates `result.textStream`).
   - Executes full 3-phase workflow:
     - **Phase 1:** Identify 2-5 root causes (interpretation guides PRIMARY, research SECONDARY)
     - **Phase 2:** Call recommendation tools → validate with research
     - **Phase 3:** Synthesize concise client-facing report with inline citations
   - Saves final comprehensive report to `storage/phase1-results/<caseId>.json`.
-  - Max duration: 5 minutes.
+  - Max duration: 15 minutes.
 
 - `phase1/analyze/systemPrompt.ts`
   - Loads interpretation guides from `data/` directory (cached after first load).
