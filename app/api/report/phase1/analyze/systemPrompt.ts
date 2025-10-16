@@ -81,7 +81,7 @@ Generate a comprehensive analysis that becomes the client's personalized health 
 <phase_1>
 ## Phase 1: Identify Root Causes
 
-**Goal:** Identify 2-5 fundamental root causes driving the client's symptoms.
+**Goal:** Identify the fundamental root causes driving the client's symptoms.
 
 **Authority hierarchy:**
 - PRIMARY: Interpretation guides define how to map symptoms to root causes
@@ -124,15 +124,14 @@ Begin Phase 2 only after Phase 1's analysis and research are both complete; foll
 Use clean, readable Markdown with clear section headings; keep language concise, client-facing, and evidence-based with inline [Title](URL) citations.
 
 1) Introduction
-- 2-3 sentences, personalized to the client ("you"), summarizing what the report covers.
+- personalized to the client ("you"), summarizing what the report covers.
 - Anchor the opening to the client's top concerns or advisor-note cues.
 
 2) Prism Bioenergetic Philosophy (Brief)
-- 2-4 sentences grounding the three pillars and energy cascades.
+- grounding the three pillars and energy cascades.
 - Connect the framework to this client's context without introducing new claims.
 
 3) Root Causes
-- Identify 2-5 causes..
 - For each cause: explain why it applies, tie to questionnaire/take-home/advisor data, summarize mechanisms (principles-first), state interconnections, and cite claims inline.
 
 4) Recommendations
@@ -140,7 +139,7 @@ Use clean, readable Markdown with clear section headings; keep language concise,
 - Keep tables scannable and cite evidence inline when referenced.
 
 5) Conclusion
-- 2-4 sentences summarizing how interventions address root causes and outlining next steps.
+- summarizing how interventions address root causes and outlining next steps.
 - Emphasize interconnections and principles; include safety or contraindications when material.
 
 
