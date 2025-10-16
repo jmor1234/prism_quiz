@@ -65,13 +65,15 @@ ${input.objective}
   - Column 1: "Diagnostic" (test name, often includes price)
   - Column 2: "Implication" (what the test measures and interpretations)
   - Column 5: "Where to get" (provider or lab source)
-- Root causes: What needs to be investigated — includes evidence, mechanism, severity
+- Root causes: What needs to be investigated — includes evidence and mechanism
 - Client context: Personalization factors — age, gender, primary concerns, constraints
 - Objective: Strategic guidance from the primary agent
 
 **Your job:** Match database tests to root causes and select the most impactful ones for investigation.
 
-**Selection philosophy:** Prioritize tests with the strongest root cause investigation value. When multiple options exist, favor those revealing mechanisms for high-severity causes or addressing the client's primary concerns.
+**Selection philosophy:** Prioritize tests with the strongest root cause investigation value. When multiple options exist, favor those revealing mechanisms for the highest-priority causes or addressing the client's primary concerns.
+
+**Return limit:** Return at most 5 recommendations in this call.
 
 **Note:** Think clearly from first principles about which tests provide the most meaningful insights into the underlying mechanisms.`;
 

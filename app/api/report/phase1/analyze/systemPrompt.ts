@@ -93,7 +93,7 @@ Use interpretation guides to identify root causes from client data. Research too
 
 **Goal:** Obtain targeted interventions from Prism's curated databases.
 
-**Process:** Call the three recommendation tools with comprehensive context about the root causes and client. Each tool returns selections from its database with critical implementation details:
+**Process:** You may call the three recommendation tools multiple times with focused objectives and contexts. Compare outputs across calls and exercise judgment. The final recommendations included in the report MUST be selected from sub-agent outputs (do not invent items). Each tool call should request concise top picks. Each tool returns selections from its database with critical implementation details:
 
 - **Diagnostics:** Test name, rationale, and where to get tested
 - **Diet/Lifestyle:** Intervention name, rationale, and implementation guidance

@@ -9,7 +9,7 @@ const TOOL_NAME = "recommendDietLifestyleTool" as const;
 
 export const recommendDietLifestyleTool = tool({
   description:
-    "Generate diet and lifestyle recommendations from Prism's curated database based on identified root causes. Returns maximum 7 highest-impact interventions for root cause resolution.",
+    "Generate diet and lifestyle recommendations from Prism's curated database based on identified root causes. Returns up to 5 highest-impact interventions per call for root cause resolution.",
   inputSchema: recommendDietLifestyleInputSchema,
   execute: async (input: RecommendDietLifestyleInput) => {
     const logger = getLogger();

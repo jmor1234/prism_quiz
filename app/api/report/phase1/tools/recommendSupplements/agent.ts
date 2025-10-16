@@ -74,6 +74,8 @@ ${input.objective}
 
 **Selection philosophy:** Prioritize supplements with the strongest root cause impact. When multiple options exist, favor those addressing high-severity causes or the client's primary concerns.
 
+**Return limit:** Return at most 5 recommendations in this call.
+
 **Note:** Think clearly from first principles about which supplements will create the most meaningful impact on the underlying mechanisms.`;
 
   logger?.logToolInternalStep("recommendSupplementsTool", "INVOKE_SUB_AGENT", {

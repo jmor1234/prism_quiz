@@ -9,7 +9,7 @@ const TOOL_NAME = "recommendDiagnosticsTool" as const;
 
 export const recommendDiagnosticsTool = tool({
   description:
-    "Generate diagnostic test recommendations from Prism's curated database based on identified root causes. Returns maximum 7 highest-impact tests for root cause investigation.",
+    "Generate diagnostic test recommendations from Prism's curated database based on identified root causes. Returns up to 5 highest-impact tests per call for root cause investigation.",
   inputSchema: recommendDiagnosticsInputSchema,
   execute: async (input: RecommendDiagnosticsInput) => {
     const logger = getLogger();

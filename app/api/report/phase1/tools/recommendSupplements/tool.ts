@@ -9,7 +9,7 @@ const TOOL_NAME = "recommendSupplementsTool" as const;
 
 export const recommendSupplementsTool = tool({
   description:
-    "Generate supplement and pharmaceutical recommendations from Prism's curated database based on identified root causes. Returns maximum 7 highest-impact supplements/pharmaceuticals for root cause resolution.",
+    "Generate supplement and pharmaceutical recommendations from Prism's curated database based on identified root causes. Returns up to 5 highest-impact supplements/pharmaceuticals per call for root cause resolution.",
   inputSchema: recommendSupplementsInputSchema,
   execute: async (input: RecommendSupplementsInput) => {
     const logger = getLogger();

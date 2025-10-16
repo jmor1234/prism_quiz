@@ -67,10 +67,10 @@ export const recommendSupplementsOutputSchema = z.object({
           .describe("Where to purchase from the 'Provider' column in CSV database (include discount codes if present)"),
       })
     )
-    .max(7)
+    .max(5)
     .min(1)
     .describe(
-      "Maximum 7 highest-impact supplements/pharmaceuticals. Select for clear root cause impact, not comprehensiveness."
+      "Maximum 5 highest-impact supplements/pharmaceuticals per call. Select for clear root cause impact, not comprehensiveness."
     ),
 });
 

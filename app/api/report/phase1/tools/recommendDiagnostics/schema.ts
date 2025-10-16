@@ -19,9 +19,6 @@ export const recommendDiagnosticsInputSchema = z.object({
         mechanism: z
           .string()
           .describe("Brief explanation of the bioenergetic cascade"),
-        severity: z
-          .enum(["high", "moderate"])
-          .describe("Severity assessment based on evidence strength and symptom impact"),
       })
     )
     .describe("Array of identified root causes with comprehensive context"),
@@ -64,10 +61,10 @@ export const recommendDiagnosticsOutputSchema = z.object({
           .describe("Provider or lab source from the 'Where to get' column in CSV database (empty string if not available)"),
       })
     )
-    .max(7)
+    .max(5)
     .min(1)
     .describe(
-      "Maximum 7 highest-impact diagnostics. Select for clear root cause investigation value, not comprehensiveness."
+      "Maximum 5 highest-impact diagnostics per call. Select for clear root cause investigation value, not comprehensiveness."
     ),
 });
 

@@ -65,10 +65,10 @@ export const recommendDietLifestyleOutputSchema = z.object({
           .describe("Implementation guidance, personalization details, or important context from database"),
       })
     )
-    .max(7)
+    .max(5)
     .min(1)
     .describe(
-      "Maximum 7 highest-impact interventions. Select for clear root cause impact, not comprehensiveness."
+      "Maximum 5 highest-impact interventions per call. Select for clear root cause impact, not comprehensiveness."
     ),
 });
 
