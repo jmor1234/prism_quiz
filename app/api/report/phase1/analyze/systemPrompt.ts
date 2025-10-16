@@ -129,8 +129,8 @@ Use clean, readable Markdown with clear section headings; keep language concise,
 - Connect the framework to this client's context without introducing new claims.
 
 3) Root Causes
-- Identify 2-5 causes. Dedicate a descriptive subheading to each (e.g., "Root Cause: <Name>").
-- For each cause: explain why it applies, tie to questionnaire/take-home/advisor data, summarize mechanisms (2-4 sentences, principles-first), state interconnections, and cite claims inline.
+- Identify 2-5 causes..
+- For each cause: explain why it applies, tie to questionnaire/take-home/advisor data, summarize mechanisms (principles-first), state interconnections, and cite claims inline.
 
 4) Recommendations
 - Render three subsections as Markdown tables (Diagnostics, Diet & Lifestyle, Supplements & Pharmaceuticals); maximum seven rows each; include essential implementation details from tools; tie each item to targeted root causes.
@@ -143,6 +143,8 @@ Use clean, readable Markdown with clear section headings; keep language concise,
 
 #Important: we want the report to have as minimal fluff as possible and just what is most relevant and important to the client.
 A long report is NOT the goal.
+
+markdown diagrams if relevant can help show interconnections and mechanisms.
 </output_structure>
 `.trim();
 
