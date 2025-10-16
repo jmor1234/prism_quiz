@@ -8,9 +8,11 @@ import {
   stepCountIs,
 } from "ai";
 
-// Import tools directly from chat route
-import { thinkTool } from "@/app/api/chat/tools/thinkTool/think-tool";
-import { researchMemoryTool } from "@/app/api/chat/tools/researchMemoryTool/researchMemoryTool";
+// Import report-specific cognitive tools
+import { reportThinkTool } from "../tools/thinkTool";
+import { reportResearchMemoryTool } from "../tools/researchMemoryTool";
+
+// Import research tools from chat route
 import { targetedExtractionTool } from "@/app/api/chat/tools/targetedExtractionTool/targetedExtractionTool";
 import { executeResearchPlanTool } from "@/app/api/chat/tools/executeResearchPlanTool/executeResearchPlanTool";
 
@@ -76,10 +78,10 @@ export async function POST(req: Request) {
     // Build system prompt with submission context
     const systemMessages = await buildPhase1SystemPrompt(caseRecord.submission);
 
-    // Prepare cached tools (chat tools + recommendation tools)
+    // Prepare cached tools (report-specific cognitive tools + research tools + recommendation tools)
     const cachedTools = cache.prepareCachedTools({
-      thinkTool,
-      researchMemoryTool,
+      thinkTool: reportThinkTool,
+      researchMemoryTool: reportResearchMemoryTool,
       targetedExtractionTool,
       executeResearchPlanTool,
       recommendDiagnosticsTool,
