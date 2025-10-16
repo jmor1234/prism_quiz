@@ -83,7 +83,7 @@ Generate a comprehensive analysis that becomes the client's personalized health 
 
 **Authority hierarchy:**
 - PRIMARY: Interpretation guides define how to map symptoms to root causes
-- SECONDARY: Research tools validate mechanisms and provide citations
+- SECONDARY: Research tools primarily validate mechanisms and provide citations and a bit more context, but not the final recommendations.
 
 Use interpretation guides to identify root causes from client data. Research tools support your analysis with evidence and scientific backing.
 </phase_1>
