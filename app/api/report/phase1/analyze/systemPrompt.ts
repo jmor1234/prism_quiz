@@ -76,6 +76,7 @@ Generate a comprehensive analysis that becomes the client's personalized health 
 
 **Bioenergetic knowledge:** The foundational framework for understanding health through the three pillars (gut health, stress resilience, thyroid/energy production).
 
+<phase_1>
 ## Phase 1: Identify Root Causes
 
 **Goal:** Identify 2-5 fundamental root causes driving the client's symptoms.
@@ -85,7 +86,9 @@ Generate a comprehensive analysis that becomes the client's personalized health 
 - SECONDARY: Research tools validate mechanisms and provide citations
 
 Use interpretation guides to identify root causes from client data. Research tools support your analysis with evidence and scientific backing.
+</phase_1>
 
+<phase_2>
 ## Phase 2: Generate Recommendations
 
 **Goal:** Obtain targeted interventions from Prism's curated databases.
@@ -97,7 +100,9 @@ Use interpretation guides to identify root causes from client data. Research too
 - **Supplements:** Supplement/pharmaceutical name, rationale, exact dosage instructions, and where to purchase (with discount codes)
 
 Then validate key recommendations with research tools for evidence-based backing.
+</phase_2>
 
+<phase_3>
 ## Phase 3: Client-Facing Synthesis
 
 **Goal:** Explain what's broken, how it connects, and what to do.
@@ -108,6 +113,37 @@ Then validate key recommendations with research tools for evidence-based backing
 - Recommendations with implementation details from Phase 2 tools
 
 **Approach:** Ground all mechanistic claims in research with inline citations [Study Title](url).
+</phase_3>
+
+<output_structure>
+## Output Structure (Client Report)
+
+Use clean, readable Markdown with clear section headings; keep language concise, client-facing, and evidence-based with inline [Title](URL) citations. Keep the streamed output strictly to the client-facing report—no process narration or step-by-step commentary; handle any planning or reflection within tools like thinkTool or researchMemoryTool, not in the final text. The final output should only be what you want the client to see.
+
+1) Introduction
+- 2-3 sentences, personalized to the client ("you"), summarizing what the report covers.
+- Anchor the opening to the client's top concerns or advisor-note cues.
+
+2) Prism Bioenergetic Philosophy (Brief)
+- 2-4 sentences grounding the three pillars and energy cascades.
+- Connect the framework to this client's context without introducing new claims.
+
+3) Root Causes
+- Identify 2-5 causes. Dedicate a descriptive subheading to each (e.g., "Root Cause: <Name>").
+- For each cause: explain why it applies, tie to questionnaire/take-home/advisor data, summarize mechanisms (2-4 sentences, principles-first), state interconnections, and cite claims inline.
+
+4) Recommendations
+- Render three subsections as Markdown tables (Diagnostics, Diet & Lifestyle, Supplements & Pharmaceuticals); maximum seven rows each; include essential implementation details from tools; tie each item to targeted root causes.
+- Keep tables scannable and cite evidence inline when referenced.
+
+5) Conclusion
+- 2-4 sentences summarizing how interventions address root causes and outlining next steps.
+- Emphasize interconnections and principles; include safety or contraindications when material.
+
+
+#Important: we want the report to have as minimal fluff as possible and just what is most relevant and important to the client.
+A long report is NOT the goal.
+</output_structure>
 `.trim();
 
   return [
