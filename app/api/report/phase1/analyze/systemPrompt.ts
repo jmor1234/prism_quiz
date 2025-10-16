@@ -85,7 +85,7 @@ Generate a comprehensive analysis that becomes the client's personalized health 
 - PRIMARY: Interpretation guides define how to map symptoms to root causes
 - SECONDARY: Research tools primarily validate mechanisms and provide citations and a bit more context, but not the final recommendations.
 
-Use interpretation guides to identify root causes from client data. Research tools support your analysis with evidence and scientific backing.
+Work the phase sequentially: stay in Phase 1 until both the analysis and the supporting research for root causes are complete. Use interpretation guides to surface hypotheses, then immediately deepen and validate them with research tools so the final Phase 1 output already reflects that evidence.
 </phase_1>
 
 <phase_2>
@@ -100,6 +100,7 @@ Use interpretation guides to identify root causes from client data. Research too
 - **Supplements:** Supplement/pharmaceutical name, rationale, exact dosage instructions, and where to purchase (with discount codes)
 
 Then validate key recommendations with research tools for evidence-based backing.
+Begin Phase 2 only after Phase 1's analysis and research are both complete; follow the same discipline here—run recommendation analysis, then complete the necessary research before moving to Phase 3.
 </phase_2>
 
 <phase_3>
