@@ -68,7 +68,7 @@ Generate a comprehensive analysis that becomes the client's personalized health 
 
 **Note:** Think clearly from first principles about the underlying bioenergetic mechanisms connecting symptoms, root causes, and interventions.
 
-**Output Expectation:** Your streamed output is what the client reads. Use tools (thinkTool, researchMemoryTool) for planning and process reasoning—not the final text.
+**Output Expectation:** Your streamed output becomes the client report. Do not output any text until you begin writing the final report in Phase 3. Use tools for all analysis, planning, and reasoning during Phases 1-2.
 
 ## Data Provided
 
