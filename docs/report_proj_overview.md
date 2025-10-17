@@ -58,9 +58,10 @@
 
 **`app/api/report/phase1/analyze/route.ts`** (Three-phase streaming agent)
 - Accepts `{ caseId }` and loads submission from storage.
-- Builds system prompt with bioenergetic knowledge + interpretation guides + client data.
-- Runs streaming agent with 7 tools:
-  - **Chat tools:** `thinkTool`, `researchMemoryTool`, `executeResearchPlanTool`, `targetedExtractionTool`
+  - Builds system prompt with bioenergetic knowledge + interpretation guides + client data.
+  - Runs streaming agent with 7 tools:
+  - **Report-specific cognitive tools:** `reportThinkTool`, `reportResearchMemoryTool`
+  - **Research tools:** `executeResearchPlanTool`, `targetedExtractionTool`
   - **Recommendation tools:** `recommendDiagnosticsTool`, `recommendDietLifestyleTool`, `recommendSupplementsTool`
 - Streams real-time progress via `TraceLogger`.
 - Streams report text via custom `data-report-text` events (manually consumed from `result.textStream`).
@@ -120,7 +121,7 @@
    - **If exists:** Loads cached report from storage (instant display, no re-run)
    - **If not found:** Initiates streaming agent by calling `/api/report/phase1/analyze`
 5. Agent loads submission, builds 3-phase system prompt, and executes:
-   - **Phase 1:** Analyze client data → identify 2-5 root causes using interpretation guides + research
+   - **Phase 1:** Analyze client data → identify fundamental root causes using interpretation guides + research
    - **Phase 2:** Call 3 recommendation tools with root cause context → get CSV-matched interventions (max 7 each) → validate with research for evidence
    - **Phase 3:** Synthesize concise client-facing report showing interconnections with inline citations
 6. Real-time progress streams to frontend:
@@ -204,21 +205,27 @@ Files written:
 - Storage: `storage/phase1-submissions/`, `storage/phase1-results/`
 
 ### Reused from Chat
-- Tools: `app/api/chat/tools/` (think, memory, research, extraction)
-- Streaming: `app/api/chat/lib/` (traceLogger, cacheManager, tokenEconomics, streamCallbacks)
+- Tools: `app/api/chat/tools/` (research, extraction)
+- Streaming: `app/api/chat/lib/` (traceLogger, tokenEconomics)
 - Knowledge: `app/api/chat/lib/bioenergeticKnowledge.ts`
 - UI: `components/research-progress.tsx`, `components/extraction-progress.tsx`
+
+### Report-Specific
+- Cognitive tools: `app/api/report/phase1/tools/` (thinkTool, researchMemoryTool)
+- Streaming callbacks: `app/api/report/phase1/analyze/streamCallbacks.ts` (no caching)
 
 ## 7. Implementation Notes
 - **Two-step pattern**: Submit (persist) → Analyze (stream 3-phase execution)
 - **Single-session architecture**: All 3 phases execute in one streaming session for coherent context
-- **Tool composition**: Chat tools (research) + Recommendation tools (CSV matching)
+- **Tool composition**: Report-specific cognitive tools + Research tools + Recommendation tools (CSV matching)
+- **No caching**: Report execution is single-shot with unique client data - caching provides no benefit
 - **System prompt differentiates**: Report context with 3-phase structure vs chat's open-ended exploration
-- **Real-time visibility**: 2-5 minute executions with streaming progress (research, tool status, extractions, report text)
+- **Real-time visibility**: Multi-minute executions with streaming progress (research, tool status, extractions, report text)
 - **Deterministic persistence**: Single source of truth - submission + final comprehensive report
 - **Sub-agent isolation**: Recommendation tools are blind (only see their inputs) - no research tools, no memory
 - **Authority hierarchy**: PRIMARY (interpretation guides, CSV databases) vs SECONDARY (research validation)
 - **Prompt philosophy**: Intent over prescription, schema handles contract, enabling agent autonomy
+- **Citation preservation**: researchMemoryTool schema guides agent to preserve exact URLs for final report
 
 ## 8. Architecture Principles
 

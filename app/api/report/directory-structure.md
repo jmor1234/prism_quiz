@@ -8,8 +8,11 @@ app/api/report/
     │   └── route.ts          # Result retrieval endpoint: returns cached analysis by caseId
     ├── analyze/
     │   ├── route.ts          # Three-phase streaming agent endpoint
-    │   └── systemPrompt.ts   # Builds 3-phase system prompt with context + interpretation guides
-    ├── tools/                # Recommendation sub-agent tools
+    │   ├── systemPrompt.ts   # Builds 3-phase system prompt with context + interpretation guides
+    │   └── streamCallbacks.ts # Report-specific streaming callbacks (no caching)
+    ├── tools/                # Report-specific tools
+    │   ├── thinkTool.ts      # Reasoning for phase orchestration and quality assessment
+    │   ├── researchMemoryTool.ts # Tracking findings and citations across phases
     │   ├── recommendDiagnostics/
     │   │   ├── tool.ts       # Tool definition with logging
     │   │   ├── agent.ts      # Sub-agent invocation with CSV loading
@@ -51,9 +54,10 @@ app/api/report/
   - Loads submission from storage via `getPhase1Case(caseId)`.
   - Builds 3-phase system prompt with `buildPhase1SystemPrompt(submission)`.
   - Runs streaming agent with 7 tools:
-    - **Chat tools (from chat route):**
-      - `thinkTool` - metacognition
-      - `researchMemoryTool` - working memory
+    - **Report-specific cognitive tools:**
+      - `reportThinkTool` - reasoning for phase orchestration and quality assessment
+      - `reportResearchMemoryTool` - tracking findings and citations across phases
+    - **Research tools (from chat route):**
       - `executeResearchPlanTool` - broad research
       - `targetedExtractionTool` - focused extraction
     - **Recommendation tools (report-specific):**
@@ -62,12 +66,12 @@ app/api/report/
       - `recommendSupplementsTool` - CSV-based supplement matching
   - Reuses streaming infrastructure from chat route:
     - `TraceLogger` + `asyncLocalStorage` (progress emissions)
-    - `CacheManager` (three-tier caching)
     - `TokenEconomics` (cost tracking)
-    - `createStreamCallbacks` (step handlers)
+  - Uses report-specific streaming callbacks:
+    - `createReportStreamCallbacks` (step handlers without caching)
   - Streams report text via custom `data-report-text` events (manually iterates `result.textStream`).
   - Executes full 3-phase workflow:
-    - **Phase 1:** Identify 2-5 root causes (interpretation guides PRIMARY, research SECONDARY)
+    - **Phase 1:** Identify fundamental root causes (interpretation guides PRIMARY, research SECONDARY)
     - **Phase 2:** Call recommendation tools → validate with research
     - **Phase 3:** Synthesize concise client-facing report with inline citations
   - Saves final comprehensive report to `storage/phase1-results/<caseId>.json`.
@@ -85,6 +89,26 @@ app/api/report/
     - **Phase 3:** Client-facing synthesis (concise, interconnected, evidence-based, actionable)
   - Returns array of message objects for `streamText`.
   - **Prompt philosophy:** Intent over prescription, data clarity, enabling autonomy
+
+### Report-Specific Cognitive Tools
+- `phase1/tools/thinkTool.ts`
+  - **Description:** Reasoning space for phase orchestration, quality assessment, and execution decisions within structured workflow
+  - **Schema:** Single `thought` parameter for structured reasoning about phase transitions, evidence sufficiency, or next actions
+  - **Context:** Recontextualized from chat's open-ended research strategy to report's single-session phase execution
+  - **Usage:** Agent uses for evaluating when phases are complete, assessing evidence quality, planning next steps
+
+- `phase1/tools/researchMemoryTool.ts`
+  - **Description:** Track findings, evidence, and connections across phases within single-session analysis
+  - **Schema:** Single `note` parameter for analysis notes - key findings, evidence discovered, phase connections, synthesis observations
+  - **Citation preservation:** Schema explicitly guides agent to include exact citations `[Title](URL)` for evidence preservation
+  - **Returns:** `currentMemory` with all accumulated notes for retrieval in later phases
+  - **Context:** Recontextualized from chat's multi-turn conversation to report's phase-to-phase connection tracking
+  - **Usage:** Agent externalizes evidence with citations during Phases 1-2, retrieves them when writing Phase 3 report
+
+- `phase1/analyze/streamCallbacks.ts`
+  - **Purpose:** Report-specific streaming event handlers without caching overhead
+  - **Differences from chat:** Removed `cache` dependency, simplified `prepareStep` to return messages as-is
+  - **Rationale:** Report execution is single-shot with unique client data per case - caching provides no benefit
 
 ### Recommendation Tools (Phase 2 Sub-Agents)
 - `phase1/tools/recommendDiagnostics/`
@@ -137,8 +161,10 @@ app/api/report/
 - `server/phase1Cases.ts` – Submission persistence (`upsertPhase1Case`, `getPhase1Case`).
 - `server/phase1Results.ts` – Result persistence (`savePhase1Result`, `getPhase1Result`).
 - `lib/schemas/phase1.ts` – Shared Zod schema and constants for submissions.
-- `app/api/chat/tools/` – Chat tools reused directly (think, memory, research, extraction).
-- `app/api/chat/lib/` – All streaming infrastructure reused (TraceLogger, CacheManager, TokenEconomics, etc.).
+- `app/api/report/phase1/tools/` – Report-specific cognitive tools (thinkTool, researchMemoryTool).
+- `app/api/report/phase1/analyze/streamCallbacks.ts` – Report-specific streaming callbacks (no caching).
+- `app/api/chat/tools/` – Research tools reused (executeResearchPlanTool, targetedExtractionTool).
+- `app/api/chat/lib/` – Streaming infrastructure reused (TraceLogger, TokenEconomics).
 - `app/api/chat/lib/bioenergeticKnowledge.ts` – Bioenergetic framework used in all prompts.
 - `docs/agentic-progress.md` – Streaming progress patterns reference.
 - `docs/report_proj_overview.md` – Complete project overview and architecture principles.
@@ -146,7 +172,7 @@ app/api/report/
 ## Architecture Summary
 
 **Single-session 3-phase pipeline:**
-1. **Phase 1:** Primary agent analyzes client data using interpretation guides (PRIMARY) + research (SECONDARY) → identifies 2-5 root causes
+1. **Phase 1:** Primary agent analyzes client data using interpretation guides (PRIMARY) + research (SECONDARY) → identifies fundamental root causes
 2. **Phase 2:** Primary agent calls 3 recommendation tools (blind sub-agents) → receives CSV-matched interventions (max 7 each) → validates with research
 3. **Phase 3:** Primary agent synthesizes concise client-facing report showing interconnections with inline citations
 
