@@ -53,7 +53,7 @@ export async function POST(req: Request) {
     }
   }
 
-  return await asyncLocalStorage.run(logger, async () => {
+  return await asyncLocalStorage.run({ logger, threadId: id }, async () => {
     // Format date for system prompt
     const currentDate = new Date();
     const formattedDate = currentDate.toLocaleDateString('en-US', {

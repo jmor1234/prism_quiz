@@ -10,7 +10,7 @@ import {
 
 // Import report-specific cognitive tools
 import { reportThinkTool } from "../tools/thinkTool";
-import { reportResearchMemoryTool } from "../tools/researchMemoryTool";
+import { reportResearchMemoryTool, clearResearchMemory } from "../tools/researchMemoryTool";
 
 // Import research tools from chat route
 import { targetedExtractionTool } from "@/app/api/chat/tools/targetedExtractionTool/targetedExtractionTool";
@@ -37,6 +37,9 @@ import { buildPhase1SystemPrompt } from "./systemPrompt";
 export const maxDuration = 900; // 15 minutes
 
 export async function POST(req: Request) {
+  // Clear request-scoped state to prevent cross-client data contamination
+  clearResearchMemory();
+
   let caseId: string;
 
   try {
@@ -72,7 +75,7 @@ export async function POST(req: Request) {
 
   const economics = TokenEconomics.getInstance();
 
-  return await asyncLocalStorage.run(logger, async () => {
+  return await asyncLocalStorage.run({ logger, threadId: undefined }, async () => {
     // Build system prompt with submission context
     const systemMessages = await buildPhase1SystemPrompt(caseRecord.submission);
 

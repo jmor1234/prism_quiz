@@ -217,7 +217,7 @@ Files written:
 ## 7. Implementation Notes
 - **Two-step pattern**: Submit (persist) → Analyze (stream 3-phase execution)
 - **Single-session architecture**: All 3 phases execute in one streaming session for coherent context
-- **Tool composition**: Report-specific cognitive tools + Research tools + Recommendation tools (CSV matching)
+- **Tool composition**: Report-specific cognitive tools (think, memory) + Research tools + Recommendation tools (CSV matching)
 - **No caching**: Report execution is single-shot with unique client data - caching provides no benefit
 - **System prompt differentiates**: Report context with 3-phase structure vs chat's open-ended exploration
 - **Real-time visibility**: Multi-minute executions with streaming progress (research, tool status, extractions, report text)
@@ -225,7 +225,6 @@ Files written:
 - **Sub-agent isolation**: Recommendation tools are blind (only see their inputs) - no research tools, no memory
 - **Authority hierarchy**: PRIMARY (interpretation guides, CSV databases) vs SECONDARY (research validation)
 - **Prompt philosophy**: Intent over prescription, schema handles contract, enabling agent autonomy
-- **Citation preservation**: researchMemoryTool schema guides agent to preserve exact URLs for final report
 
 ## 8. Architecture Principles
 

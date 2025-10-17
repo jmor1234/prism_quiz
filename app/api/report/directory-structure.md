@@ -12,7 +12,7 @@ app/api/report/
     │   └── streamCallbacks.ts # Report-specific streaming callbacks (no caching)
     ├── tools/                # Report-specific tools
     │   ├── thinkTool.ts      # Reasoning for phase orchestration and quality assessment
-    │   ├── researchMemoryTool.ts # Tracking findings and citations across phases
+    │   ├── researchMemoryTool.ts # Tracking findings and connections across phases
     │   ├── recommendDiagnostics/
     │   │   ├── tool.ts       # Tool definition with logging
     │   │   ├── agent.ts      # Sub-agent invocation with CSV loading
@@ -56,7 +56,7 @@ app/api/report/
   - Runs streaming agent with 7 tools:
     - **Report-specific cognitive tools:**
       - `reportThinkTool` - reasoning for phase orchestration and quality assessment
-      - `reportResearchMemoryTool` - tracking findings and citations across phases
+      - `reportResearchMemoryTool` - tracking findings and connections across phases
     - **Research tools (from chat route):**
       - `executeResearchPlanTool` - broad research
       - `targetedExtractionTool` - focused extraction
@@ -100,10 +100,9 @@ app/api/report/
 - `phase1/tools/researchMemoryTool.ts`
   - **Description:** Track findings, evidence, and connections across phases within single-session analysis
   - **Schema:** Single `note` parameter for analysis notes - key findings, evidence discovered, phase connections, synthesis observations
-  - **Citation preservation:** Schema explicitly guides agent to include exact citations `[Title](URL)` for evidence preservation
   - **Returns:** `currentMemory` with all accumulated notes for retrieval in later phases
   - **Context:** Recontextualized from chat's multi-turn conversation to report's phase-to-phase connection tracking
-  - **Usage:** Agent externalizes evidence with citations during Phases 1-2, retrieves them when writing Phase 3 report
+  - **Usage:** Agent externalizes findings, evidence, and observations during Phases 1-2
 
 - `phase1/analyze/streamCallbacks.ts`
   - **Purpose:** Report-specific streaming event handlers without caching overhead

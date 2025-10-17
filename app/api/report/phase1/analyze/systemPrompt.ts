@@ -102,7 +102,13 @@ Work the phase sequentially: stay in Phase 1 until both the analysis and the sup
 - **Supplements:** Supplement/pharmaceutical name, rationale, exact dosage instructions, and where to purchase (with discount codes)
 
 Then validate key recommendations with research tools for evidence-based backing.
-Begin Phase 2 only after Phase 1's analysis and research are both complete; follow the same discipline here—run recommendation analysis, then complete the necessary research before moving to Phase 3.
+
+**Phase 2 completion criteria:**
+1. All recommendation tools have been called and results received
+2. Validation research initiated AND results received (not just initiated)
+3. Key validation findings stored in researchMemoryTool
+
+Use thinkTool to explicitly verify all criteria are met before starting Phase 3. Do not begin Phase 3 until validation research has completed and you have integrated the results.
 </phase_2>
 
 <phase_3>
@@ -115,7 +121,7 @@ Begin Phase 2 only after Phase 1's analysis and research are both complete; foll
 - Interconnections between causes through bioenergetic principles
 - Recommendations with implementation details from Phase 2 tools
 
-**Approach:** Ground all mechanistic claims in research with inline citations [Study Title](url).
+**Approach:** Ground mechanistic claims with inline citations [Title](URL). Its critical that you accurately preserve the exact URLs of the sources you are citing. If any characters are missing or incorrect, the user will not be able to click the citation and will not be able to see the source.
 </phase_3>
 
 <output_structure>
@@ -139,14 +145,16 @@ Use clean, readable Markdown with clear section headings; keep language concise,
 - Keep tables scannable and cite evidence inline when referenced.
 
 5) Conclusion
-- summarizing how interventions address root causes and outlining next steps.
+- summarizing how interventions address root causes
 - Emphasize interconnections and principles; include safety or contraindications when material.
 
 
 #Important: we want the report to have as minimal fluff as possible and just what is most relevant and important to the client.
-A long report is NOT the goal.
+A long report is NOT the goal. Clear. Concise. Interconnected. Evidence-based.
 
 markdown diagrams if relevant can help show interconnections and mechanisms.
+
+do NOT output any text outside of your tool calls that you do not want in the final client report, only output the final client report. 
 </output_structure>
 `.trim();
 

@@ -52,12 +52,23 @@ interface MessageWithParts {
     [key: string]: unknown; // Use unknown instead of any
 }
 
-// Create AsyncLocalStorage instance to hold the logger for the current request context
-const asyncLocalStorage = new AsyncLocalStorage<TraceLogger>();
+// Context stored in AsyncLocalStorage
+interface AsyncContext {
+    logger: TraceLogger;
+    threadId?: string;
+}
+
+// Create AsyncLocalStorage instance to hold the context for the current request
+const asyncLocalStorage = new AsyncLocalStorage<AsyncContext>();
 
 // Helper function to get the logger instance for the current async context
 export function getLogger(): TraceLogger | undefined {
-    return asyncLocalStorage.getStore();
+    return asyncLocalStorage.getStore()?.logger;
+}
+
+// Helper function to get the threadId for the current async context
+export function getThreadId(): string | undefined {
+    return asyncLocalStorage.getStore()?.threadId;
 }
 
 // Default section name

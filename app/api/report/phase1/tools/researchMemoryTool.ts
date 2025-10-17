@@ -7,6 +7,11 @@ const TOOL_NAME = "researchMemoryTool" as const;
 // Note: This is in-memory per server instance and request lifecycle.
 const researchMemory: Array<{ timestamp: string; content: string }> = [];
 
+// Clear function to reset state between requests
+export function clearResearchMemory() {
+  researchMemory.length = 0;
+}
+
 export const reportResearchMemoryTool = tool({
   description:
     "Track findings, evidence, and connections across phases within this single-session analysis.",
@@ -14,7 +19,7 @@ export const reportResearchMemoryTool = tool({
     note: z
       .string()
       .describe(
-        "Your analysis note - key findings, evidence discovered, phase connections, or synthesis observations. Include exact citations [Title](URL) for evidence to preserve them for final report."
+        "Your analysis note - key findings, evidence discovered, phase connections, or synthesis observations."
       ),
   }),
   execute: async ({ note }: { note: string }) => {

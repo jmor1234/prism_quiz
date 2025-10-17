@@ -1,12 +1,31 @@
 import { z } from "zod";
 import { tool } from "@ai-sdk/provider-utils";
-import { getLogger } from "@/app/api/chat/lib/traceLogger";
+import { getLogger, getThreadId } from "@/app/api/chat/lib/traceLogger";
 
 const TOOL_NAME = "researchMemoryTool" as const;
 
-// Note: This is in-memory per server instance and request lifecycle. For
-// durable persistence across instances/devices, back this with a datastore.
-const researchMemory: Array<{ timestamp: string; content: string }> = [];
+// Thread-scoped memory storage
+// Map of threadId → memory array for conversation-level persistence
+const researchMemoryByThread = new Map<string, Array<{ timestamp: string; content: string }>>();
+
+// Cleanup counter for periodic old thread removal
+let accessCount = 0;
+
+// Remove threads older than 1 hour to prevent unbounded memory growth
+function cleanupOldThreads() {
+  const ONE_HOUR = 60 * 60 * 1000;
+  const now = Date.now();
+  
+  for (const [threadId, memory] of researchMemoryByThread.entries()) {
+    if (memory.length === 0) continue;
+    
+    const lastUpdate = memory[memory.length - 1]?.timestamp;
+    if (lastUpdate && now - new Date(lastUpdate).getTime() > ONE_HOUR) {
+      researchMemoryByThread.delete(threadId);
+      console.log(`[${TOOL_NAME}] Cleaned up old thread: ${threadId}`);
+    }
+  }
+}
 
 export const researchMemoryTool = tool({
   description:
@@ -28,11 +47,26 @@ export const researchMemoryTool = tool({
       action: 'Recording research note...'
     });
 
+    // Get thread-specific memory (default to 'default' for backward compatibility)
+    const threadId = getThreadId() || 'default';
+    const researchMemory = researchMemoryByThread.get(threadId) || [];
+    
+    // Add new note
     const timestamp = new Date().toISOString();
     researchMemory.push({ timestamp, content: note });
+    
+    // Update thread memory
+    researchMemoryByThread.set(threadId, researchMemory);
 
-    console.log(`\n📝 [${TOOL_NAME}] Research note recorded:`, note);
-    console.log(`📚 Total research notes: ${researchMemory.length}\n`);
+    // Periodic cleanup every 10th access
+    accessCount++;
+    if (accessCount >= 10) {
+      accessCount = 0;
+      cleanupOldThreads();
+    }
+
+    console.log(`\n📝 [${TOOL_NAME}] Research note recorded (thread: ${threadId}):`, note);
+    console.log(`📚 Thread research notes: ${researchMemory.length}\n`);
 
     const result = {
       acknowledged: true as const,
