@@ -59,8 +59,8 @@
 **`app/api/report/phase1/analyze/route.ts`** (Three-phase streaming agent)
 - Accepts `{ caseId }` and loads submission from storage.
   - Builds system prompt with bioenergetic knowledge + interpretation guides + client data.
-  - Runs streaming agent with 7 tools:
-  - **Report-specific cognitive tools:** `reportThinkTool`, `reportResearchMemoryTool`
+  - Runs streaming agent with 6 tools:
+  - **Report-specific cognitive tool:** `reportThinkTool`
   - **Research tools:** `executeResearchPlanTool`, `targetedExtractionTool`
   - **Recommendation tools:** `recommendDiagnosticsTool`, `recommendDietLifestyleTool`, `recommendSupplementsTool`
 - Streams real-time progress via `TraceLogger`.
@@ -126,7 +126,7 @@
    - **Phase 3:** Synthesize concise client-facing report showing interconnections with inline citations
 6. Real-time progress streams to frontend:
    - Research sessions/objectives/phases (executeResearchPlanTool)
-   - Tool status (think, memory, recommendation tools)
+   - Tool status (think, recommendation tools)
    - Extraction progress (targetedExtractionTool)
    - Report text chunks (data-report-text events)
 7. Final comprehensive report generated and saved to storage.
@@ -211,18 +211,18 @@ Files written:
 - UI: `components/research-progress.tsx`, `components/extraction-progress.tsx`
 
 ### Report-Specific
-- Cognitive tools: `app/api/report/phase1/tools/` (thinkTool, researchMemoryTool)
+- Cognitive tool: `app/api/report/phase1/tools/` (thinkTool)
 - Streaming callbacks: `app/api/report/phase1/analyze/streamCallbacks.ts` (no caching)
 
 ## 7. Implementation Notes
 - **Two-step pattern**: Submit (persist) → Analyze (stream 3-phase execution)
 - **Single-session architecture**: All 3 phases execute in one streaming session for coherent context
-- **Tool composition**: Report-specific cognitive tools (think, memory) + Research tools + Recommendation tools (CSV matching)
+- **Tool composition**: Report-specific cognitive tool (think) + Research tools + Recommendation tools (CSV matching)
 - **No caching**: Report execution is single-shot with unique client data - caching provides no benefit
 - **System prompt differentiates**: Report context with 3-phase structure vs chat's open-ended exploration
 - **Real-time visibility**: Multi-minute executions with streaming progress (research, tool status, extractions, report text)
 - **Deterministic persistence**: Single source of truth - submission + final comprehensive report
-- **Sub-agent isolation**: Recommendation tools are blind (only see their inputs) - no research tools, no memory
+- **Sub-agent isolation**: Recommendation tools are blind (only see their inputs) - no research tools
 - **Authority hierarchy**: PRIMARY (interpretation guides, CSV databases) vs SECONDARY (research validation)
 - **Prompt philosophy**: Intent over prescription, schema handles contract, enabling agent autonomy
 
@@ -231,7 +231,7 @@ Files written:
 ### Cognitive Architecture
 - **Primary agent**: Orchestrates all 3 phases with full context and all tools
 - **Sub-agents**: Specialized CSV matchers - receive structured input, return structured output
-- **Tools as cognitive extensions**: Each tool extends specific capability (think, memory, research, extraction, recommendation)
+- **Tools as cognitive extensions**: Each tool extends specific capability (think, research, extraction, recommendation)
 - **Context flows downward**: Primary agent provides comprehensive context to sub-agents who are otherwise blind
 
 ### Prompt Design

@@ -106,9 +106,10 @@ Then validate key recommendations with research tools for evidence-based backing
 **Phase 2 completion criteria:**
 1. All recommendation tools have been called and results received
 2. Validation research initiated AND results received (not just initiated)
-3. Key validation findings stored in researchMemoryTool
 
 Use thinkTool to explicitly verify all criteria are met before starting Phase 3. Do not begin Phase 3 until validation research has completed and you have integrated the results.
+
+Track your research tool calls carefully—when you send multiple executeResearchPlanTool calls, note which are pending and wait for all to complete before proceeding to Phase 3. The thinkTool can help track this state.
 </phase_2>
 
 <phase_3>
@@ -121,7 +122,7 @@ Use thinkTool to explicitly verify all criteria are met before starting Phase 3.
 - Interconnections between causes through bioenergetic principles
 - Recommendations with implementation details from Phase 2 tools
 
-**Approach:** Ground mechanistic claims with inline citations [Title](URL). Its critical that you accurately preserve the exact URLs of the sources you are citing. If any characters are missing or incorrect, the user will not be able to click the citation and will not be able to see the source.
+**Approach:** Before writing, ensure all tool calls have completed. The executeResearchPlanTool takes time to respond, so verify all pending research has returned. Then ground mechanistic claims with inline citations [Title](URL). It's critical that you accurately preserve the exact URLs of the sources you are citing. If any characters are missing or incorrect, the user will not be able to click the citation and will not be able to see the source.
 </phase_3>
 
 <output_structure>

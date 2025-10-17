@@ -10,9 +10,8 @@ app/api/report/
     │   ├── route.ts          # Three-phase streaming agent endpoint
     │   ├── systemPrompt.ts   # Builds 3-phase system prompt with context + interpretation guides
     │   └── streamCallbacks.ts # Report-specific streaming callbacks (no caching)
-    ├── tools/                # Report-specific tools
-    │   ├── thinkTool.ts      # Reasoning for phase orchestration and quality assessment
-    │   ├── researchMemoryTool.ts # Tracking findings and connections across phases
+    ├── tools/                # Report-specific tool
+    │   ├── thinkTool.ts      # Reasoning, capturing findings, and tracking across phases
     │   ├── recommendDiagnostics/
     │   │   ├── tool.ts       # Tool definition with logging
     │   │   ├── agent.ts      # Sub-agent invocation with CSV loading
@@ -53,10 +52,9 @@ app/api/report/
   - Three-phase streaming agent endpoint (POST with `{ caseId }`).
   - Loads submission from storage via `getPhase1Case(caseId)`.
   - Builds 3-phase system prompt with `buildPhase1SystemPrompt(submission)`.
-  - Runs streaming agent with 7 tools:
-    - **Report-specific cognitive tools:**
-      - `reportThinkTool` - reasoning for phase orchestration and quality assessment
-      - `reportResearchMemoryTool` - tracking findings and connections across phases
+  - Runs streaming agent with 6 tools:
+    - **Report-specific cognitive tool:**
+      - `reportThinkTool` - reasoning and capturing findings across phases
     - **Research tools (from chat route):**
       - `executeResearchPlanTool` - broad research
       - `targetedExtractionTool` - focused extraction
@@ -90,19 +88,12 @@ app/api/report/
   - Returns array of message objects for `streamText`.
   - **Prompt philosophy:** Intent over prescription, data clarity, enabling autonomy
 
-### Report-Specific Cognitive Tools
+### Report-Specific Cognitive Tool
 - `phase1/tools/thinkTool.ts`
-  - **Description:** Reasoning space for phase orchestration, quality assessment, and execution decisions within structured workflow
-  - **Schema:** Single `thought` parameter for structured reasoning about phase transitions, evidence sufficiency, or next actions
-  - **Context:** Recontextualized from chat's open-ended research strategy to report's single-session phase execution
-  - **Usage:** Agent uses for evaluating when phases are complete, assessing evidence quality, planning next steps
-
-- `phase1/tools/researchMemoryTool.ts`
-  - **Description:** Track findings, evidence, and connections across phases within single-session analysis
-  - **Schema:** Single `note` parameter for analysis notes - key findings, evidence discovered, phase connections, synthesis observations
-  - **Returns:** `currentMemory` with all accumulated notes for retrieval in later phases
-  - **Context:** Recontextualized from chat's multi-turn conversation to report's phase-to-phase connection tracking
-  - **Usage:** Agent externalizes findings, evidence, and observations during Phases 1-2
+  - **Description:** Reasoning space for phase orchestration, quality assessment, execution decisions, and capturing findings
+  - **Schema:** Single `thought` parameter for structured reasoning, tracking, or noting discoveries
+  - **Pattern:** Follows Anthropic's design where thinkTool serves both reasoning and memory purposes
+  - **Usage:** Agent uses for evaluating phase readiness, tracking research completion, capturing key findings, planning next steps
 
 - `phase1/analyze/streamCallbacks.ts`
   - **Purpose:** Report-specific streaming event handlers without caching overhead
@@ -160,7 +151,7 @@ app/api/report/
 - `server/phase1Cases.ts` – Submission persistence (`upsertPhase1Case`, `getPhase1Case`).
 - `server/phase1Results.ts` – Result persistence (`savePhase1Result`, `getPhase1Result`).
 - `lib/schemas/phase1.ts` – Shared Zod schema and constants for submissions.
-- `app/api/report/phase1/tools/` – Report-specific cognitive tools (thinkTool, researchMemoryTool).
+- `app/api/report/phase1/tools/` – Report-specific cognitive tool (thinkTool).
 - `app/api/report/phase1/analyze/streamCallbacks.ts` – Report-specific streaming callbacks (no caching).
 - `app/api/chat/tools/` – Research tools reused (executeResearchPlanTool, targetedExtractionTool).
 - `app/api/chat/lib/` – Streaming infrastructure reused (TraceLogger, TokenEconomics).

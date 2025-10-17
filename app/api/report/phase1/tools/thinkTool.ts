@@ -6,7 +6,7 @@ const TOOL_NAME = "thinkTool" as const;
 
 export const reportThinkTool = tool({
   description:
-    "Your reasoning space for phase orchestration, quality assessment, and execution decisions within this structured workflow.",
+    "Use this to think through analysis, capture key findings, or plan next steps. It logs your thoughts without changing external state. Use it when complex reasoning or tracking discoveries across phases is needed.",
   inputSchema: z.object({
     thought: z
       .string()
