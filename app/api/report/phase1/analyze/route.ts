@@ -26,9 +26,8 @@ import {
   TraceLogger,
   asyncLocalStorage,
 } from "@/app/api/chat/lib/traceLogger";
-import { CacheManager } from "@/app/api/chat/lib/cacheManager";
 import { TokenEconomics } from "@/app/api/chat/lib/tokenEconomics";
-import { createStreamCallbacks } from "@/app/api/chat/lib/streamCallbacks";
+import { createReportStreamCallbacks } from "./streamCallbacks";
 
 // Report-specific
 import { getPhase1Case } from "@/server/phase1Cases";
@@ -66,20 +65,19 @@ export async function POST(req: Request) {
     });
   }
 
-  // Initialize services (same as chat)
+  // Initialize services
   const enableLogging = process.env.ENABLE_DETAILED_TRACE_LOGGING === "true";
   const logger = new TraceLogger();
   logger.setEnabled(enableLogging);
 
-  const cache = new CacheManager();
   const economics = TokenEconomics.getInstance();
 
   return await asyncLocalStorage.run(logger, async () => {
     // Build system prompt with submission context
     const systemMessages = await buildPhase1SystemPrompt(caseRecord.submission);
 
-    // Prepare cached tools (report-specific cognitive tools + research tools + recommendation tools)
-    const cachedTools = cache.prepareCachedTools({
+    // Prepare tools (report-specific cognitive tools + research tools + recommendation tools)
+    const tools = {
       thinkTool: reportThinkTool,
       researchMemoryTool: reportResearchMemoryTool,
       targetedExtractionTool,
@@ -87,18 +85,14 @@ export async function POST(req: Request) {
       recommendDiagnosticsTool,
       recommendDietLifestyleTool,
       recommendSupplementsTool,
-    });
-
-    // No conversation history - just system prompt
-    cache.addHistoryCacheBreakpoint(systemMessages);
+    };
 
     // Create stream callbacks
     const stepIndexRef = { current: 0 };
     const hasToolsRef = { current: false };
-    const callbacks = createStreamCallbacks({
+    const callbacks = createReportStreamCallbacks({
       logger,
       economics,
-      cache,
       stepIndexRef,
       threadId: caseId, // Use caseId as threadId for metrics
       hasToolsRef,
@@ -117,7 +111,7 @@ export async function POST(req: Request) {
         const result = streamText({
           model: anthropic("claude-sonnet-4-5-20250929"),
           messages: systemMessages,
-          tools: cachedTools,
+          tools,
           stopWhen: stepCountIs(50),
           ...callbacks,
           providerOptions: {
