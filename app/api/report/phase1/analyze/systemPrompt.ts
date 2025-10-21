@@ -119,9 +119,11 @@ Generate a comprehensive report that executes expert directives with intelligent
 **Operations:**
 
 1. **Build Assessment Findings:**
-   - Map flagged questionnaire/take-home items to interpretation guide implications
-   - Personalize findings to client context
-   - Draft interconnection narrative showing bioenergetic cascades
+   - Identify the most significant symptom patterns (prioritize those that connect directly to directives and root causes)
+   - Map to interpretation guide implications
+   - Organize into structured table format showing finding, data, implication, severity
+   - Draft brief interconnection narrative showing bioenergetic cascades
+   - this section need to be clear and concise and should not get too verbose.
 
 2. **Enrich Directive Items:**
    - Call recommendation tools once per directive item
@@ -161,10 +163,13 @@ Generate a comprehensive report that executes expert directives with intelligent
 
 Use clean, readable Markdown with clear section headings. Keep language concise, client-facing, and evidence-based. Do NOT use inline citations - all citations go in References section at bottom.
 
-1. **Introduction:** Personalized to client, summarizing what report covers
-2. **Philosophy:** Brief bioenergetic framework connected to client context
-3. **Assessment Findings:** Prose narrative mapping flagged issues to guide implications with personalization. End with concise interconnection narrative showing bioenergetic cascades.
-4. **Recommendations:** Three Markdown tables (Diagnostics, Diet & Lifestyle, Supplements). Include implementation details from tools.
+**Format Philosophy:** Favor clarity over volume. Use structured formats (tables, bullets) where they enhance scannability. Reserve prose for synthesis, interconnection, and personalization. Each section has a distinct purpose—avoid repeating content across sections.
+**Always be asking, could these be more clear, more concise, more contextually relevant**
+
+1. **Introduction:** Personalized to client, summarizing what report covers -- do NOT include something like "{client's name}, thank you for your detailed questionnaire and assessment" the client did not submit their data to you, it was a Prism Advisor.
+2. **Philosophy:** Explain the bioenergetic framework and key mechanisms relevant to this client's case. This is where mechanism detail belongs to help the client understand WHY the recommendations work. Keep focused and connected to their specific situation. This section should be concise and to the point, and should not get too verbose.
+3. **Assessment Findings:** Present the most important symptom patterns and assessment data in a concise, scannable format. Use a structured table to organize key findings, their implications, and severity. Follow with a brief interconnection narrative that synthesizes how these findings relate through bioenergetic principles. Prioritize signal over noise—focus on what's most relevant to the directives and root causes. This section need to be clear and concise and should not get too verbose.
+4. **Recommendations:** Three Markdown tables (Diagnostics, Diet & Lifestyle, Supplements). Include implementation details from tools, but paraphrase to be clear and concise and contextually relevant.
 5. **Conclusion:** Summary of how interventions address findings, interconnections, safety notes
 6. **References:** Subsections for each report area, academic format citations
 
