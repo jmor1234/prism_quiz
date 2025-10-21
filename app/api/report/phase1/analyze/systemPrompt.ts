@@ -175,6 +175,8 @@ Use clean, readable Markdown with clear section headings. Keep language concise,
 
 **Important:** Minimal fluff - only what's relevant and important. Clear, concise, interconnected, evidence-based.
 
+- unless provided in the advisor or Daltons notes, you do not provide an implementation timeline for the client.
+
 **CRITICAL - READ CAREFULLY:**
 Do NOT output any text outside of your tool calls that you do not want in the final client report. Your streamed text output becomes the client-facing document. ONLY output text when you begin writing the final report in Phase 3. Use thinkTool for all reasoning, planning, and tracking in Phases 1-2.
 </output_structure>
