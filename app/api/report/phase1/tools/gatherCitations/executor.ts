@@ -8,7 +8,9 @@ import {
   DEFAULT_START_DATE,
   RESULTS_PER_TOPIC,
   CONCURRENT_SEARCH_LIMIT,
+  CITATIONS_PER_SUBSECTION,
 } from "./constants";
+import { curateCitations } from "./curator";
 
 const TOOL_NAME = "gatherCitationsTool";
 
@@ -175,21 +177,74 @@ export async function executeGatherCitations(
     totalAfterDedup += deduplicatedBySubsection[subsection].length;
   }
 
+  logger?.logToolInternalStep(TOOL_NAME, "DEDUPLICATION_COMPLETE", {
+    totalCitations: totalBeforeDedup,
+    uniqueCitations: totalAfterDedup,
+  });
+
+  console.log(`  Deduplication: ${totalAfterDedup} unique citations from ${totalBeforeDedup} total`);
+
+  // 5. Curate citations per subsection (select most relevant)
+  console.log(`  Curating to ${CITATIONS_PER_SUBSECTION} citations per subsection...`);
+
+  const curatedBySubsection: Record<string, Array<{
+    title: string;
+    author?: string;
+    publishedDate?: string;
+    url: string;
+  }>> = {};
+
+  // Build topic map from original input
+  const topicsBySubsection = new Map<string, string[]>();
+  for (const request of input.citationRequests) {
+    topicsBySubsection.set(request.subsection, request.topics);
+  }
+
+  let totalCurated = 0;
+
+  for (const [subsection, citations] of Object.entries(deduplicatedBySubsection)) {
+    const topics = topicsBySubsection.get(subsection) || [];
+
+    if (citations.length <= CITATIONS_PER_SUBSECTION) {
+      // Already at or below target, keep all
+      curatedBySubsection[subsection] = citations;
+      totalCurated += citations.length;
+    } else {
+      // Curate to target count
+      const curated = await curateCitations({
+        subsection,
+        topics,
+        citations,
+        targetCount: CITATIONS_PER_SUBSECTION,
+      });
+
+      curatedBySubsection[subsection] = curated;
+      totalCurated += curated.length;
+
+      logger?.logToolInternalStep(TOOL_NAME, "SUBSECTION_CURATED", {
+        subsection,
+        before: citations.length,
+        after: curated.length,
+      });
+    }
+  }
+
   const executionTime = Date.now() - startTime;
 
   logger?.logToolInternalStep(TOOL_NAME, "CITATION_GATHERING_COMPLETE", {
     totalSearches: searchTasks.length,
-    subsections: Object.keys(deduplicatedBySubsection).length,
-    totalCitations: totalBeforeDedup,
-    uniqueCitations: totalAfterDedup,
+    subsections: Object.keys(curatedBySubsection).length,
+    totalGathered: totalBeforeDedup,
+    uniqueAfterDedup: totalAfterDedup,
+    finalCurated: totalCurated,
     executionTimeMs: executionTime,
   });
 
-  console.log(`✓ [${TOOL_NAME}] Complete: ${totalAfterDedup} unique citations (${totalBeforeDedup} total) in ${(executionTime / 1000).toFixed(1)}s\n`);
+  console.log(`✓ [${TOOL_NAME}] Complete: ${totalCurated} curated citations (from ${totalAfterDedup} unique) in ${(executionTime / 1000).toFixed(1)}s\n`);
 
   return {
-    citationsBySubsection: deduplicatedBySubsection,
+    citationsBySubsection: curatedBySubsection,
     totalCitations: totalBeforeDedup,
-    uniqueCitations: totalAfterDedup,
+    uniqueCitations: totalCurated, // Return curated count as "unique"
   };
 }
