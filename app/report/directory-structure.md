@@ -34,18 +34,13 @@ app/report/
   - Manually consumes SSE stream from `/api/report/phase1/analyze`.
   - Manages streaming state (idle → checking → streaming → complete → error).
   - Parses typed stream events:
-    - `data-research-session`, `data-research-objective`, `data-research-phase`
-    - `data-extraction-session`, `data-extraction-url`
-    - `data-tool-status` (shows **per-item enrichment calls**: "Enriching diagnostic: comprehensive stool test", etc.)
-    - `data-research-collection`, `data-research-sources`
+    - `data-tool-status` (shows **per-item enrichment calls** + **citation gathering**: "Enriching diagnostic: comprehensive stool test", "Gathering citations for 28 topics...")
     - `data-report-text` (report content chunks)
     - `reasoning` (visible thinking)
-  - Updates `ResearchState` for progress UI.
+  - Updates UI state for progress visibility.
   - Renders:
-    - `ResearchProgress` component (reused from chat)
-    - `ExtractionProgress` component (reused from chat)
-    - **Tool status updates** (8-15+ per-item enrichment calls visible in real-time)
-    - Final report in markdown (`Response` component) - streamed in real-time with **References section** at bottom
+    - **Tool status updates** (8-15+ per-item enrichment calls + 1 citation tool call visible in real-time)
+    - Final report in markdown (`Response` component) - streamed in real-time with **References section** at bottom (40 curated citations organized by subsection)
     - Reasoning panel (`Reasoning` component)
   - Error handling with retry functionality.
 
