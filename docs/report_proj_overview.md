@@ -1,20 +1,21 @@
 # Report Project Overview
 
 ## 1. Problem Statement & First-Principles Intent
-- **Client reality:** Prism’s advisors collect rich qualitative and quantitative inputs (questionnaire, take-home logs, consultation notes). Historically these lived in ad-hoc notes, making consistent analysis and downstream recommendations hard to scale.
-- **Goal:** Build an end-to-end pipeline that turns raw client inputs into a structured, multi-phase report:
-  1. **Root-cause analysis** – Identify fundamental bioenergetic cascades for the client.
-  2. **Recommendation synthesis** – Propose targeted interventions tied to those cascades.
-  3. **Final report** – Deliver a coherent plan the advisor can review with the client.
-- **Principle:** Capture client data once, persist it deterministically, and let each phase read from a single canonical record. This avoids repeated parsing, prevents drift, and keeps later phases reproducible.
+- **Client reality:** Prism's advisors collect rich qualitative and quantitative inputs (questionnaire, take-home logs, consultation notes) and experts (Dalton/advisors) provide intervention directives. The system must execute these directives with intelligent enrichment at scale.
+- **Goal:** Build an end-to-end pipeline that turns raw client inputs + expert directives into a structured, multi-phase report:
+  1. **Directive extraction & data parsing** – Extract intervention directives from expert notes; flag client data against interpretation guides.
+  2. **Directive enrichment** – Enrich each directive item with database details, personalization, and citations.
+  3. **Final report** – Deliver a coherent plan executing expert directives with bioenergetic context.
+- **Principle:** Capture client data once, persist it deterministically, and let each phase read from a single canonical record. Human expertise drives interventions; AI executes and enriches at scale.
 
 ## 2. Data Inputs & Storage
 ### Required Inputs (from UI)
 | Field | Description | Notes |
 | --- | --- | --- |
-| `questionnaireText` | Raw questionnaire responses (rating scale + free text) | Ratings ≥2 indicate issues to map to implications |
+| `questionnaireText` | Raw questionnaire responses (rating scale + free text) | Ratings ≥2 indicate issues to map to interpretation guide implications |
 | `takehomeText` | Numeric logs + short answers from take-home assessments | Includes vitals, stool logs, etc. |
-| `advisorNotesText` | Consultation notes from our expert advisor | Required—carries heavy weight for analysis |
+| `advisorNotesText` | Consultation notes from advisor | SECONDARY directives—fallback guidance |
+| `daltonsFinalNotes` | Final intervention directives from Dalton | PRIMARY directives—carries most weight |
 | `attachmentIds.images` | Optional image IDs (tongue photos, etc.) | Currently placeholder—IDs stored for future storage backend |
 | `attachmentIds.labs` | Optional lab PDF IDs | Same as above |
 
@@ -27,11 +28,12 @@
   - Written when Phase 1 agent completes analysis.
 - **Identifiers:** `caseId` is returned to the UI and becomes the join key for later phases.
 
-## 3. Current Implementation Snapshot (Full Three-Phase System)
+## 3. Current Implementation Snapshot (Directive-Driven Three-Phase System)
 
 ### Frontend
 
 **`app/report/phase1-form.tsx`**
+- **Four required text fields:** questionnaire, takehome, advisor notes, **Dalton's final notes**
 - Autosave & validation using `phase1SubmissionSchema`.
 - Handles attachments (UI only; backend currently stores IDs).
 - On submit: POSTs to `/api/report/phase1` → persists case → receives `{ caseId }` → navigates to analysis page.
@@ -56,41 +58,46 @@
 - Returns `{ report, createdAt }` if found, 404 if not found.
 - Used by frontend to check for cached results before re-running analysis.
 
-**`app/api/report/phase1/analyze/route.ts`** (Three-phase streaming agent)
+**`app/api/report/phase1/analyze/route.ts`** (Directive-driven three-phase streaming agent)
 - Accepts `{ caseId }` and loads submission from storage.
-  - Builds system prompt with bioenergetic knowledge + interpretation guides + client data.
+  - Builds system prompt with bioenergetic knowledge + interpretation guides + client data + **Dalton's final notes**.
   - Runs streaming agent with 6 tools:
   - **Report-specific cognitive tool:** `reportThinkTool`
   - **Research tools:** `executeResearchPlanTool`, `targetedExtractionTool`
-  - **Recommendation tools:** `recommendDiagnosticsTool`, `recommendDietLifestyleTool`, `recommendSupplementsTool`
+  - **Recommendation tools (per-item enrichment):** `recommendDiagnosticsTool`, `recommendDietLifestyleTool`, `recommendSupplementsTool`
 - Streams real-time progress via `TraceLogger`.
 - Streams report text via custom `data-report-text` events (manually consumed from `result.textStream`).
 - Executes full 3-phase workflow:
-  - **Phase 1:** Identify root causes using interpretation guides (PRIMARY) + research (SECONDARY)
-  - **Phase 2:** Call recommendation tools → get CSV-matched interventions → validate with research
-  - **Phase 3:** Synthesize client-facing report with inline citations
+  - **Phase 1:** Extract directives from Dalton's/Advisor notes; parse questionnaire/takehome data
+  - **Phase 2:** Map data to guide implications; enrich each directive item via per-item tool calls (8-15+); gather citations
+  - **Phase 3:** Build References section; stream final report
 - Saves final report to `storage/phase1-results/<caseId>.json`.
 - Max duration: 15 minutes.
 
 **`app/api/report/phase1/analyze/systemPrompt.ts`**
 - Loads interpretation guides from `data/` directory (questionnaire.md, takehome.md).
-- Builds 3-phase system prompt:
+- Builds directive-driven 3-phase system prompt:
   - Prism context and bioenergetic knowledge framework
   - Interpretation guides (questionnaire + takehome)
-  - Client data (questionnaire responses, takehome assessment, advisor notes)
-  - Phase 1: Root cause identification with authority hierarchy
-  - Phase 2: Recommendation generation via tools
-  - Phase 3: Concise client-facing synthesis with interconnections and citations
+  - Client data (questionnaire responses, takehome assessment, advisor notes, **Dalton's final notes**)
+  - **Agent role:** Executor & Enricher (not decision-maker)
+  - **Authority hierarchy:** Dalton's notes (PRIMARY) > Advisor notes (SECONDARY) > Guides (mapping) > Agent reasoning (gaps only)
+  - Phase 1: Extract directives; parse questionnaire/takehome against guides
+  - Phase 2: Map to guide implications; enrich directives with per-item tool calls; gather citations
+  - Phase 3: Build References section; stream final report
 
-**`app/api/report/phase1/tools/`** (Recommendation sub-agents)
-- **`recommendDiagnostics/`** - Matches diagnostic tests from CSV to root causes (max 7)
-- **`recommendDietLifestyle/`** - Matches diet/lifestyle interventions from CSV to root causes (max 7)
-- **`recommendSupplements/`** - Matches supplements/pharma from CSV to root causes (max 7)
+**`app/api/report/phase1/tools/`** (Recommendation sub-agents - per-item enrichment)
+- **`recommendDiagnostics/`** - Enriches single diagnostic directive with database details
+- **`recommendDietLifestyle/`** - Enriches single diet/lifestyle directive with implementation guidance
+- **`recommendSupplements/`** - Enriches single supplement directive with dosage/sourcing
 - Each tool:
   - Loads its CSV database (cached after first load)
-  - Receives root causes + client context + objective from primary agent
-  - Uses Claude Sonnet sub-agent with `generateObject` for structured selection
-  - Returns highest-impact recommendations based on severity and client concerns
+  - Receives **requested item** (from directives) + client context + objective from primary agent
+  - Uses Claude Sonnet sub-agent with `generateObject` for structured lookup
+  - Returns **discriminated union:**
+    - `type: "specific"` → single enriched match with personalized details
+    - `type: "options"` → 2-5 potential matches when directive is ambiguous (agent decides or recalls)
+  - Called 8-15+ times per report (once per directive item)
 
 **`app/api/report/phase1/data/`**
 - `questionaire.md` - Maps questionnaire responses to bioenergetic implications (PRIMARY authority for Phase 1)
@@ -114,23 +121,23 @@
 - Persists Phase 1 analysis results and exposes `getPhase1Result` to retrieve by `caseId`.
 
 ## 4. What Happens Today (End-to-End Flow)
-1. User completes the Phase 1 form and submits.
+1. User completes the Phase 1 form with **4 required fields** (questionnaire, takehome, advisor notes, **Dalton's final notes**) and submits.
 2. Backend stores the submission and returns `caseId`.
 3. Frontend navigates to `/report/analysis/<caseId>`.
 4. Analysis page checks for existing result:
    - **If exists:** Loads cached report from storage (instant display, no re-run)
    - **If not found:** Initiates streaming agent by calling `/api/report/phase1/analyze`
-5. Agent loads submission, builds 3-phase system prompt, and executes:
-   - **Phase 1:** Analyze client data → identify fundamental root causes using interpretation guides + research
-   - **Phase 2:** Call 3 recommendation tools with root cause context → get CSV-matched interventions (max 7 each) → validate with research for evidence
-   - **Phase 3:** Synthesize concise client-facing report showing interconnections with inline citations
+5. Agent loads submission, builds directive-driven 3-phase system prompt, and executes:
+   - **Phase 1:** Extract directives from Dalton's/Advisor notes → parse questionnaire/takehome data → flag items ≥2 against interpretation guides
+   - **Phase 2:** Map flagged items to guide implications → enrich each directive item via per-item tool calls (8-15+) → gather citations via research
+   - **Phase 3:** Build References section with academic format → stream final report
 6. Real-time progress streams to frontend:
    - Research sessions/objectives/phases (executeResearchPlanTool)
-   - Tool status (think, recommendation tools)
+   - Tool status (think, **per-item recommendation enrichment calls**)
    - Extraction progress (targetedExtractionTool)
    - Report text chunks (data-report-text events)
 7. Final comprehensive report generated and saved to storage.
-8. Frontend displays complete 3-phase report as it streams in real-time.
+8. Frontend displays complete directive-driven report as it streams in real-time.
 9. On page refresh: Cached result loads instantly from storage (no re-analysis).
 
 Files written:
@@ -139,19 +146,20 @@ Files written:
 
 ## 5. Current Status & Next Steps
 
-### ✅ Completed (Validated with Real Client Data)
-1. **Full 3-Phase Pipeline** - Implemented in single streaming session
-   - Phase 1: Root cause identification with interpretation guides
-   - Phase 2: Three recommendation sub-agent tools with CSV matching
-   - Phase 3: Client-facing synthesis with interconnections and citations
-   - **Status:** Validated end-to-end with real client data, produces production-quality reports
+### ✅ Completed (Directive-Driven Paradigm Refactor)
+1. **Full 3-Phase Directive-Driven Pipeline** - Implemented in single streaming session
+   - Phase 1: Directive extraction + data parsing against interpretation guides
+   - Phase 2: Guide implication mapping + per-item directive enrichment (8-15+ tool calls)
+   - Phase 3: References section building + final report streaming
+   - **Status:** Refactored from analysis-driven to directive-driven architecture
 
-2. **Recommendation Tools Architecture**
-   - Schema-driven with `.max(7)` constraints for focused recommendations
+2. **Per-Item Enrichment Tool Architecture**
+   - Discriminated union schemas (`"specific" | "options"`) for flexible matching
    - CSV database caching for performance
-   - Sub-agents use `generateObject` for structured output
+   - Sub-agents use `generateObject` for structured lookup + enrichment
+   - Called once per directive item (not batch selection)
    - Streaming tool status for UX visibility
-   - **Status:** All 3 tools (diagnostics, diet/lifestyle, supplements) functioning correctly
+   - **Status:** All 3 tools refactored (diagnostics, diet/lifestyle, supplements)
 
 3. **Streaming & Caching**
    - Real-time text streaming via custom `data-report-text` events
@@ -163,25 +171,27 @@ Files written:
 4. **Prompt Design Philosophy**
    - Clear separation: Prompt = intent, Schema = contract
    - Data definitions (what each section IS)
-   - Authority hierarchy (PRIMARY vs SECONDARY)
-   - Non-prescriptive approach enabling agent autonomy
-   - **Status:** Produces high-quality, personalized, evidence-based reports
+   - **Authority hierarchy:** Dalton's notes (PRIMARY) > Advisor notes (SECONDARY) > Guides (mapping) > Agent (gaps only)
+   - **Agent role:** Executor & Enricher (not decision-maker)
+   - Non-prescriptive approach enabling agent autonomy within bounded context
+   - **Status:** Refactored to directive-driven paradigm
 
 ### 🔄 Next Steps
-1. **Continued Validation**
-   - Test with additional diverse client cases
-   - Monitor output consistency and quality
-   - Gather feedback from advisors on report usefulness
-   - Track execution times and costs
+1. **Validation with Directive-Driven Flow**
+   - Test with real Dalton's directives in free-form prose
+   - Validate directive extraction quality
+   - Test per-item tool enrichment flow (specific vs options handling)
+   - Monitor execution times with 8-15+ tool calls
+   - Verify References section format and citation quality
 
 2. **Optimization**
-   - Fine-tune recommendation selection quality
-   - Optimize research strategy for Phase 1 and Phase 2 validation
-   - Refine citation integration
+   - Fine-tune directive extraction from unstructured notes
+   - Optimize research strategy for citation gathering (Phase 3 only)
+   - Refine vague directive → options → decision flow
 
 3. **Future Enhancements**
    - Attachment storage integration (S3/GCS)
-   - Structured output from Phase 1 for programmatic access
+   - Structured output for programmatic access
    - Auth & editing lifecycle
    - Re-run and versioning capabilities
 
@@ -211,39 +221,45 @@ Files written:
 - UI: `components/research-progress.tsx`, `components/extraction-progress.tsx`
 
 ### Report-Specific
-- Cognitive tool: `app/api/report/phase1/tools/` (thinkTool)
+- Cognitive tool: `app/api/report/phase1/tools/thinkTool.ts` (extraction tracking, enrichment planning, completion verification)
 - Streaming callbacks: `app/api/report/phase1/analyze/streamCallbacks.ts` (no caching)
 
 ## 7. Implementation Notes
 - **Two-step pattern**: Submit (persist) → Analyze (stream 3-phase execution)
 - **Single-session architecture**: All 3 phases execute in one streaming session for coherent context
-- **Tool composition**: Report-specific cognitive tool (think) + Research tools + Recommendation tools (CSV matching)
+- **Directive-driven paradigm**: Agent executes expert directives, not autonomous decisions
+- **Tool composition**: Report-specific cognitive tool (think) + Research tools + Per-item recommendation tools (CSV enrichment)
+- **Per-item enrichment**: 8-15+ tool calls per report (once per directive item) vs old 3 batch calls
+- **Discriminated unions**: Tools return `"specific" | "options"` enabling flexible matching flows
 - **No caching**: Report execution is single-shot with unique client data - caching provides no benefit
-- **System prompt differentiates**: Report context with 3-phase structure vs chat's open-ended exploration
-- **Real-time visibility**: Multi-minute executions with streaming progress (research, tool status, extractions, report text)
-- **Deterministic persistence**: Single source of truth - submission + final comprehensive report
-- **Sub-agent isolation**: Recommendation tools are blind (only see their inputs) - no research tools
-- **Authority hierarchy**: PRIMARY (interpretation guides, CSV databases) vs SECONDARY (research validation)
-- **Prompt philosophy**: Intent over prescription, schema handles contract, enabling agent autonomy
+- **System prompt differentiates**: Directive-driven report with bounded agent autonomy vs chat's open-ended exploration
+- **Real-time visibility**: Multi-minute executions with streaming progress (research, per-item tool status, extractions, report text)
+- **Deterministic persistence**: Single source of truth - submission (with Dalton's notes) + final comprehensive report
+- **Sub-agent isolation**: Recommendation tools are blind (only see requested item + context) - no research tools
+- **Authority hierarchy**: Dalton's notes (PRIMARY directives) > Advisor notes (SECONDARY) > Guides (mapping) > Agent reasoning (gaps only)
+- **Prompt philosophy**: Intent over prescription, schema handles contract, enabling agent autonomy within bounded context
 
 ## 8. Architecture Principles
 
 ### Cognitive Architecture
-- **Primary agent**: Orchestrates all 3 phases with full context and all tools
-- **Sub-agents**: Specialized CSV matchers - receive structured input, return structured output
-- **Tools as cognitive extensions**: Each tool extends specific capability (think, research, extraction, recommendation)
+- **Primary agent**: Executor & Enricher orchestrating all 3 phases with full context and all tools
+- **Sub-agents**: Specialized CSV lookup + enrichment - receive requested item, return match(es) with details
+- **Tools as cognitive extensions**: Each tool extends specific capability (think, research, extraction, per-item enrichment)
 - **Context flows downward**: Primary agent provides comprehensive context to sub-agents who are otherwise blind
+- **Directive-driven**: Agent executes expert directives, not autonomous clinical decisions
 
 ### Prompt Design
 - **Separation of concerns**: Prompt defines intent and data, Schema defines contract
 - **No overlap**: Avoid repeating schema descriptions in prompts
 - **Data clarity**: Explicitly state what each injected section IS
-- **Enable autonomy**: Philosophy over rigid steps, let intelligence emerge
+- **Enable autonomy**: Philosophy over rigid steps, let intelligence emerge within bounded context
+- **Role clarity**: Agent is Executor & Enricher, not decision-maker
 
 ### Quality Constraints
-- **Max 7 per domain**: Hard schema limit forces prioritization and selection judgment
-- **Evidence-based**: Research tools validate recommendations with citations
-- **Interconnected**: Final synthesis explains how root causes, interventions, and bioenergetic principles connect
-- **Actionable**: Client knows what to do next
+- **Per-item enrichment**: Tools enrich one directive at a time with database details
+- **Discriminated unions**: Clear contract for specific vs ambiguous matches
+- **Evidence-based**: Research tools gather citations (not validation)
+- **Interconnected**: Final synthesis explains how assessment findings and interventions connect through bioenergetic principles
+- **Actionable**: Client knows what to do next based on expert directives
 
 Reading this document should give a new engineer full context on what the "reports" project does today, how data flows through the system, and the architectural principles guiding implementation.

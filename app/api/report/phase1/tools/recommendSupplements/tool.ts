@@ -9,32 +9,32 @@ const TOOL_NAME = "recommendSupplementsTool" as const;
 
 export const recommendSupplementsTool = tool({
   description:
-    "Generate supplement and pharmaceutical recommendations from Prism's curated database based on identified root causes. Returns up to 5 highest-impact supplements/pharmaceuticals per call for root cause resolution.",
+    "Enrich a specific supplement/pharmaceutical directive with database details. Returns either a specific match with dosage and sourcing or multiple options if the directive is ambiguous. Call once per supplement item from directives.",
   inputSchema: recommendSupplementsInputSchema,
   execute: async (input: RecommendSupplementsInput) => {
     const logger = getLogger();
     logger?.logToolCallStart(TOOL_NAME, {
-      rootCauseCount: input.rootCauses.length,
+      requestedItem: input.requestedItem,
       objective: input.objective,
     });
 
     // Emit tool status for UI feedback
     logger?.emitToolStatus({
       toolName: "recommendSupplementsTool",
-      action: "Matching supplements & pharmaceuticals to root causes...",
+      action: `Enriching supplement: ${input.requestedItem}`,
     });
 
-    console.log(`\n### [${TOOL_NAME}] Generating supplement & pharmaceutical recommendations ###`);
-    console.log(`   Root causes: ${input.rootCauses.length}`);
+    console.log(`\n### [${TOOL_NAME}] Enriching supplement/pharmaceutical directive ###`);
+    console.log(`   Requested: ${input.requestedItem}`);
     console.log(`   Objective: ${input.objective}`);
 
-    let recommendations;
+    let result;
     let error: unknown = null;
 
     try {
-      recommendations = await generateSupplementRecommendations(input);
+      result = await generateSupplementRecommendations(input);
 
-      console.log(`   ✅ Generated ${recommendations.recommendations.length} supplement recommendations`);
+      console.log(`   ✅ Result type: ${result.type}`);
 
       logger?.emitToolStatus({
         toolName: "recommendSupplementsTool",
@@ -47,13 +47,13 @@ export const recommendSupplementsTool = tool({
     } finally {
       logger?.logToolCallEnd(
         TOOL_NAME,
-        recommendations ? { recommendationCount: recommendations.recommendations.length } : {},
+        result ? { resultType: result.type } : {},
         error
       );
     }
 
     console.log(`### [${TOOL_NAME}] Complete ###\n`);
 
-    return recommendations;
+    return result;
   },
 });

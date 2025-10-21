@@ -39,16 +39,15 @@ export async function generateDiagnosticRecommendations(
 
   const diagnosticsDb = await loadDiagnosticsDatabase();
 
-  // Build the prompt
   const prompt = `${BIOENERGETIC_KNOWLEDGE}
 
 <csv_database>
 ${diagnosticsDb}
 </csv_database>
 
-<root_causes>
-${JSON.stringify(input.rootCauses, null, 2)}
-</root_causes>
+<requested_item>
+${input.requestedItem}
+</requested_item>
 
 <client_context>
 ${JSON.stringify(input.clientContext, null, 2)}
@@ -58,24 +57,26 @@ ${JSON.stringify(input.clientContext, null, 2)}
 ${input.objective}
 </objective>
 
-# Goal: Select Highest-Impact Diagnostic Tests
+# Goal: Enrich Diagnostic Directive with Database Details
 
 **Data provided:**
-- CSV database: Prism's curated diagnostic tests with columns:
+- CSV database: Prism's curated diagnostic tests
   - Column 1: "Diagnostic" (test name, often includes price)
   - Column 2: "Implication" (what the test measures and interpretations)
   - Column 5: "Where to get" (provider or lab source)
-- Root causes: What needs to be investigated — includes evidence and mechanism
-- Client context: Personalization factors — age, gender, primary concerns, constraints
-- Objective: Strategic guidance from the primary agent
+- Requested item: Specific diagnostic from expert directives
+- Client context: Personalization factors
+- Objective: Strategic guidance
 
-**Your job:** Match database tests to root causes and select the most impactful ones for investigation.
+**Your job:** Find the best database match(es) for the requested item and enrich with implementation details.
 
-**Selection philosophy:** Prioritize tests with the strongest root cause investigation value. When multiple options exist, favor those revealing mechanisms for the highest-priority causes or addressing the client's primary concerns.
+**Decision logic:**
+- If requested item clearly matches one database entry → return specific match with personalized rationale
+- If requested item is ambiguous (multiple valid matches) → return 2-5 options with reasoning about differences
 
-**Return limit:** Return at most 5 recommendations in this call.
+**Personalization:** Tailor rationale to client's specific context, concerns, and constraints.
 
-**Note:** Think clearly from first principles about which tests provide the most meaningful insights into the underlying mechanisms.`;
+**Note:** Think from first principles about which database entries best match the directive.`.trim();
 
   logger?.logToolInternalStep("recommendDiagnosticsTool", "INVOKE_SUB_AGENT", {
     promptLength: prompt.length,
@@ -88,8 +89,8 @@ ${input.objective}
   });
 
   logger?.logToolInternalStep("recommendDiagnosticsTool", "SUB_AGENT_COMPLETE", {
-    recommendationCount: result.object.recommendations.length,
+    resultType: result.object.match.type,
   });
 
-  return result.object;
+  return result.object.match;
 }

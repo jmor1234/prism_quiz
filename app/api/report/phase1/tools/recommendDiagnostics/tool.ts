@@ -9,32 +9,32 @@ const TOOL_NAME = "recommendDiagnosticsTool" as const;
 
 export const recommendDiagnosticsTool = tool({
   description:
-    "Generate diagnostic test recommendations from Prism's curated database based on identified root causes. Returns up to 5 highest-impact tests per call for root cause investigation.",
+    "Enrich a specific diagnostic directive with database details. Returns either a specific match with implementation details or multiple options if the directive is ambiguous. Call once per diagnostic item from directives.",
   inputSchema: recommendDiagnosticsInputSchema,
   execute: async (input: RecommendDiagnosticsInput) => {
     const logger = getLogger();
     logger?.logToolCallStart(TOOL_NAME, {
-      rootCauseCount: input.rootCauses.length,
+      requestedItem: input.requestedItem,
       objective: input.objective,
     });
 
     // Emit tool status for UI feedback
     logger?.emitToolStatus({
       toolName: "recommendDiagnosticsTool",
-      action: "Matching diagnostic tests to root causes...",
+      action: `Enriching diagnostic: ${input.requestedItem}`,
     });
 
-    console.log(`\n### [${TOOL_NAME}] Generating diagnostic recommendations ###`);
-    console.log(`   Root causes: ${input.rootCauses.length}`);
+    console.log(`\n### [${TOOL_NAME}] Enriching diagnostic directive ###`);
+    console.log(`   Requested: ${input.requestedItem}`);
     console.log(`   Objective: ${input.objective}`);
 
-    let recommendations;
+    let result;
     let error: unknown = null;
 
     try {
-      recommendations = await generateDiagnosticRecommendations(input);
+      result = await generateDiagnosticRecommendations(input);
 
-      console.log(`   ✅ Generated ${recommendations.recommendations.length} diagnostic recommendations`);
+      console.log(`   ✅ Result type: ${result.type}`);
 
       logger?.emitToolStatus({
         toolName: "recommendDiagnosticsTool",
@@ -47,13 +47,13 @@ export const recommendDiagnosticsTool = tool({
     } finally {
       logger?.logToolCallEnd(
         TOOL_NAME,
-        recommendations ? { recommendationCount: recommendations.recommendations.length } : {},
+        result ? { resultType: result.type } : {},
         error
       );
     }
 
     console.log(`### [${TOOL_NAME}] Complete ###\n`);
 
-    return recommendations;
+    return result;
   },
 });

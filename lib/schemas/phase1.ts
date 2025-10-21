@@ -24,6 +24,7 @@ export const phase1SubmissionSchema = z.object({
   questionnaireText: nonEmptyTrimmedString,
   takehomeText: nonEmptyTrimmedString,
   advisorNotesText: nonEmptyTrimmedString,
+  daltonsFinalNotes: nonEmptyTrimmedString,
   attachmentIds: phase1AttachmentIdsSchema,
 });
 

@@ -39,16 +39,15 @@ export async function generateSupplementRecommendations(
 
   const supplementsDb = await loadSupplementsDatabase();
 
-  // Build the prompt
   const prompt = `${BIOENERGETIC_KNOWLEDGE}
 
 <csv_database>
 ${supplementsDb}
 </csv_database>
 
-<root_causes>
-${JSON.stringify(input.rootCauses, null, 2)}
-</root_causes>
+<requested_item>
+${input.requestedItem}
+</requested_item>
 
 <client_context>
 ${JSON.stringify(input.clientContext, null, 2)}
@@ -58,25 +57,27 @@ ${JSON.stringify(input.clientContext, null, 2)}
 ${input.objective}
 </objective>
 
-# Goal: Select Highest-Impact Supplements & Pharmaceuticals
+# Goal: Enrich Supplement/Pharmaceutical Directive with Database Details
 
 **Data provided:**
-- CSV database: Prism's curated supplements and pharmaceuticals with columns:
+- CSV database: Prism's curated supplements and pharmaceuticals with dosage and sourcing details
   - Column 1: "Supplement or Pharmaceuticals" (name)
   - Column 2: "Rationale" (mechanism and use cases)
-  - Column 4: "Dosage/Notes" (dosing instructions and important notes)
+  - Column 4: "Dosage/Notes" (dosing instructions)
   - Column 5: "Provider" (where to purchase, including discount codes)
-- Root causes: What needs to be addressed — includes evidence, mechanism, severity
-- Client context: Personalization factors — age, gender, primary concerns, constraints
-- Objective: Strategic guidance from the primary agent
+- Requested item: Specific supplement from expert directives
+- Client context: Personalization factors
+- Objective: Strategic guidance
 
-**Your job:** Match database supplements/pharmaceuticals to root causes and select the most impactful ones for resolution.
+**Your job:** Find the best database match(es) for the requested item and enrich with dosage and sourcing details.
 
-**Selection philosophy:** Prioritize supplements with the strongest root cause impact. When multiple options exist, favor those addressing high-severity causes or the client's primary concerns.
+**Decision logic:**
+- If requested item clearly matches one database entry → return specific match with personalized rationale
+- If requested item is ambiguous (multiple valid matches) → return 2-5 options with reasoning about differences
 
-**Return limit:** Return at most 5 recommendations in this call.
+**Personalization:** Tailor rationale to client's specific context, concerns, and constraints.
 
-**Note:** Think clearly from first principles about which supplements will create the most meaningful impact on the underlying mechanisms.`;
+**Note:** Think from first principles about which database entries best match the directive.`.trim();
 
   logger?.logToolInternalStep("recommendSupplementsTool", "INVOKE_SUB_AGENT", {
     promptLength: prompt.length,
@@ -89,8 +90,8 @@ ${input.objective}
   });
 
   logger?.logToolInternalStep("recommendSupplementsTool", "SUB_AGENT_COMPLETE", {
-    recommendationCount: result.object.recommendations.length,
+    resultType: result.object.match.type,
   });
 
-  return result.object;
+  return result.object.match;
 }

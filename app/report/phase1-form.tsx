@@ -21,6 +21,7 @@ const STORAGE_KEYS = {
   questionnaire: "phase1.questionnaire",
   takehome: "phase1.takehome",
   advisor: "phase1.advisor",
+  daltons: "phase1.daltons",
 } as const;
 
 const AUTOSAVE_MS = 1_000;
@@ -31,6 +32,7 @@ export function Phase1ReportForm() {
   const [questionnaireText, setQuestionnaireText] = useState("");
   const [takehomeText, setTakehomeText] = useState("");
   const [advisorNotesText, setAdvisorNotesText] = useState("");
+  const [daltonsFinalNotes, setDaltonsFinalNotes] = useState("");
   const [images, setImages] = useState<File[]>([]);
   const [labs, setLabs] = useState<File[]>([]);
 
@@ -48,11 +50,13 @@ export function Phase1ReportForm() {
     const savedQuestionnaire = window.localStorage.getItem(STORAGE_KEYS.questionnaire);
     const savedTakehome = window.localStorage.getItem(STORAGE_KEYS.takehome);
     const savedAdvisor = window.localStorage.getItem(STORAGE_KEYS.advisor);
+    const savedDaltons = window.localStorage.getItem(STORAGE_KEYS.daltons);
 
-    if (savedQuestionnaire || savedTakehome || savedAdvisor) {
+    if (savedQuestionnaire || savedTakehome || savedAdvisor || savedDaltons) {
       setQuestionnaireText(savedQuestionnaire ?? "");
       setTakehomeText(savedTakehome ?? "");
       setAdvisorNotesText(savedAdvisor ?? "");
+      setDaltonsFinalNotes(savedDaltons ?? "");
       setRestoredDraft(true);
     }
   }, []);
@@ -95,6 +99,12 @@ export function Phase1ReportForm() {
     scheduleAutosave(STORAGE_KEYS.advisor, value);
   };
 
+  const handleDaltonsChange = (value: string) => {
+    if (value.length > MAX_PHASE1_FIELD_CHARS) return;
+    setDaltonsFinalNotes(value);
+    scheduleAutosave(STORAGE_KEYS.daltons, value);
+  };
+
   const handleFileInput = useCallback((files: FileList | null, type: "images" | "labs") => {
     if (!files?.length) return;
     const accepted = Array.from(files).filter((file) => {
@@ -129,13 +139,14 @@ export function Phase1ReportForm() {
   const questionCharCount = questionnaireText.length;
   const takehomeCharCount = takehomeText.length;
   const advisorCharCount = advisorNotesText.length;
+  const daltonsCharCount = daltonsFinalNotes.length;
 
   const isSubmitDisabled =
-    status === "submitting" || !questionnaireText.trim() || !takehomeText.trim() || !advisorNotesText.trim();
+    status === "submitting" || !questionnaireText.trim() || !takehomeText.trim() || !advisorNotesText.trim() || !daltonsFinalNotes.trim();
 
   const resetForm = () => {
     const hasContent =
-      questionnaireText.trim().length || takehomeText.trim().length || advisorNotesText.trim().length;
+      questionnaireText.trim().length || takehomeText.trim().length || advisorNotesText.trim().length || daltonsFinalNotes.trim().length;
 
     if (hasContent && !confirm("Clear all inputs? This will remove the current draft.")) {
       return;
@@ -144,6 +155,7 @@ export function Phase1ReportForm() {
     setQuestionnaireText("");
     setTakehomeText("");
     setAdvisorNotesText("");
+    setDaltonsFinalNotes("");
     setImages([]);
     setLabs([]);
     setError(null);
@@ -156,6 +168,7 @@ export function Phase1ReportForm() {
       window.localStorage.removeItem(STORAGE_KEYS.questionnaire);
       window.localStorage.removeItem(STORAGE_KEYS.takehome);
       window.localStorage.removeItem(STORAGE_KEYS.advisor);
+      window.localStorage.removeItem(STORAGE_KEYS.daltons);
     }
   };
 
@@ -181,6 +194,7 @@ export function Phase1ReportForm() {
         questionnaireText: questionnaireText.trim(),
         takehomeText: takehomeText.trim(),
         advisorNotesText: advisorNotesText.trim(),
+        daltonsFinalNotes: daltonsFinalNotes.trim(),
         attachmentIds,
       });
 
@@ -204,6 +218,7 @@ export function Phase1ReportForm() {
         window.localStorage.removeItem(STORAGE_KEYS.questionnaire);
         window.localStorage.removeItem(STORAGE_KEYS.takehome);
         window.localStorage.removeItem(STORAGE_KEYS.advisor);
+        window.localStorage.removeItem(STORAGE_KEYS.daltons);
       }
 
       // Navigate to analysis page
@@ -288,7 +303,27 @@ export function Phase1ReportForm() {
               className="min-h-[140px] max-h-[300px] resize-y text-sm leading-relaxed"
             />
             <p className="text-xs text-muted-foreground">
-              Required. Include the advisor&rsquo;s full notes—these shape the root-cause assessment.
+              Secondary directives and fallback guidance.
+            </p>
+          </div>
+
+          <div className="grid gap-3">
+            <div className="flex items-center justify-between">
+              <label htmlFor="daltons" className="text-sm font-medium">
+                Dalton&rsquo;s final notes <span className="text-destructive">*</span>
+              </label>
+              <span className="text-xs text-muted-foreground">{daltonsCharCount.toLocaleString()} / {MAX_PHASE1_FIELD_CHARS.toLocaleString()}</span>
+            </div>
+            <Textarea
+              id="daltons"
+              value={daltonsFinalNotes}
+              onChange={(event) => handleDaltonsChange(event.currentTarget.value)}
+              minLength={1}
+              rows={8}
+              className="min-h-[140px] max-h-[300px] resize-y text-sm leading-relaxed"
+            />
+            <p className="text-xs text-muted-foreground">
+              Required. Primary directives for interventions—carries the most weight.
             </p>
           </div>
         </div>

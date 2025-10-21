@@ -4,73 +4,62 @@ import { z } from "zod";
 
 // Input schema: what the primary agent passes to the tool
 export const recommendDietLifestyleInputSchema = z.object({
-  rootCauses: z
-    .array(
-      z.object({
-        name: z
-          .string()
-          .describe("Specific root cause identified (e.g., 'Small intestinal bacterial overgrowth')"),
-        category: z
-          .enum(["gut", "stress", "thyroid"])
-          .describe("Which of the three pillars this root cause falls under"),
-        evidence: z
-          .array(z.string())
-          .describe("Key data points from client data supporting this root cause"),
-        mechanism: z
-          .string()
-          .describe("Brief explanation of the bioenergetic cascade"),
-        severity: z
-          .enum(["high", "moderate"])
-          .describe("Severity assessment based on evidence strength and symptom impact"),
-      })
-    )
-    .describe("Array of identified root causes with comprehensive context"),
+  requestedItem: z
+    .string()
+    .describe("Specific diet/lifestyle intervention from directives (e.g., 'increase salt intake' or 'stress management')"),
 
   clientContext: z
     .object({
-      age: z.number().optional().describe("Client age for intervention appropriateness"),
-      gender: z.string().optional().describe("Gender for gender-specific interventions"),
+      age: z.number().optional().describe("Client age"),
+      gender: z.string().optional().describe("Client gender"),
       primaryConcerns: z
         .array(z.string())
-        .describe("Top symptoms bothering client most - prioritize interventions addressing these"),
+        .describe("Top symptoms or issues"),
       constraints: z
         .array(z.string())
         .optional()
-        .describe("Relevant limitations (e.g., 'budget-conscious', 'minimal lifestyle changes')"),
+        .describe("Relevant limitations"),
     })
-    .describe("Client context for personalization and prioritization"),
+    .describe("Client personalization factors"),
 
   objective: z
     .string()
-    .describe("Primary agent's strategic guidance for diet & lifestyle recommendations"),
+    .describe("Strategic guidance for this specific intervention"),
 });
 
-// Output schema: what the sub-agent returns
+// Output schema: wrapper object containing union for specific vs ambiguous matches
 export const recommendDietLifestyleOutputSchema = z.object({
-  recommendations: z
-    .array(
-      z.object({
-        intervention: z
-          .string()
-          .describe("The diet or lifestyle intervention from CSV database"),
-        rationale: z
-          .string()
-          .describe("Explicit connection to root cause - how this creates meaningful impact"),
-        rootCauseAddressed: z
-          .string()
-          .describe("Which specific root cause this intervention targets"),
-        notes: z
-          .string()
-          .optional()
-          .describe("Implementation guidance, personalization details, or important context from database"),
-      })
-    )
-    .max(5)
-    .min(1)
-    .describe(
-      "Maximum 5 highest-impact interventions per call. Select for clear root cause impact, not comprehensiveness."
-    ),
+  match: z.union([
+    // Specific match found
+    z.object({
+      type: z.literal("specific"),
+      recommendation: z.object({
+        intervention: z.string().describe("Full intervention name from database"),
+        rationale: z.string().describe("Why this intervention addresses the directive, personalized to client"),
+        implementation: z.string().describe("How to implement this intervention (from database)"),
+        rootCauseAddressed: z.string().describe("The underlying issue this intervention targets"),
+      }),
+    }),
+    // Multiple potential matches - return options
+    z.object({
+      type: z.literal("options"),
+      options: z
+        .array(
+          z.object({
+            intervention: z.string().describe("Full intervention name from database"),
+            rationale: z.string().describe("Why this could match the directive"),
+            implementation: z.string().describe("How to implement this intervention (from database)"),
+            rootCauseAddressed: z.string().describe("The underlying issue this intervention targets"),
+          })
+        )
+        .max(5)
+        .min(2)
+        .describe("2-5 potential matches when directive is ambiguous"),
+      reasoning: z.string().describe("Why these options were selected and how they differ"),
+    }),
+  ]),
 });
 
 export type RecommendDietLifestyleInput = z.infer<typeof recommendDietLifestyleInputSchema>;
-export type RecommendDietLifestyleOutput = z.infer<typeof recommendDietLifestyleOutputSchema>;
+type RecommendDietLifestyleOutputWrapper = z.infer<typeof recommendDietLifestyleOutputSchema>;
+export type RecommendDietLifestyleOutput = RecommendDietLifestyleOutputWrapper["match"];

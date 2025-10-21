@@ -4,75 +4,64 @@ import { z } from "zod";
 
 // Input schema: what the primary agent passes to the tool
 export const recommendSupplementsInputSchema = z.object({
-  rootCauses: z
-    .array(
-      z.object({
-        name: z
-          .string()
-          .describe("Specific root cause identified (e.g., 'Small intestinal bacterial overgrowth')"),
-        category: z
-          .enum(["gut", "stress", "thyroid"])
-          .describe("Which of the three pillars this root cause falls under"),
-        evidence: z
-          .array(z.string())
-          .describe("Key data points from client data supporting this root cause"),
-        mechanism: z
-          .string()
-          .describe("Brief explanation of the bioenergetic cascade"),
-        severity: z
-          .enum(["high", "moderate"])
-          .describe("Severity assessment based on evidence strength and symptom impact"),
-      })
-    )
-    .describe("Array of identified root causes with comprehensive context"),
+  requestedItem: z
+    .string()
+    .describe("Specific supplement/pharmaceutical from directives (e.g., 'magnesium glycinate' or 'thyroid support')"),
 
   clientContext: z
     .object({
-      age: z.number().optional().describe("Client age for dosing and appropriateness"),
-      gender: z.string().optional().describe("Gender for gender-specific supplements"),
+      age: z.number().optional().describe("Client age"),
+      gender: z.string().optional().describe("Client gender"),
       primaryConcerns: z
         .array(z.string())
-        .describe("Top symptoms bothering client most - prioritize interventions addressing these"),
+        .describe("Top symptoms or issues"),
       constraints: z
         .array(z.string())
         .optional()
-        .describe("Relevant limitations (e.g., 'budget-conscious', 'minimal supplement load')"),
+        .describe("Relevant limitations"),
     })
-    .describe("Client context for personalization and prioritization"),
+    .describe("Client personalization factors"),
 
   objective: z
     .string()
-    .describe("Primary agent's strategic guidance for supplement & pharmaceutical recommendations"),
+    .describe("Strategic guidance for this specific supplement"),
 });
 
-// Output schema: what the sub-agent returns
+// Output schema: wrapper object containing union for specific vs ambiguous matches
 export const recommendSupplementsOutputSchema = z.object({
-  recommendations: z
-    .array(
-      z.object({
-        supplement: z
-          .string()
-          .describe("The supplement or pharmaceutical from CSV database"),
-        rationale: z
-          .string()
-          .describe("Explicit connection to root cause - how this creates meaningful impact"),
-        rootCauseAddressed: z
-          .string()
-          .describe("Which specific root cause this supplement targets"),
-        dosageNotes: z
-          .string()
-          .describe("Dosage instructions and important notes from the 'Dosage/Notes' column in CSV database"),
-        provider: z
-          .string()
-          .describe("Where to purchase from the 'Provider' column in CSV database (include discount codes if present)"),
-      })
-    )
-    .max(5)
-    .min(1)
-    .describe(
-      "Maximum 5 highest-impact supplements/pharmaceuticals per call. Select for clear root cause impact, not comprehensiveness."
-    ),
+  match: z.union([
+    // Specific match found
+    z.object({
+      type: z.literal("specific"),
+      recommendation: z.object({
+        supplement: z.string().describe("Full supplement/pharmaceutical name from database"),
+        rationale: z.string().describe("Why this supplement addresses the directive, personalized to client"),
+        dosage: z.string().describe("Dosage instructions from database"),
+        source: z.string().describe("Where to purchase (include discount codes if present in database)"),
+        rootCauseAddressed: z.string().describe("The underlying issue this supplement targets"),
+      }),
+    }),
+    // Multiple potential matches - return options
+    z.object({
+      type: z.literal("options"),
+      options: z
+        .array(
+          z.object({
+            supplement: z.string().describe("Full supplement/pharmaceutical name from database"),
+            rationale: z.string().describe("Why this could match the directive"),
+            dosage: z.string().describe("Dosage instructions from database"),
+            source: z.string().describe("Where to purchase (include discount codes if present in database)"),
+            rootCauseAddressed: z.string().describe("The underlying issue this supplement targets"),
+          })
+        )
+        .max(5)
+        .min(2)
+        .describe("2-5 potential matches when directive is ambiguous"),
+      reasoning: z.string().describe("Why these options were selected and how they differ"),
+    }),
+  ]),
 });
 
 export type RecommendSupplementsInput = z.infer<typeof recommendSupplementsInputSchema>;
-export type RecommendSupplementsOutput = z.infer<typeof recommendSupplementsOutputSchema>;
+type RecommendSupplementsOutputWrapper = z.infer<typeof recommendSupplementsOutputSchema>;
+export type RecommendSupplementsOutput = RecommendSupplementsOutputWrapper["match"];

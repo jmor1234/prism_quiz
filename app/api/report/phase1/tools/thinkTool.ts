@@ -6,12 +6,12 @@ const TOOL_NAME = "thinkTool" as const;
 
 export const reportThinkTool = tool({
   description:
-    "Use this to think through analysis, capture key findings, or plan next steps. It logs your thoughts without changing external state. Use it when complex reasoning or tracking discoveries across phases is needed.",
+    "Use this to track extraction results, plan enrichment steps, or verify phase completion. Logs your reasoning without changing external state. Essential for: capturing parsed directives, noting ambiguities, tracking pending tool calls, and verifying all operations complete before proceeding.",
   inputSchema: z.object({
     thought: z
       .string()
       .describe(
-        "Your structured reasoning about phase transitions, evidence sufficiency, or next actions. Be specific about your evaluation and justification."
+        "Your structured tracking or reasoning: extraction results, enrichment planning, completion verification, or directive disambiguation."
       ),
   }),
   execute: async ({ thought }: { thought: string }) => {
