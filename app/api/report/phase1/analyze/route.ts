@@ -11,14 +11,13 @@ import {
 // Import report-specific cognitive tools
 import { reportThinkTool } from "../tools/thinkTool";
 
-// Import research tools from chat route
-import { targetedExtractionTool } from "@/app/api/chat/tools/targetedExtractionTool/targetedExtractionTool";
-import { executeResearchPlanTool } from "@/app/api/chat/tools/executeResearchPlanTool/executeResearchPlanTool";
-
 // Import recommendation tools
 import { recommendDiagnosticsTool } from "../tools/recommendDiagnostics/tool";
 import { recommendDietLifestyleTool } from "../tools/recommendDietLifestyle/tool";
 import { recommendSupplementsTool } from "../tools/recommendSupplements/tool";
+
+// Import citation tool
+import { gatherCitationsTool } from "../tools/gatherCitations/tool";
 
 // Reuse streaming infrastructure
 import {
@@ -75,14 +74,13 @@ export async function POST(req: Request) {
     // Build system prompt with submission context
     const systemMessages = await buildPhase1SystemPrompt(caseRecord.submission);
 
-    // Prepare tools (report-specific cognitive tool + research tools + recommendation tools)
+    // Prepare tools (cognitive + per-item enrichment + citations)
     const tools = {
       thinkTool: reportThinkTool,
-      targetedExtractionTool,
-      executeResearchPlanTool,
       recommendDiagnosticsTool,
       recommendDietLifestyleTool,
       recommendSupplementsTool,
+      gatherCitationsTool,
     };
 
     // Create stream callbacks

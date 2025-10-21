@@ -1,6 +1,6 @@
 // app/api/report/phase1/tools/recommendDietLifestyle/agent.ts
 
-import { anthropic } from "@ai-sdk/anthropic";
+import { google } from "@ai-sdk/google";
 import { generateObject } from "ai";
 import { BIOENERGETIC_KNOWLEDGE } from "@/app/api/chat/lib/bioenergeticKnowledge";
 import {
@@ -80,7 +80,7 @@ ${input.objective}
   });
 
   const result = await generateObject({
-    model: anthropic("claude-sonnet-4-5-20250929"),
+    model: google("gemini-2.5-flash-preview-09-2025"),
     schema: recommendDietLifestyleOutputSchema,
     prompt,
   });

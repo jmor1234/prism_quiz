@@ -391,9 +391,9 @@ export class TraceLogger {
         });
     }
 
-    // Emit simple tool status (for think, memory, recommendation tools)
+    // Emit simple tool status (for think, memory, recommendation tools, citation tool)
     emitToolStatus(data: {
-        toolName: 'thinkTool' | 'researchMemoryTool' | 'recommendDiagnosticsTool' | 'recommendDietLifestyleTool' | 'recommendSupplementsTool';
+        toolName: 'thinkTool' | 'researchMemoryTool' | 'recommendDiagnosticsTool' | 'recommendDietLifestyleTool' | 'recommendSupplementsTool' | 'gatherCitationsTool';
         action: string;
     }): void {
         if (!this.streamWriter) return;
