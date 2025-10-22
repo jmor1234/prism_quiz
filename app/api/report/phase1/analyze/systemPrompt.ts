@@ -159,6 +159,7 @@ Do NOT proceed to Phase 3 until ALL checklist items are complete and ALL tool re
 ## Phase 3: Finalize & Stream
 
 **PREREQUISITE:** You may ONLY begin Phase 3 after ALL Phase 2 operations are complete, including receiving ALL citation results from gatherCitationsTool. If you do not have complete citation data available, you are NOT ready to begin Phase 3.
+Once you are ready to start phase 3, use your thinkTool to properly outline, organize and plan the final report before you actually output the final report.
 
 **Operations:**
 
