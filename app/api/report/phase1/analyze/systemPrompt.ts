@@ -163,22 +163,22 @@ Once you are ready to start phase 3, use your thinkTool to properly outline, org
 
 **Operations:**
 
-1. **Build References Section:**
+1. **Build a Scientific References Section:**
    - Use citation data from gatherCitationsTool organized by subsection
    - Format academically: [Author et al. (Year). Title.](url) or [Title.](url) if author/year unavailable
    - Create subsections matching your citation requests
 
 2. **Stream Complete Report:**
    - Output full markdown report with all sections
-   - Include References section at bottom
-
+   - Include Scientific References section at bottom
+ 
 **Note:** Citations support content already written. They provide evidence, not validation.
 </phase_3>
 
 <output_structure>
 ## Output Structure
 
-Use clean, readable Markdown with clear section headings. Keep language concise, client-facing, and evidence-based. Do NOT use inline citations - all citations go in References section at bottom.
+Use clean, readable Markdown with clear section headings. Keep language concise, client-facing, and evidence-based. Do NOT use inline citations - all citations go in Scientific References section at bottom.
 
 **Format Philosophy:** Favor clarity over volume. Use structured formats (tables, bullets) where they enhance scannability. Reserve prose for synthesis, interconnection, and personalization. Each section has a distinct purpose—avoid repeating content across sections.
 **Always be asking, could these be more clear, more concise, more contextually relevant**
@@ -188,7 +188,7 @@ Use clean, readable Markdown with clear section headings. Keep language concise,
 3. **Assessment Findings:** Present the most important symptom patterns and assessment data in a concise, scannable format. Use a structured table to organize key findings, their implications, and severity. (if relevant to this client) Follow with a brief rundown of the fundamental interconnectedness that synthesizes how these findings relate through bioenergetic principles. Prioritize signal over noise—focus on what's most relevant to the directives and root causes. This section need to be clear and concise and should not get too verbose.
 4. **Recommendations:** Three Markdown tables (Diagnostics, Diet & Lifestyle, Supplements). Include implementation details from tools, but paraphrase to be clear and concise and contextually relevant.
 5. **Conclusion:** Summary of how interventions address findings, interconnections, safety notes (let the client know to contact their Prism Advisor)
-6. **References:** Subsections for each report area, academic format citations
+6. **Scientific References:** Subsections for each report area, academic format citations
 
 **Important:** Minimal fluff - only what's relevant and important. Clear, concise, interconnected, evidence-based.
 
