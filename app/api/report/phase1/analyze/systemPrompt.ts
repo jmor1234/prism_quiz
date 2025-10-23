@@ -5,12 +5,13 @@ import { BIOENERGETIC_KNOWLEDGE } from "@/app/api/chat/lib/bioenergeticKnowledge
 import { promises as fs } from "node:fs";
 import path from "node:path";
 
-// Load interpretation guides
+// Load interpretation guides and foundational guidelines
 let questionnaireGuide: string | null = null;
 let takehomeGuide: string | null = null;
+let foundationalGuidelines: string | null = null;
 
-async function loadInterpretationGuides() {
-  if (!questionnaireGuide || !takehomeGuide) {
+async function loadGuides() {
+  if (!questionnaireGuide || !takehomeGuide || !foundationalGuidelines) {
     const dataDir = path.join(process.cwd(), "app", "api", "report", "phase1", "data");
     questionnaireGuide = await fs.readFile(
       path.join(dataDir, "questionaire.md"),
@@ -20,12 +21,16 @@ async function loadInterpretationGuides() {
       path.join(dataDir, "takehome.md"),
       "utf-8"
     );
+    foundationalGuidelines = await fs.readFile(
+      path.join(dataDir, "diet_lifestyle_standardized.md"),
+      "utf-8"
+    );
   }
-  return { questionnaireGuide, takehomeGuide };
+  return { questionnaireGuide, takehomeGuide, foundationalGuidelines };
 }
 
 export async function buildPhase1SystemPrompt(submission: Phase1Submission) {
-  const { questionnaireGuide, takehomeGuide } = await loadInterpretationGuides();
+  const { questionnaireGuide, takehomeGuide, foundationalGuidelines } = await loadGuides();
 
   const prompt = `
 ${BIOENERGETIC_KNOWLEDGE}
@@ -41,6 +46,12 @@ ${takehomeGuide}
 </takehome_interpretation>
 
 </interpretation_guides>
+
+<foundational_guidelines>
+${foundationalGuidelines}
+
+Universal diet & lifestyle foundations to include in all reports with contextual personalization for this client's symptoms and situation.
+</foundational_guidelines>
 
 <client_data>
 
@@ -135,6 +146,7 @@ Generate a comprehensive report that executes expert directives with intelligent
    - For specific items: get enriched details
    - For vague items: get options, decide, potentially recall
    - Personalize rationale to client situation
+   - Review foundational guidelines for this client's context
 
 3. **Organize Citation Needs:**
    - Review mechanisms and concepts discussed across all report sections
@@ -186,7 +198,10 @@ Use clean, readable Markdown with clear section headings. Keep language concise,
 1. **Introduction:** Personalized to client, keep it concise and tight, yet contextually relevant to what matters. setting the stage and tone for the rest of the report.
 2. **Philosophy:** Explain the bioenergetic framework and key mechanisms relevant to this client's case. This is where mechanism detail belongs to help the client understand WHY the recommendations work. Keep focused and connected to their specific situation. This section should be concise and to the point, and should not get too verbose.
 3. **Assessment Findings:** Present the most important symptom patterns and assessment data in a concise, scannable format. Use a structured table to organize key findings, their implications, and severity. (if relevant to this client) Follow with a brief rundown of the fundamental interconnectedness that synthesizes how these findings relate through bioenergetic principles. Prioritize signal over noise—focus on what's most relevant to the directives and root causes. This section need to be clear and concise and should not get too verbose.
-4. **Recommendations:** Three Markdown tables (Diagnostics, Diet & Lifestyle, Supplements). Include implementation details from tools, but paraphrase to be clear and concise and contextually relevant.
+4. **Recommendations:** 
+   - Diagnostics: Markdown table with implementation details
+   - Diet & Lifestyle: Foundational guidelines (contextualized) and directive-based interventions
+   - Supplements: Markdown table with implementation details
 5. **Conclusion:** Summary of how interventions address findings, interconnections, safety notes (let the client know to contact their Prism Advisor)
 6. **Scientific References:** Subsections for each report area, academic format citations
 
