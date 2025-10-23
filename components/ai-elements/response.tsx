@@ -11,6 +11,7 @@ export const Response = memo(
     <Streamdown
       className={cn(
         "size-full [&>*:first-child]:mt-0 [&>*:last-child]:mb-0",
+        "[&_a]:text-blue-600 [&_a]:dark:text-blue-400 [&_a]:hover:underline",
         className
       )}
       {...props}

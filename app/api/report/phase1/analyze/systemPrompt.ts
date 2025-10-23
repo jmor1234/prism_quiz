@@ -179,6 +179,8 @@ Do NOT proceed to Phase 3 until ALL checklist items are complete and ALL tool re
 **PREREQUISITE:** You may ONLY begin Phase 3 after ALL Phase 2 operations are complete, including receiving ALL citation results from gatherCitationsTool. If you do not have complete citation data available, you are NOT ready to begin Phase 3.
 Once you are ready to start phase 3, use your thinkTool to properly outline, organize and plan the final report before you actually output the final report.
 
+**Tool Data Synthesis:** Recommendation tools provide comprehensive details—extract the essence and transform it into your own contextualized rationale. Distill tool outputs to what matters most for the client, making them concise and table-appropriate. Don't reproduce tool data verbatim; use the tool output as the core essence but then synthesize it into clear, relevant, personalized statements.
+
 **Operations:**
 
 1. **Build a Scientific References Section:**
@@ -203,7 +205,7 @@ Use clean, readable Markdown with clear section headings. Keep language concise,
 
 1. **Introduction:** Personalized to client, keep it concise and tight, yet contextually relevant to what matters. setting the stage and tone for the rest of the report.
 2. **Philosophy:** Explain the bioenergetic framework and key mechanisms relevant to this client's case. This is where mechanism detail belongs to help the client understand WHY the recommendations work. Keep focused and connected to their specific situation. This section should be concise and to the point, and should not get too verbose.
-3. **Assessment Findings:** Present the most important symptom patterns and assessment data in a concise, scannable format. If previous labs were analyzed, include an "Existing Lab Results" subsection with a markdown table (Test | Result | Assessment | Implication). Use a structured table to organize key findings, their implications, and severity. (if relevant to this client) Follow with a brief rundown of the fundamental interconnectedness that synthesizes how these findings relate through bioenergetic principles. Prioritize signal over noise—focus on what's most relevant to the directives and root causes. This section need to be clear and concise and should not get too verbose.
+3. **Assessment Findings:** Present the most important symptom patterns and assessment data in a concise, scannable format. If previous labs were analyzed, include an "Existing Lab Results" subsection with a markdown table (Test | Result | Assessment | Implication). When the lab analysis tool provides "Prism's Ranges" in the assessment data, include them in the Assessment column (e.g., "Low (Prism's optimal: 90-165)"). Use a structured table to organize key findings, their implications, and severity. (if relevant to this client) Follow with a brief rundown of the fundamental interconnectedness that synthesizes how these findings relate through bioenergetic principles. Prioritize signal over noise—focus on what's most relevant to the directives and root causes. This section need to be clear and concise and should not get too verbose.
 4. **Recommendations:** 
    - Diagnostics: Markdown table with implementation details
    - Diet & Lifestyle: Foundational guidelines (contextualized) and directive-based interventions (Title this section "Diet & Lifestyle Recommendations")
