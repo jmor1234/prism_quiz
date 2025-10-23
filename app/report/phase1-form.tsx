@@ -199,20 +199,26 @@ export function Phase1ReportForm() {
     setAnalysis(null);
 
     try {
-      const attachmentIds = (() => {
-        const labIds = labs.map((file) => file.name);
-        if (!labIds.length) return undefined;
-        return {
-          labs: labIds,
-        };
-      })();
+      // Convert PDF files to base64
+      const labPdfs = await Promise.all(
+        labs.map(async (file) => {
+          const arrayBuffer = await file.arrayBuffer();
+          const base64 = Buffer.from(arrayBuffer).toString('base64');
+
+          return {
+            filename: file.name,
+            data: base64,
+            mediaType: 'application/pdf' as const,
+          };
+        })
+      );
 
       const payload = phase1SubmissionSchema.parse({
         questionnaireText: questionnaireText.trim(),
         takehomeText: takehomeText.trim(),
         advisorNotesText: advisorNotesText.trim(),
         daltonsFinalNotes: daltonsFinalNotes.trim(),
-        attachmentIds,
+        labPdfs: labPdfs.length > 0 ? labPdfs : undefined,
       });
 
       const response = await fetch("/api/report/phase1", {
