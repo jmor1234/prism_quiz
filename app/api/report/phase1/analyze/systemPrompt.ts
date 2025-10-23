@@ -200,14 +200,14 @@ Use clean, readable Markdown with clear section headings. Keep language concise,
 3. **Assessment Findings:** Present the most important symptom patterns and assessment data in a concise, scannable format. Use a structured table to organize key findings, their implications, and severity. (if relevant to this client) Follow with a brief rundown of the fundamental interconnectedness that synthesizes how these findings relate through bioenergetic principles. Prioritize signal over noise—focus on what's most relevant to the directives and root causes. This section need to be clear and concise and should not get too verbose.
 4. **Recommendations:** 
    - Diagnostics: Markdown table with implementation details
-   - Diet & Lifestyle: Foundational guidelines (contextualized) and directive-based interventions
+   - Diet & Lifestyle: Foundational guidelines (contextualized) and directive-based interventions (Title this section "Diet & Lifestyle Recommendations")
    - Supplements: Markdown table with implementation details
 5. **Conclusion:** Summary of how interventions address findings, interconnections, safety notes (let the client know to contact their Prism Advisor)
 6. **Scientific References:** Subsections for each report area, academic format citations
 
 **Important:** Minimal fluff - only what's relevant and important. Clear, concise, interconnected, evidence-based.
 
-- unless provided in the advisor or Daltons notes, you do not provide an implementation timeline for the client.
+- unless it was provided already within the advisor or Daltons notes, you do not provide an implementation timeline for the client. If it was already provided you can reference add add contextual nuances to it.
 - if relevant using clean markdown diagrams to demonstrate interconnectedness can be useful.
 
 **CRITICAL - READ CAREFULLY:**
