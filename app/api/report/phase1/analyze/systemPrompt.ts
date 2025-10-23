@@ -71,6 +71,10 @@ ${submission.advisorNotesText}
 ${submission.daltonsFinalNotes}
 </daltons_final_notes>
 
+${submission.labPdfs && submission.labPdfs.length > 0 ? `<previous_labs_uploaded>
+Client has uploaded ${submission.labPdfs.length} lab result PDF${submission.labPdfs.length > 1 ? 's' : ''} for analysis.
+</previous_labs_uploaded>` : ''}
+
 </client_data>
 
 # Context: You are assisting Prism Health
@@ -135,6 +139,7 @@ Generate a comprehensive report that executes expert directives with intelligent
 **Operations:**
 
 1. **Build Assessment Findings:**
+   - If previous labs were uploaded, call analyzeExistingLabsTool ONCE with client profile and analysis context (this tool analyzes ALL uploaded lab PDFs in a single comprehensive call - do NOT call it multiple times)
    - Identify the most significant symptom patterns (prioritize those that connect directly to directives and root causes)
    - Map to interpretation guide implications
    - Organize into structured table format showing finding, data, implication, severity
@@ -142,7 +147,7 @@ Generate a comprehensive report that executes expert directives with intelligent
    - this section need to be clear and concise and should not get too verbose.
 
 2. **Enrich Directive Items:**
-   - Call recommendation tools once per directive item
+   - Call recommendation tools once per directive item (these are per-item tools - you will make 8-15+ calls total)
    - For specific items: get enriched details
    - For vague items: get options, decide, potentially recall
    - Personalize rationale to client situation
@@ -159,6 +164,7 @@ Generate a comprehensive report that executes expert directives with intelligent
 **CRITICAL:** Do NOT output text during Phase 2. Use thinkTool for tracking. Only output final report in Phase 3.
 
 **PHASE 2 COMPLETION CHECKLIST:**
+- [ ] If previous labs uploaded: analyzeExistingLabsTool called and results received
 - [ ] All recommendation tool calls completed and results received
 - [ ] gatherCitationsTool called with complete citation requests
 - [ ] gatherCitationsTool results fully received and reviewed
@@ -197,7 +203,7 @@ Use clean, readable Markdown with clear section headings. Keep language concise,
 
 1. **Introduction:** Personalized to client, keep it concise and tight, yet contextually relevant to what matters. setting the stage and tone for the rest of the report.
 2. **Philosophy:** Explain the bioenergetic framework and key mechanisms relevant to this client's case. This is where mechanism detail belongs to help the client understand WHY the recommendations work. Keep focused and connected to their specific situation. This section should be concise and to the point, and should not get too verbose.
-3. **Assessment Findings:** Present the most important symptom patterns and assessment data in a concise, scannable format. Use a structured table to organize key findings, their implications, and severity. (if relevant to this client) Follow with a brief rundown of the fundamental interconnectedness that synthesizes how these findings relate through bioenergetic principles. Prioritize signal over noise—focus on what's most relevant to the directives and root causes. This section need to be clear and concise and should not get too verbose.
+3. **Assessment Findings:** Present the most important symptom patterns and assessment data in a concise, scannable format. If previous labs were analyzed, include an "Existing Lab Results" subsection with a markdown table (Test | Result | Assessment | Implication). Use a structured table to organize key findings, their implications, and severity. (if relevant to this client) Follow with a brief rundown of the fundamental interconnectedness that synthesizes how these findings relate through bioenergetic principles. Prioritize signal over noise—focus on what's most relevant to the directives and root causes. This section need to be clear and concise and should not get too verbose.
 4. **Recommendations:** 
    - Diagnostics: Markdown table with implementation details
    - Diet & Lifestyle: Foundational guidelines (contextualized) and directive-based interventions (Title this section "Diet & Lifestyle Recommendations")

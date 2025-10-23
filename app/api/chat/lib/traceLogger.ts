@@ -56,6 +56,7 @@ interface MessageWithParts {
 interface AsyncContext {
     logger: TraceLogger;
     threadId?: string;
+    submission?: unknown; // Report-specific: Phase1Submission when used in report routes
 }
 
 // Create AsyncLocalStorage instance to hold the context for the current request
@@ -391,9 +392,9 @@ export class TraceLogger {
         });
     }
 
-    // Emit simple tool status (for think, memory, recommendation tools, citation tool)
+    // Emit simple tool status (for think, memory, recommendation tools, lab analysis tool, citation tool)
     emitToolStatus(data: {
-        toolName: 'thinkTool' | 'researchMemoryTool' | 'recommendDiagnosticsTool' | 'recommendDietLifestyleTool' | 'recommendSupplementsTool' | 'gatherCitationsTool';
+        toolName: 'thinkTool' | 'researchMemoryTool' | 'recommendDiagnosticsTool' | 'recommendDietLifestyleTool' | 'recommendSupplementsTool' | 'analyzeExistingLabsTool' | 'gatherCitationsTool';
         action: string;
     }): void {
         if (!this.streamWriter) return;

@@ -16,8 +16,7 @@
 | `takehomeText` | Numeric logs + short answers from take-home assessments | Includes vitals, stool logs, etc. |
 | `advisorNotesText` | Consultation notes from advisor | SECONDARY directives—fallback guidance |
 | `daltonsFinalNotes` | Final intervention directives from Dalton | PRIMARY directives—carries most weight |
-| `attachmentIds.images` | Optional image IDs (tongue photos, etc.) | Currently placeholder—IDs stored for future storage backend |
-| `attachmentIds.labs` | Optional lab PDF IDs | Same as above |
+| `labPdfs` | Optional previous lab results (up to 5 PDFs) | Base64-encoded PDF data with filename and mediaType - used for existing lab analysis |
 
 ### Persistence Layout (current state)
 - **Submissions:** `storage/phase1-submissions/<caseId>.json`
@@ -34,9 +33,10 @@
 
 **`app/report/phase1-form.tsx`**
 - **Four required text fields:** questionnaire, takehome, advisor notes, **Dalton's final notes**
-- Autosave & validation using `phase1SubmissionSchema`.
-- Handles attachments (UI only; backend currently stores IDs).
-- On submit: POSTs to `/api/report/phase1` → persists case → receives `{ caseId }` → navigates to analysis page.
+- **Optional PDF upload:** Previous lab results (up to 5 PDFs) - converted to base64 on submit
+- Autosave to localStorage for text fields and lab filenames (PDFs must be re-uploaded on refresh).
+- Validation using `phase1SubmissionSchema`.
+- On submit: Converts PDFs to base64 → POSTs to `/api/report/phase1` with text + base64 lab data → receives `{ caseId }` → navigates to analysis page.
 
 **`app/report/analysis/[caseId]/page.tsx`**
 - Analysis page that displays case ID and mounts streaming component.
@@ -51,7 +51,10 @@
 ### Backend
 
 **`app/api/report/phase1/route.ts`** (Submit endpoint)
-- Ingests submissions (validates + persists) and returns `{ caseId }`.
+- Ingests submissions: 4 text fields + optional base64-encoded lab PDFs.
+- Validates with `phase1SubmissionSchema` (includes `labPdfs` array).
+- Persists complete submission (text + PDF data) to storage.
+- Returns `{ caseId }`.
 
 **`app/api/report/phase1/result/route.ts`** (Result retrieval endpoint)
 - GET endpoint that retrieves existing analysis results by `caseId`.
@@ -60,17 +63,19 @@
 
 **`app/api/report/phase1/analyze/route.ts`** (Directive-driven three-phase streaming agent)
 - Accepts `{ caseId }` and loads submission from storage.
-  - Builds system prompt with bioenergetic knowledge + interpretation guides + client data + **Dalton's final notes**.
-  - Runs streaming agent with 5 tools:
+- **Passes submission via asyncLocalStorage** for tool access (enables PDF bypass pattern).
+- Builds system prompt with bioenergetic knowledge + interpretation guides + client data + **Dalton's final notes** + PDF indicator.
+- Runs streaming agent (Sonnet 4.5) with 6 tools:
   - **Report-specific cognitive tool:** `reportThinkTool`
-  - **Recommendation tools (per-item enrichment):** `recommendDiagnosticsTool`, `recommendDietLifestyleTool`, `recommendSupplementsTool`
+  - **Lab analysis tool (one-shot):** `analyzeExistingLabsTool` - Sonnet 4.5 sub-agent with multimodal PDF injection
+  - **Recommendation tools (per-item enrichment):** `recommendDiagnosticsTool`, `recommendDietLifestyleTool`, `recommendSupplementsTool` - Gemini Flash sub-agents
   - **Citation tool:** `gatherCitationsTool`
 - Streams real-time progress via `TraceLogger`.
 - Streams report text via custom `data-report-text` events (manually consumed from `result.textStream`).
 - Executes full 3-phase workflow:
   - **Phase 1:** Extract directives from Dalton's/Advisor notes; parse questionnaire/takehome data
-  - **Phase 2:** Map data to guide implications; enrich each directive item via per-item tool calls (8-15+); organize citation needs and call gatherCitationsTool once
-  - **Phase 3:** Format References section from citation data; stream final report
+  - **Phase 2:** If PDFs uploaded: call analyzeExistingLabsTool ONCE (comprehensive analysis) → map data to guide implications → enrich each directive item via per-item tool calls (8-15+) → organize citation needs and call gatherCitationsTool once
+  - **Phase 3:** Format References section from citation data → stream final report with Existing Lab Results table (if PDFs analyzed)
 - Saves final report to `storage/phase1-results/<caseId>.json`.
 - Max duration: 15 minutes.
 
@@ -79,12 +84,33 @@
 - Builds directive-driven 3-phase system prompt:
   - Prism context and bioenergetic knowledge framework
   - Interpretation guides (questionnaire + takehome)
-  - Client data (questionnaire responses, takehome assessment, advisor notes, **Dalton's final notes**)
+  - Client data (questionnaire responses, takehome assessment, advisor notes, **Dalton's final notes**, `<previous_labs_uploaded>` indicator if PDFs present)
   - **Agent role:** Executor & Enricher (not decision-maker)
   - **Authority hierarchy:** Dalton's notes (PRIMARY) > Advisor notes (SECONDARY) > Guides (mapping) > Agent reasoning (gaps only)
   - Phase 1: Extract directives; parse questionnaire/takehome against guides
-  - Phase 2: Map to guide implications; enrich directives with per-item tool calls; organize citation topics and call gatherCitationsTool
-  - Phase 3: Format References section; stream final report
+  - Phase 2: If PDFs uploaded: call analyzeExistingLabsTool ONCE (comprehensive analysis); map to guide implications; enrich directives with per-item tool calls; organize citation topics and call gatherCitationsTool
+  - Phase 3: Format References section; if labs analyzed: include Existing Lab Results table in Assessment Findings; stream final report
+
+**`app/api/report/phase1/tools/analyzeExistingLabs/`** (Lab analysis tool - one-shot comprehensive analysis)
+- **Purpose:** Analyze client's existing lab results from uploaded PDFs using Prism's diagnostic framework
+- **Flow:**
+  1. Accesses PDFs via `getSubmission()` from asyncLocalStorage (bypasses primary agent's context)
+  2. Loads Diagnostics CSV (cached, same database as recommendDiagnosticsTool)
+  3. Invokes **Sonnet 4.5** sub-agent with multimodal message (text prompt + CSV + PDF files)
+  4. Sub-agent extracts lab values from PDFs, matches against CSV, assesses using Prism's Ranges when available
+  5. Returns structured findings array (test, result, optional assessment with Prism's Range, implication)
+- **Files:**
+  - `tool.ts` - Tool definition with streaming status
+  - `agent.ts` - Sonnet 4.5 sub-agent with multimodal PDF injection + CSV database + bioenergetic framework
+  - `schema.ts` - Input (clientProfile + analysisObjective), Output (findings array + optional synthesis)
+- **Token logging:** Logs inputTokens, outputTokens, totalTokens for cost visibility
+- **Execution:** ~5-10 seconds depending on PDF complexity
+- **Key principles:**
+  - **One-shot pattern:** Called ONCE per report to analyze ALL uploaded PDFs comprehensively
+  - **Context bypass:** PDFs never flow through primary agent's context (preserves economy)
+  - **Sonnet 4.5 model:** Quality medical reasoning for PDF extraction + clinical interpretation
+  - **Optional assessment field:** Handles tests with and without Prism's Ranges (flexible schema)
+  - **Placement:** Results integrated into Assessment Findings as "Existing Lab Results" table
 
 **`app/api/report/phase1/tools/`** (Recommendation sub-agents - per-item enrichment)
 - **`recommendDiagnostics/`** - Enriches single diagnostic directive with database details
@@ -98,7 +124,7 @@
     - `type: "specific"` → single enriched match with personalized details
     - `type: "options"` → 2-5 potential matches when directive is ambiguous (agent decides or recalls)
   - Called 8-15+ times per report (once per directive item)
-  - **Execution:** ~0.5-1s per call (faster than Sonnet)
+  - **Execution:** ~0.5-1s per call (faster than Sonnet, cheaper)
 
 **`app/api/report/phase1/tools/gatherCitations/`** (Citation gathering + curation tool)
 - **Purpose:** Gather and curate academic citations to support report content (solves context obliteration problem)
@@ -121,14 +147,18 @@
 **`app/api/report/phase1/data/`**
 - `questionaire.md` - Maps questionnaire responses to bioenergetic implications (PRIMARY authority for Phase 1)
 - `takehome.md` - Interprets take-home test results (PRIMARY authority for Phase 1)
-- `Prsim Data - Diagnostics_implications.csv` - Diagnostic tests database (used by recommendDiagnosticsTool)
+- `Prsim Data - Diagnostics_implications.csv` - Diagnostic tests database (242 entries)
+  - Used by analyzeExistingLabsTool (existing lab analysis) AND recommendDiagnosticsTool (future diagnostic enrichment)
+  - Columns: Diagnostic, Implication, (empty), Prism's Ranges, Where to get
 - `Prsim Data - Diet & Lifestyle.csv` - Interventions database (used by recommendDietLifestyleTool)
 - `Prsim Data - Supplements & Pharmaceuticals.csv` - Supplements database (used by recommendSupplementsTool)
 
 ### Shared Schema
 
 **`lib/schemas/phase1.ts`**
-- Enforces non-empty strings, character limits (100k), and attachment caps (8 images, 5 PDFs).
+- Enforces non-empty strings, character limits (100k), and PDF attachment caps (5 PDFs).
+- Defines `pdfFileSchema` for base64-encoded PDFs (filename, data, mediaType).
+- Includes `labPdfs` optional array in submission schema.
 - Used by both frontend and backend for consistency.
 
 ### Persistence Helpers
@@ -140,22 +170,23 @@
 - Persists Phase 1 analysis results and exposes `getPhase1Result` to retrieve by `caseId`.
 
 ## 4. What Happens Today (End-to-End Flow)
-1. User completes the Phase 1 form with **4 required fields** (questionnaire, takehome, advisor notes, **Dalton's final notes**) and submits.
-2. Backend stores the submission and returns `caseId`.
-3. Frontend navigates to `/report/analysis/<caseId>`.
-4. Analysis page checks for existing result:
+1. User completes the Phase 1 form with **4 required fields** (questionnaire, takehome, advisor notes, **Dalton's final notes**) + **optional lab PDFs** (up to 5) and submits.
+2. Frontend converts PDFs to base64 → POSTs to backend with text + PDF data.
+3. Backend stores complete submission (text + base64 PDFs) and returns `caseId`.
+4. Frontend navigates to `/report/analysis/<caseId>`.
+5. Analysis page checks for existing result:
    - **If exists:** Loads cached report from storage (instant display, no re-run)
    - **If not found:** Initiates streaming agent by calling `/api/report/phase1/analyze`
-5. Agent loads submission, builds directive-driven 3-phase system prompt, and executes:
+6. Agent loads submission (passed via asyncLocalStorage), builds directive-driven 3-phase system prompt, and executes:
    - **Phase 1:** Extract directives from Dalton's/Advisor notes → parse questionnaire/takehome data → flag items ≥2 against interpretation guides
-   - **Phase 2:** Map flagged items to guide implications → enrich each directive item via per-item tool calls (8-15+) → organize citation topics and call gatherCitationsTool once
-   - **Phase 3:** Format References section from citation data → stream final report
-6. Real-time progress streams to frontend:
-   - Tool status (think, **per-item recommendation enrichment calls**, citation gathering)
+   - **Phase 2:** If PDFs uploaded: call analyzeExistingLabsTool ONCE (Sonnet 4.5 analyzes all PDFs via multimodal injection, returns structured findings) → map flagged items to guide implications → enrich each directive item via per-item tool calls (8-15+) → organize citation topics and call gatherCitationsTool once
+   - **Phase 3:** Format References section from citation data → if labs analyzed: include Existing Lab Results table in Assessment Findings → stream final report
+7. Real-time progress streams to frontend:
+   - Tool status (think, **lab analysis** (if PDFs), **per-item recommendation enrichment calls**, citation gathering)
    - Report text chunks (data-report-text events)
-7. Final comprehensive report generated and saved to storage.
-8. Frontend displays complete directive-driven report as it streams in real-time.
-9. On page refresh: Cached result loads instantly from storage (no re-analysis).
+8. Final comprehensive report generated and saved to storage.
+9. Frontend displays complete directive-driven report with Existing Lab Results table (if PDFs uploaded) as it streams in real-time.
+10. On page refresh: Cached result loads instantly from storage (no re-analysis).
 
 Files written:
 - `storage/phase1-submissions/<caseId>.json` (submission data)
@@ -202,24 +233,6 @@ Files written:
    - **Agent role:** Executor & Enricher (not decision-maker)
    - Non-prescriptive approach enabling agent autonomy within bounded context
    - **Status:** Applied consistently across all tools and sub-agents
-
-### 🔄 Next Steps
-1. **Validation**
-   - Test with real Dalton's directives in free-form prose
-   - Validate directive extraction quality
-   - Test per-item tool enrichment flow (specific vs options handling)
-   - Verify citation quality and relevance
-
-2. **Potential Optimizations**
-   - Fine-tune citation curation criteria if needed
-   - Adjust citations per subsection count (currently 10)
-   - Monitor Gemini Flash quality for recommendation tools
-
-3. **Future Enhancements**
-   - Attachment storage integration (S3/GCS)
-   - Structured output for programmatic access
-   - Auth & editing lifecycle
-   - Re-run and versioning capabilities
 
 ## 6. Key Files & Entry Points
 

@@ -3,15 +3,21 @@
 ```
 app/api/report/
 └── phase1/
-    ├── route.ts              # Submit endpoint: ingests submission, returns caseId
+    ├── route.ts              # Submit endpoint: ingests submission (text + base64 PDFs), returns caseId
     ├── result/
     │   └── route.ts          # Result retrieval endpoint: returns cached analysis by caseId
     ├── analyze/
-    │   ├── route.ts          # Three-phase streaming agent endpoint
+    │   ├── route.ts          # Three-phase streaming agent endpoint (passes submission via asyncLocalStorage)
     │   ├── systemPrompt.ts   # Builds 3-phase system prompt with context + interpretation guides
     │   └── streamCallbacks.ts # Report-specific streaming callbacks (no caching)
+    ├── lib/
+    │   └── asyncContext.ts   # Helper to access submission from asyncLocalStorage
     ├── tools/                # Report-specific tools
     │   ├── thinkTool.ts      # Reasoning, capturing findings, and tracking across phases
+    │   ├── analyzeExistingLabs/
+    │   │   ├── tool.ts       # Tool definition with logging and streaming status
+    │   │   ├── agent.ts      # Sonnet 4.5 sub-agent with multimodal PDF injection + CSV
+    │   │   └── schema.ts     # Input/output schemas (clientProfile → findings array)
     │   ├── recommendDiagnostics/
     │   │   ├── tool.ts       # Tool definition with logging
     │   │   ├── agent.ts      # Sub-agent invocation with CSV loading (Gemini Flash)
@@ -33,7 +39,7 @@ app/api/report/
     └── data/
         ├── questionaire.md   # Questionnaire interpretation guide (PRIMARY for Phase 1)
         ├── takehome.md       # Take-home test interpretation guide (PRIMARY for Phase 1)
-        ├── Prsim Data - Diagnostics_implications.csv       # Used by recommendDiagnosticsTool
+        ├── Prsim Data - Diagnostics_implications.csv       # Used by recommendDiagnosticsTool AND analyzeExistingLabsTool
         ├── Prsim Data - Diet & Lifestyle.csv               # Used by recommendDietLifestyleTool
         └── Prsim Data - Supplements & Pharmaceuticals.csv  # Used by recommendSupplementsTool
 ```
@@ -42,8 +48,9 @@ app/api/report/
 
 ### Submission Flow
 - `phase1/route.ts`
-  - Accepts Phase 1 submission payloads (validates with `phase1SubmissionSchema`).
-  - Persists to `storage/phase1-submissions/<caseId>.json`.
+  - Accepts Phase 1 submission payloads: 4 text fields + optional lab PDFs (base64-encoded).
+  - Validates with `phase1SubmissionSchema` (includes `labPdfs` array with filename, data, mediaType).
+  - Persists complete submission (text + PDF data) to `storage/phase1-submissions/<caseId>.json`.
   - Returns `{ caseId }` to frontend.
 
 ### Result Retrieval
@@ -57,10 +64,13 @@ app/api/report/
 - `phase1/analyze/route.ts`
   - Directive-driven three-phase streaming agent endpoint (POST with `{ caseId }`).
   - Loads submission from storage via `getPhase1Case(caseId)`.
+  - **Passes submission via asyncLocalStorage** for tool access (enables PDF bypass pattern).
   - Builds directive-driven 3-phase system prompt with `buildPhase1SystemPrompt(submission)`.
-  - Runs streaming agent (Sonnet 4.5) with 5 tools:
+  - Runs streaming agent (Sonnet 4.5) with 6 tools:
     - **Report-specific cognitive tool:**
       - `reportThinkTool` - extraction tracking, enrichment planning, completion verification
+    - **Lab analysis tool (Sonnet 4.5 sub-agent with multimodal PDF injection):**
+      - `analyzeExistingLabsTool` - Accesses PDFs via asyncLocalStorage, parses with Sonnet 4.5 + Diagnostics CSV, returns structured findings for Assessment Findings table
     - **Recommendation tools (per-item enrichment, Gemini Flash sub-agents):**
       - `recommendDiagnosticsTool` - CSV lookup + enrichment per directive item
       - `recommendDietLifestyleTool` - CSV lookup + enrichment per directive item
@@ -75,8 +85,8 @@ app/api/report/
   - Streams report text via custom `data-report-text` events (manually iterates `result.textStream`).
   - Executes full 3-phase workflow:
     - **Phase 1:** Extract directives from Dalton's/Advisor notes; parse questionnaire/takehome against interpretation guides
-    - **Phase 2:** Map data to guide implications; enrich directives via per-item tool calls (8-15+); organize citation topics by subsection; call gatherCitationsTool once (returns 40-60 curated citations)
-    - **Phase 3:** Format References section from curated citations; stream final report
+    - **Phase 2:** If PDFs uploaded: call analyzeExistingLabsTool once (comprehensive analysis); map data to guide implications; enrich directives via per-item tool calls (8-15+); organize citation topics by subsection; call gatherCitationsTool once (returns 40-60 curated citations)
+    - **Phase 3:** Format References section from curated citations; stream final report with Existing Lab Results table (if PDFs analyzed)
   - Saves final comprehensive report to `storage/phase1-results/<caseId>.json`.
   - Max duration: 15 minutes.
 
@@ -86,11 +96,11 @@ app/api/report/
     - Prism context (what company, what you're generating)
     - Bioenergetic knowledge framework (from `@/app/api/chat/lib/bioenergeticKnowledge`)
     - `<interpretation_guides>` (questionnaire.md + takehome.md)
-    - `<client_data>` (questionnaire responses, takehome assessment, advisor notes, **Dalton's final notes**)
+    - `<client_data>` (questionnaire responses, takehome assessment, advisor notes, **Dalton's final notes**, `<previous_labs_uploaded>` indicator if PDFs present)
     - **Agent role:** Executor & Enricher (not decision-maker)
     - **Authority hierarchy:** Dalton's notes (PRIMARY) > Advisor notes (SECONDARY) > Guides (mapping) > Agent reasoning (gaps only)
     - **Phase 1:** Extract directives from notes; parse questionnaire/takehome against guides
-    - **Phase 2:** Map to guide implications; enrich directives via per-item tool calls; gather citations
+    - **Phase 2:** If PDFs uploaded: call analyzeExistingLabsTool once; map to guide implications; enrich directives via per-item tool calls; gather citations
     - **Phase 3:** Build References section; stream final report
   - Returns array of message objects for `streamText`.
   - **Prompt philosophy:** Intent over prescription, data clarity, enabling autonomy within bounded context
@@ -106,6 +116,23 @@ app/api/report/
   - **Purpose:** Report-specific streaming event handlers without caching overhead
   - **Differences from chat:** Removed `cache` dependency, simplified `prepareStep` to return messages as-is
   - **Rationale:** Report execution is single-shot with unique client data per case - caching provides no benefit
+
+### Lab Analysis Tool (Existing Lab Results - Comprehensive One-Shot Analysis)
+- `phase1/tools/analyzeExistingLabs/`
+  - **tool.ts:** Tool definition with streaming status emissions ("Analyzing uploaded lab results...")
+  - **agent.ts:** Loads `Diagnostics_implications.csv` (cached), accesses PDFs via `getSubmission()` from asyncLocalStorage, invokes **Sonnet 4.5** sub-agent with multimodal message (text + CSV + PDF files)
+  - **schema.ts:** Input (clientProfile + analysisObjective), Output (findings array with test/result/assessment/implication + optional synthesis)
+  - **Sub-agent prompt:** Intent-focused (extract from PDFs + match against CSV + assess using Prism's Ranges + bioenergetic reasoning), includes explicit instruction to INCLUDE Prism's Range values in assessment field when available
+  - **Token logging:** Logs inputTokens, outputTokens, totalTokens for visibility into PDF processing cost
+
+**Key principles:**
+- **One-shot pattern:** Called ONCE per report to analyze ALL uploaded lab PDFs comprehensively (not per-item like recommendation tools)
+- **Context bypass:** PDFs accessed via asyncLocalStorage, not passed through primary agent's context (preserves context economy)
+- **Sonnet 4.5 model:** Quality medical reasoning for PDF extraction + clinical interpretation (vs Gemini Flash for simpler CSV lookups)
+- **Multimodal:** Directly injects PDF data into sub-agent alongside prompt and CSV database
+- **Optional assessment field:** Handles tests with and without Prism's Ranges (discriminated at field level)
+- **Placement:** Results integrated into Assessment Findings section as "Existing Lab Results" table before Recommendations
+- **Execution:** ~5-10 seconds depending on PDF complexity and number of tests extracted
 
 ### Recommendation Tools (Per-Item Enrichment Sub-Agents)
 - `phase1/tools/recommendDiagnostics/`
@@ -146,7 +173,8 @@ app/api/report/
 
 - `phase1/data/Prsim Data - Diagnostics_implications.csv`
   - Diagnostic tests database (242 entries).
-  - Used by recommendDiagnosticsTool in Phase 2.
+  - Used by recommendDiagnosticsTool (per-item enrichment) AND analyzeExistingLabsTool (existing lab analysis) in Phase 2.
+  - Columns: Diagnostic, Implication, (empty), Prism's Ranges, Where to get
 
 - `phase1/data/Prsim Data - Diet & Lifestyle.csv`
   - Diet and lifestyle interventions database (138 entries).
@@ -180,11 +208,12 @@ app/api/report/
 ## Related Modules
 - `server/phase1Cases.ts` – Submission persistence (`upsertPhase1Case`, `getPhase1Case`).
 - `server/phase1Results.ts` – Result persistence (`savePhase1Result`, `getPhase1Result`).
-- `lib/schemas/phase1.ts` – Shared Zod schema and constants for submissions.
-- `app/api/report/phase1/tools/` – Report-specific tools (thinkTool, gatherCitations, recommendations).
+- `lib/schemas/phase1.ts` – Shared Zod schema and constants for submissions (includes `labPdfs` with base64 PDF data).
+- `app/api/report/phase1/lib/asyncContext.ts` – Helper to access submission from asyncLocalStorage (enables PDF bypass pattern).
+- `app/api/report/phase1/tools/` – Report-specific tools (thinkTool, analyzeExistingLabs, recommendations, gatherCitations).
 - `app/api/report/phase1/analyze/streamCallbacks.ts` – Report-specific streaming callbacks (no caching).
 - `app/api/chat/tools/researchOrchestratorTool/exaSearch/` – Exa client reused for citation searches.
-- `app/api/chat/lib/` – Streaming infrastructure reused (TraceLogger, TokenEconomics).
+- `app/api/chat/lib/` – Streaming infrastructure reused (TraceLogger with extended AsyncContext, TokenEconomics).
 - `app/api/chat/lib/bioenergeticKnowledge.ts` – Bioenergetic framework used in all prompts.
 - `docs/agentic-progress.md` – Streaming progress patterns reference.
 - `docs/report_proj_overview.md` – Complete project overview and architecture principles.
@@ -193,17 +222,19 @@ app/api/report/
 
 **Single-session directive-driven 3-phase pipeline:**
 1. **Phase 1:** Primary agent (Sonnet 4.5) extracts directives from Dalton's/Advisor notes → parses questionnaire/takehome data → flags items ≥2 against interpretation guides
-2. **Phase 2:** Primary agent maps flagged items to guide implications → calls per-item enrichment tools 8-15+ times (Gemini Flash sub-agents) → receives CSV-matched details (specific or options) → organizes citation topics by subsection → calls gatherCitationsTool once (receives 40 curated citations)
-3. **Phase 3:** Primary agent formats References section from curated citations → streams final report
+2. **Phase 2:** Primary agent detects if PDFs uploaded → if yes: calls analyzeExistingLabsTool ONCE (Sonnet 4.5 sub-agent with multimodal PDF injection) → receives structured findings → maps flagged items to guide implications → calls per-item enrichment tools 8-15+ times (Gemini Flash sub-agents) → receives CSV-matched details (specific or options) → organizes citation topics by subsection → calls gatherCitationsTool once (receives 40 curated citations)
+3. **Phase 3:** Primary agent formats References section from curated citations → streams final report with Existing Lab Results table (if PDFs analyzed)
 
 **Key architectural principles:**
 - **Directive-driven:** Human expertise (Dalton/Advisor) directs interventions; agent executes and enriches
-- **Cognitive hierarchy:** Primary agent (Sonnet 4.5: Executor & Enricher) → Sub-agents (Gemini Flash: specialized tasks)
+- **Cognitive hierarchy:** Primary agent (Sonnet 4.5: Executor & Enricher) → Sub-agents (Sonnet 4.5 for labs, Gemini Flash for recommendations/curation)
 - **Authority hierarchy:** Dalton's notes (PRIMARY directives) > Advisor notes (SECONDARY) > Guides (mapping) > Agent reasoning (gaps only)
+- **PDF bypass pattern:** Lab PDFs accessed via asyncLocalStorage (not through primary agent context) → multimodal injection into sub-agent → preserves context economy
+- **One-shot lab analysis:** analyzeExistingLabsTool called ONCE to analyze ALL PDFs comprehensively (vs per-item pattern for recommendations)
 - **Per-item enrichment:** Recommendation tools called once per directive item (not batch selection)
 - **Citation workflow:** Comprehensive gathering (280) → Intelligent curation (40) → Context preservation
 - **Discriminated unions:** Clear contract for specific vs ambiguous matches enabling flexible orchestration
 - **Prompt philosophy:** Intent over prescription, schema defines contract, enable autonomy within bounded context
-- **Model selection:** Sonnet 4.5 for orchestration/reasoning, Gemini Flash for structured lookup/curation tasks
-- **Streaming visibility:** Real-time progress for all operations (per-item enrichment, citation gathering, report generation)
+- **Model selection:** Sonnet 4.5 for orchestration/reasoning + medical analysis, Gemini Flash for structured lookup/curation tasks
+- **Streaming visibility:** Real-time progress for all operations (lab analysis, per-item enrichment, citation gathering, report generation)
 

@@ -19,6 +19,9 @@ import { recommendSupplementsTool } from "../tools/recommendSupplements/tool";
 // Import citation tool
 import { gatherCitationsTool } from "../tools/gatherCitations/tool";
 
+// Import lab analysis tool
+import { analyzeExistingLabsTool } from "../tools/analyzeExistingLabs/tool";
+
 // Reuse streaming infrastructure
 import {
   TraceLogger,
@@ -70,16 +73,17 @@ export async function POST(req: Request) {
 
   const economics = TokenEconomics.getInstance();
 
-  return await asyncLocalStorage.run({ logger, threadId: undefined }, async () => {
+  return await asyncLocalStorage.run({ logger, threadId: undefined, submission: caseRecord.submission }, async () => {
     // Build system prompt with submission context
     const systemMessages = await buildPhase1SystemPrompt(caseRecord.submission);
 
-    // Prepare tools (cognitive + per-item enrichment + citations)
+    // Prepare tools (cognitive + per-item enrichment + lab analysis + citations)
     const tools = {
       thinkTool: reportThinkTool,
       recommendDiagnosticsTool,
       recommendDietLifestyleTool,
       recommendSupplementsTool,
+      analyzeExistingLabsTool,
       gatherCitationsTool,
     };
 

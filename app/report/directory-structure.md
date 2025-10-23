@@ -18,8 +18,9 @@ app/report/
 
 - `phase1-form.tsx`
   - Full data-entry workflow with **4 required text fields:** questionnaire, takehome, advisor notes, **Dalton's final notes**.
-  - Autosave to localStorage for all 4 fields, validation, attachments, submit handling.
-  - Posts submission to `/api/report/phase1` → receives `{ caseId }`.
+  - **Optional PDF upload:** Previous lab results (up to 5 PDFs) - converted to base64 before submission.
+  - Autosave to localStorage for all text fields, validation, submit handling.
+  - Posts submission to `/api/report/phase1` with text fields + base64-encoded lab PDFs → receives `{ caseId }`.
   - Clears localStorage and navigates to `/report/analysis/<caseId>`.
 
 ### Analysis Flow
@@ -34,13 +35,13 @@ app/report/
   - Manually consumes SSE stream from `/api/report/phase1/analyze`.
   - Manages streaming state (idle → checking → streaming → complete → error).
   - Parses typed stream events:
-    - `data-tool-status` (shows **per-item enrichment calls** + **citation gathering**: "Enriching diagnostic: comprehensive stool test", "Gathering citations for 28 topics...")
+    - `data-tool-status` (shows **lab analysis** (if PDFs uploaded) + **per-item enrichment calls** + **citation gathering**: "Analyzing uploaded lab results...", "Enriching diagnostic: comprehensive stool test", "Gathering citations for 28 topics...")
     - `data-report-text` (report content chunks)
     - `reasoning` (visible thinking)
   - Updates UI state for progress visibility.
   - Renders:
-    - **Tool status updates** (8-15+ per-item enrichment calls + 1 citation tool call visible in real-time)
-    - Final report in markdown (`Response` component) - streamed in real-time with **References section** at bottom (40 curated citations organized by subsection)
+    - **Tool status updates** (1 lab analysis call if PDFs uploaded + 8-15+ per-item enrichment calls + 1 citation tool call visible in real-time)
+    - Final report in markdown (`Response` component) - streamed in real-time with **Existing Lab Results table** (if PDFs) in Assessment Findings + **References section** at bottom (40 curated citations organized by subsection)
     - Reasoning panel (`Reasoning` component)
   - Error handling with retry functionality.
 
