@@ -139,7 +139,9 @@ Generate a comprehensive report that executes expert directives with intelligent
 **Operations:**
 
 1. **Build Assessment Findings:**
-   - If previous labs were uploaded, call analyzeExistingLabsTool ONCE with client profile and analysis context (this tool analyzes ALL uploaded lab PDFs in a single comprehensive call - do NOT call it multiple times)
+   - **Lab Analysis (CONDITIONAL):**
+     - IF <previous_labs_uploaded> tag is present in client data: call analyzeExistingLabsTool ONCE with client profile and analysis context (this tool analyzes ALL uploaded lab PDFs in a single comprehensive call - do NOT call it multiple times)
+     - IF <previous_labs_uploaded> tag is NOT present: SKIP analyzeExistingLabsTool completely—no lab PDFs exist to analyze
    - Identify the most significant symptom patterns (prioritize those that connect directly to directives and root causes)
    - Map to interpretation guide implications
    - Organize into structured table format showing finding, data, implication, severity
@@ -164,7 +166,7 @@ Generate a comprehensive report that executes expert directives with intelligent
 **CRITICAL:** Do NOT output text during Phase 2. Use thinkTool for tracking. Only output final report in Phase 3.
 
 **PHASE 2 COMPLETION CHECKLIST:**
-- [ ] If previous labs uploaded: analyzeExistingLabsTool called and results received
+- [ ] If <previous_labs_uploaded> present: analyzeExistingLabsTool called and results received. If NOT present: skip this step entirely.
 - [ ] All recommendation tool calls completed and results received
 - [ ] gatherCitationsTool called with complete citation requests
 - [ ] gatherCitationsTool results fully received and reviewed
@@ -207,7 +209,7 @@ Use clean, readable Markdown with clear section headings. Keep language concise,
 
 1. **Introduction:** Personalized to client, keep it concise and tight, yet contextually relevant to what matters. setting the stage and tone for the rest of the report.
 2. **Philosophy:** Explain the bioenergetic framework and key mechanisms relevant to this client's case. This is where mechanism detail belongs to help the client understand WHY the recommendations work. Keep focused and connected to their specific situation. This section should be concise and to the point, and should not get too verbose.
-3. **Assessment Findings:** Present the most important symptom patterns and assessment data in a concise, scannable format. If previous labs were analyzed, include an "Existing Lab Results" subsection with a markdown table (Test | Result | Assessment | Implication). When the lab analysis tool provides "Prism's Ranges" in the assessment data, include them in the Assessment column (e.g., "Low (Prism's optimal: 90-165)"). Use a structured table to organize key findings, their implications, and severity. (if relevant to this client) Follow with a brief rundown of the fundamental interconnectedness that synthesizes how these findings relate through bioenergetic principles. Prioritize signal over noise—focus on what's most relevant to the directives and root causes. This section need to be clear and concise and should not get too verbose.
+3. **Assessment Findings:** Present the most important symptom patterns and assessment data in a concise, scannable format. ONLY if you called analyzeExistingLabsTool (because <previous_labs_uploaded> was present): include an "Existing Lab Results" subsection with a markdown table (Test | Result | Assessment | Implication). When the lab analysis tool provides "Prism's Ranges" in the assessment data, include them in the Assessment column (e.g., "Low (Prism's optimal: 90-165)"). If NO lab PDFs were uploaded, do NOT include any lab results section. Use a structured table to organize key findings, their implications, and severity. (if relevant to this client) Follow with a brief rundown of the fundamental interconnectedness that synthesizes how these findings relate through bioenergetic principles. Prioritize signal over noise—focus on what's most relevant to the directives and root causes. This section need to be clear and concise and should not get too verbose.
 4. **Recommendations:** 
    - Diagnostics: Markdown table with implementation details
    - Diet & Lifestyle: Foundational guidelines (contextualized) and directive-based interventions (Title this section "Diet & Lifestyle Recommendations")
