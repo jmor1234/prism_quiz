@@ -12,7 +12,6 @@ import { Separator } from '@/components/ui/separator';
 import { ErrorBanner } from '@/components/error-banner';
 import {
   MAX_PHASE1_FIELD_CHARS,
-  MAX_PHASE1_IMAGE_ATTACHMENTS,
   MAX_PHASE1_LAB_ATTACHMENTS,
   phase1SubmissionSchema,
 } from '@/lib/schemas/phase1';
@@ -22,6 +21,7 @@ const STORAGE_KEYS = {
   takehome: "phase1.takehome",
   advisor: "phase1.advisor",
   daltons: "phase1.daltons",
+  labs: "phase1.labs",
 } as const;
 
 const AUTOSAVE_MS = 1_000;
@@ -33,7 +33,6 @@ export function Phase1ReportForm() {
   const [takehomeText, setTakehomeText] = useState("");
   const [advisorNotesText, setAdvisorNotesText] = useState("");
   const [daltonsFinalNotes, setDaltonsFinalNotes] = useState("");
-  const [images, setImages] = useState<File[]>([]);
   const [labs, setLabs] = useState<File[]>([]);
 
   const [status, setStatus] = useState<"idle" | "submitting" | "success" | "error">("idle");
@@ -51,12 +50,25 @@ export function Phase1ReportForm() {
     const savedTakehome = window.localStorage.getItem(STORAGE_KEYS.takehome);
     const savedAdvisor = window.localStorage.getItem(STORAGE_KEYS.advisor);
     const savedDaltons = window.localStorage.getItem(STORAGE_KEYS.daltons);
+    const savedLabsJson = window.localStorage.getItem(STORAGE_KEYS.labs);
 
-    if (savedQuestionnaire || savedTakehome || savedAdvisor || savedDaltons) {
+    if (savedQuestionnaire || savedTakehome || savedAdvisor || savedDaltons || savedLabsJson) {
       setQuestionnaireText(savedQuestionnaire ?? "");
       setTakehomeText(savedTakehome ?? "");
       setAdvisorNotesText(savedAdvisor ?? "");
       setDaltonsFinalNotes(savedDaltons ?? "");
+
+      // Restore lab filenames (not actual files - those can't be persisted)
+      if (savedLabsJson) {
+        try {
+          const labNames = JSON.parse(savedLabsJson) as string[];
+          // Note: We can only show the names; user will need to re-upload if they refresh
+          console.log("Previous lab uploads found:", labNames);
+        } catch {
+          // Ignore invalid JSON
+        }
+      }
+
       setRestoredDraft(true);
     }
   }, []);
@@ -105,35 +117,42 @@ export function Phase1ReportForm() {
     scheduleAutosave(STORAGE_KEYS.daltons, value);
   };
 
-  const handleFileInput = useCallback((files: FileList | null, type: "images" | "labs") => {
+  const handleLabUpload = useCallback((files: FileList | null) => {
     if (!files?.length) return;
-    const accepted = Array.from(files).filter((file) => {
-      const isImage = file.type.startsWith("image/");
-      const isPdf = file.type === "application/pdf";
-      return type === "images" ? isImage : isPdf;
+
+    const pdfFiles = Array.from(files).filter((file) => file.type === "application/pdf");
+    if (!pdfFiles.length) return;
+
+    setLabs((prev) => {
+      const next = [...prev, ...pdfFiles];
+      const limited = next.slice(0, MAX_PHASE1_LAB_ATTACHMENTS);
+
+      // Persist filenames to localStorage for draft recovery
+      if (typeof window !== "undefined") {
+        const labNames = limited.map(f => f.name);
+        window.localStorage.setItem(STORAGE_KEYS.labs, JSON.stringify(labNames));
+      }
+
+      return limited;
     });
-
-    if (!accepted.length) return;
-
-    if (type === "images") {
-      setImages((prev) => {
-        const next = [...prev, ...accepted];
-        return next.slice(0, MAX_PHASE1_IMAGE_ATTACHMENTS);
-      });
-    } else {
-      setLabs((prev) => {
-        const next = [...prev, ...accepted];
-        return next.slice(0, MAX_PHASE1_LAB_ATTACHMENTS);
-      });
-    }
   }, []);
 
-  const removeAttachment = useCallback((type: "images" | "labs", index: number) => {
-    if (type === "images") {
-      setImages((prev) => prev.filter((_, idx) => idx !== index));
-    } else {
-      setLabs((prev) => prev.filter((_, idx) => idx !== index));
-    }
+  const removeLab = useCallback((index: number) => {
+    setLabs((prev) => {
+      const updated = prev.filter((_, idx) => idx !== index);
+
+      // Update localStorage
+      if (typeof window !== "undefined") {
+        if (updated.length > 0) {
+          const labNames = updated.map(f => f.name);
+          window.localStorage.setItem(STORAGE_KEYS.labs, JSON.stringify(labNames));
+        } else {
+          window.localStorage.removeItem(STORAGE_KEYS.labs);
+        }
+      }
+
+      return updated;
+    });
   }, []);
 
   const questionCharCount = questionnaireText.length;
@@ -146,7 +165,7 @@ export function Phase1ReportForm() {
 
   const resetForm = () => {
     const hasContent =
-      questionnaireText.trim().length || takehomeText.trim().length || advisorNotesText.trim().length || daltonsFinalNotes.trim().length;
+      questionnaireText.trim().length || takehomeText.trim().length || advisorNotesText.trim().length || daltonsFinalNotes.trim().length || labs.length > 0;
 
     if (hasContent && !confirm("Clear all inputs? This will remove the current draft.")) {
       return;
@@ -156,7 +175,6 @@ export function Phase1ReportForm() {
     setTakehomeText("");
     setAdvisorNotesText("");
     setDaltonsFinalNotes("");
-    setImages([]);
     setLabs([]);
     setError(null);
     setStatus("idle");
@@ -169,6 +187,7 @@ export function Phase1ReportForm() {
       window.localStorage.removeItem(STORAGE_KEYS.takehome);
       window.localStorage.removeItem(STORAGE_KEYS.advisor);
       window.localStorage.removeItem(STORAGE_KEYS.daltons);
+      window.localStorage.removeItem(STORAGE_KEYS.labs);
     }
   };
 
@@ -181,12 +200,10 @@ export function Phase1ReportForm() {
 
     try {
       const attachmentIds = (() => {
-        const imageIds = images.map((file) => file.name);
         const labIds = labs.map((file) => file.name);
-        if (!imageIds.length && !labIds.length) return undefined;
+        if (!labIds.length) return undefined;
         return {
-          images: imageIds.length ? imageIds : undefined,
-          labs: labIds.length ? labIds : undefined,
+          labs: labIds,
         };
       })();
 
@@ -219,6 +236,7 @@ export function Phase1ReportForm() {
         window.localStorage.removeItem(STORAGE_KEYS.takehome);
         window.localStorage.removeItem(STORAGE_KEYS.advisor);
         window.localStorage.removeItem(STORAGE_KEYS.daltons);
+        window.localStorage.removeItem(STORAGE_KEYS.labs);
       }
 
       // Navigate to analysis page
@@ -333,34 +351,67 @@ export function Phase1ReportForm() {
         <div className="grid gap-6">
           <div className="grid gap-4">
             <div className="space-y-2">
-              <p className="text-sm font-medium">Optional attachments</p>
+              <p className="text-sm font-medium">Previous Lab Results (Optional)</p>
               <p className="text-xs text-muted-foreground">
-                Images and PDFs are stored for later phases. They are not processed in Phase 1 yet.
+                Upload recent lab test PDFs if available. These will be considered in the analysis.
               </p>
             </div>
 
-            <div className="grid gap-3 sm:grid-cols-2">
-              <AttachmentPicker
-                id="attachments-images"
-                label="Take-home images"
-                description="JPEG, PNG. Up to 8 files."
-                accept="image/*"
-                onChange={(files) => handleFileInput(files, "images")}
-              />
-              <AttachmentPicker
-                id="attachments-labs"
-                label="Previous lab PDFs"
-                description="PDF only. Up to 5 files."
+            <label
+              htmlFor="lab-upload"
+              className="group flex cursor-pointer flex-col gap-3 rounded-xl border border-dashed border-muted-foreground/40 bg-muted/20 p-4 text-sm transition-colors hover:border-muted-foreground hover:bg-muted/30 focus-within:border-muted-foreground focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2"
+            >
+              <div className="flex items-center gap-3">
+                <span className="flex size-10 items-center justify-center rounded-full bg-muted text-muted-foreground transition-colors group-hover:bg-accent">
+                  <Upload className="size-4" />
+                </span>
+                <div className="flex flex-col">
+                  <span className="font-medium">Upload lab PDFs</span>
+                  <span className="text-xs text-muted-foreground">PDF only • Up to 5 files</span>
+                </div>
+              </div>
+              <Input
+                id="lab-upload"
+                type="file"
                 accept="application/pdf"
-                onChange={(files) => handleFileInput(files, "labs")}
+                multiple
+                className="sr-only"
+                onChange={(e) => handleLabUpload(e.target.files)}
               />
-            </div>
+            </label>
 
-            <AttachmentList
-              images={images}
-              labs={labs}
-              onRemove={removeAttachment}
-            />
+            {labs.length > 0 && (
+              <div className="rounded-xl border border-border/60 bg-card/30 p-4">
+                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  Uploaded files ({labs.length}/{MAX_PHASE1_LAB_ATTACHMENTS})
+                </p>
+                <ul className="mt-3 space-y-2">
+                  {labs.map((file, index) => (
+                    <li
+                      key={`lab-${index}`}
+                      className="flex items-center justify-between gap-3 rounded-lg border border-border/60 bg-background/70 px-3 py-2 text-xs"
+                    >
+                      <div className="flex flex-col min-w-0">
+                        <span className="font-medium text-foreground/90 truncate">
+                          {file.name}
+                        </span>
+                        <span className="text-muted-foreground">
+                          {(file.size / (1024 * 1024)).toFixed(2)} MB
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => removeLab(index)}
+                        className="inline-flex size-7 flex-shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        aria-label={`Remove ${file.name}`}
+                      >
+                        <X className="size-3.5" />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </div>
 
           {error && (
@@ -419,88 +470,5 @@ export function Phase1ReportForm() {
         </div>
       </form>
     </section>
-  );
-}
-
-interface AttachmentPickerProps {
-  id: string;
-  label: string;
-  description: string;
-  accept: string;
-  onChange: (files: FileList | null) => void;
-}
-
-function AttachmentPicker({ id, label, description, accept, onChange }: AttachmentPickerProps) {
-  return (
-    <label
-      htmlFor={id}
-      className="group flex cursor-pointer flex-col gap-3 rounded-xl border border-dashed border-muted-foreground/40 bg-muted/20 p-4 text-sm transition-colors hover:border-muted-foreground hover:bg-muted/30"
-    >
-      <div className="flex items-center gap-3">
-        <span className="flex size-10 items-center justify-center rounded-full bg-muted text-muted-foreground transition-colors group-hover:bg-accent">
-          <Upload className="size-4" />
-        </span>
-        <div className="flex flex-col">
-          <span className="font-medium">{label}</span>
-          <span className="text-xs text-muted-foreground">{description}</span>
-        </div>
-      </div>
-      <Input
-        id={id}
-        type="file"
-        accept={accept}
-        multiple
-        className="hidden"
-        onChange={(event) => onChange(event.target.files)}
-      />
-    </label>
-  );
-}
-
-interface AttachmentListProps {
-  images: File[];
-  labs: File[];
-  onRemove: (type: "images" | "labs", index: number) => void;
-}
-
-function AttachmentList({ images, labs, onRemove }: AttachmentListProps) {
-  if (!images.length && !labs.length) return null;
-
-  const renderItem = (file: File, index: number, type: "images" | "labs") => {
-    return (
-      <li
-        key={`${type}-${index}`}
-        className="flex items-center justify-between gap-3 rounded-lg border border-border/60 bg-background/70 px-3 py-2 text-xs"
-      >
-        <div className="flex flex-col">
-          <span className="font-medium text-foreground/90">
-            {file.name.length > 42 ? `${file.name.slice(0, 39)}…` : file.name}
-          </span>
-          <span className="text-muted-foreground">
-            {(file.size / (1024 * 1024)).toFixed(2)} MB
-          </span>
-        </div>
-        <button
-          type="button"
-          onClick={() => onRemove(type, index)}
-          className="inline-flex size-7 items-center justify-center rounded-full bg-muted text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
-          aria-label={`Remove ${file.name}`}
-        >
-          <X className="size-3.5" />
-        </button>
-      </li>
-    );
-  };
-
-  return (
-    <div className="rounded-xl border border-border/60 bg-card/30 p-4">
-      <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-        Attached files
-      </p>
-      <ul className="mt-3 space-y-2">
-        {images.map((file, index) => renderItem(file, index, "images"))}
-        {labs.map((file, index) => renderItem(file, index, "labs"))}
-      </ul>
-    </div>
   );
 }
