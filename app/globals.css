@@ -149,7 +149,7 @@
   [data-streamdown="ordered-list"] { @apply ml-4 list-outside list-decimal whitespace-normal; }
   [data-streamdown="list-item"] { @apply py-1; }
 
-  [data-streamdown="link"] { @apply font-medium italic text-primary underline; }
+  [data-streamdown="link"] { @apply font-medium italic text-blue-600 dark:text-blue-400 underline; }
   /* Ensure links are readable inside user bubbles (bg-primary) */
   .is-user [data-streamdown="link"] { color: var(--primary-foreground) !important; text-decoration: underline; text-underline-offset: 2px; font-style: italic; }
   .is-user a { color: var(--primary-foreground) !important; text-decoration: underline; text-underline-offset: 2px; }
