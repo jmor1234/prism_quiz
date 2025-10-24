@@ -24,15 +24,15 @@ export const analyzeExistingLabsOutputSchema = z.object({
     findings: z
       .array(
         z.object({
-          test: z.string().describe("Test name from lab results"),
-          result: z.string().describe("Value with units and reference range if available"),
-          assessment: z
+          test: z.string().describe("Test name"),
+          clientResult: z.string().describe("Client's result value with units"),
+          prismRange: z
             .string()
             .optional()
-            .describe("Evaluation against Prism's optimal ranges or reference ranges"),
-          implication: z
+            .describe("Prism's optimal range from database if available"),
+          explanation: z
             .string()
-            .describe("Clinical significance based on bioenergetic principles"),
+            .describe("Educational paragraph explaining what the test is, what it measures, clinical significance, and interpretation of this client's specific result in bioenergetic context"),
         })
       )
       .describe("Individual lab result findings"),

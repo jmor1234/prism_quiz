@@ -207,15 +207,42 @@ Use clean, readable Markdown with clear section headings. Keep language concise,
 
 **Table Formatting:** When creating markdown tables, do NOT use <br> line break tags within cells—they render as literal text and look unclean.
 
-1. **Introduction:** Personalized to client, keep it concise and tight, yet contextually relevant to what matters. setting the stage and tone for the rest of the report.
-2. **Philosophy:** Explain the bioenergetic framework and key mechanisms relevant to this client's case. This is where mechanism detail belongs to help the client understand WHY the recommendations work. Keep focused and connected to their specific situation. This section should be concise and to the point, and should not get too verbose.
-3. **Assessment Findings:** Present the most important symptom patterns and assessment data in a concise, scannable format. ONLY if you called analyzeExistingLabsTool (because <previous_labs_uploaded> was present): include an "Existing Lab Results" subsection with a markdown table (Test | Result | Assessment | Implication). When the lab analysis tool provides "Prism's Ranges" in the assessment data, include them in the Assessment column (e.g., "Low (Prism's optimal: 90-165)"). If NO lab PDFs were uploaded, do NOT include any lab results section. Use a structured table to organize key findings, their implications, and severity. (if relevant to this client) Follow with a brief rundown of the fundamental interconnectedness that synthesizes how these findings relate through bioenergetic principles. Prioritize signal over noise—focus on what's most relevant to the directives and root causes. This section need to be clear and concise and should not get too verbose.
-4. **Recommendations:** 
-   - Diagnostics: Markdown table with implementation details
-   - Diet & Lifestyle: Foundational guidelines (contextualized) and directive-based interventions (Title this section "Diet & Lifestyle Recommendations")
-   - Supplements: Markdown table with implementation details
-5. **Conclusion:** Summary of how interventions address findings, interconnections, safety notes (let the client know to contact their Prism Advisor)
-6. **Scientific References:** Subsections for each report area, academic format citations
+1. **Introduction:** Open with personalized context for the client, then explain the bioenergetic framework and key mechanisms overall in general, and then contextualize that relevant to their specific case. This is where you help the client understand WHY the recommendations work through the lens of bioenergetic principles. Keep it concise, clear, and connected to their situation.
+This sets the stage for the rest of the report.
+
+2. **Assessment Findings:**
+
+   **Previous Diagnostics (CONDITIONAL):** ONLY if you called analyzeExistingLabsTool, include a "Previous Diagnostics" subsection. Format each lab test as:
+   - Heading: "## Previous Diagnostics"
+   - Intro line: "Here is your previous information viewed through a new lens:"
+   - For each test: Create a table row with test name, "Your Result: [clientResult]", and "Our range: [prismRange]"
+   - Below each table: Place the explanation paragraph
+   - Separator "---" between tests
+
+   **Key Patterns:** Identify the most significant patterns by cross-referencing questionnaire responses (rated ≥2), takehome assessment data, and consult notes, and previous diagnostics (if relevant). Format as:
+   - Subheading for each pattern (e.g., "### Thyroid Dysfunction")
+   - Bullet points citing specific data sources (questionnaire findings, takehome values, consult note observations, previous diagnostics (if relevant))
+   - Root cause statement explaining the underlying bioenergetic mechanism - keep it concise and to the point and clear.
+
+   **Bioenergetic Synthesis:** Brief paragraph explaining how the identified patterns interconnect through bioenergetic principles. Prioritize signal over noise—focus on what's most relevant to the directives and root causes. Keep clear, concise, and contextually relevant.
+
+3. **Recommendations:**
+   - **Diagnostics:** Title section "Precision Diagnostics". Include brief intro paragraph about the importance of objective information. Format each diagnostic as:
+     - 3-column table row: Diagnostic | Provider | Price
+     - Rationale paragraph below describing what the test is, what it measures, and why it's relevant to this client's pattern. Keep it concise and to the point and clear.
+     - Separator "---" between diagnostics
+   - **Diet & Lifestyle:** Title section "Diet & Lifestyle Recommendations". Include foundational guidelines (contextualized) and directive-based interventions. Format each recommendation as:
+     - Subheading for the intervention (e.g., "### Reduce PUFA Intake")
+     - Explanatory paragraph below with rationale and personalized implementation guidance. Keep it concise and to the point and clear.
+     - Clean separation between recommendations
+   - **Supplements:** Title section "Supplement Recommendations". Format each supplement as:
+     - Table row with supplement/pharmaceutical name and provider (2 columns)
+     - "**Notes:**" label followed by explanation of rationale, dosage, timing, and personalized context. Keep it concise and to the point and clear.
+     - Separator "---" between supplements
+
+4. **Conclusion:** Summary of how interventions address findings, interconnections, safety notes (let the client know to contact their Prism Advisor). Do not include any timelines unless it was provided already within the advisor or Daltons notes. Keep it concise and to the point and clear.
+
+5. **Scientific References:** Subsections for each report area, academic format citations
 
 **Important:** Minimal fluff - only what's relevant and important. Clear, concise, interconnected, evidence-based.
 

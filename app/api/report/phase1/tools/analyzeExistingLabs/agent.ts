@@ -65,29 +65,23 @@ ${input.analysisObjective ? `<analysis_objective>
 ${input.analysisObjective}
 </analysis_objective>` : ''}
 
-# Goal: Analyze Existing Lab Results
+# Goal: Educational Lab Analysis
 
 **Data provided:**
-- CSV database: Prism's diagnostic reference data
-  - Column 1: "Diagnostic" (test name)
-  - Column 2: "Implication" (detailed explanation of what the test measures)
-  - Column 3: Empty column
-  - Column 4: "Prism's Ranges" (optimal ranges when available)
-  - Column 5: "Where to get" (provider information)
+- CSV database: Prism's diagnostic reference (test names, implications, optimal ranges)
 - PDF files: Client's previous lab results
-- Client profile: Demographics and current symptoms
-- Analysis objective: Context for interpretation
+- Client profile: Symptoms and demographics
+- Analysis objective: Strategic context
 
-**Your job:** Extract all lab test results from the PDFs, match them against the CSV database, and provide bioenergetic analysis.
+**Your job:** Extract lab results from PDFs, match against database, and generate educational analysis helping the client understand their results through a bioenergetic lens.
 
-**Matching logic:**
-- Only analyze tests that appear in the CSV database
-- Disregard tests not found in the CSV
-- For tests with "Prism's Ranges" populated: assess the value against optimal ranges and INCLUDE the Prism's Range in your assessment (e.g., "Low (Prism's optimal: 90-165)")
-- For tests without Prism's Ranges (empty column): use the "Implication" description and bioenergetic reasoning to contextualize significance
-- Consider client's symptoms when interpreting clinical relevance
+**Intent:**
+- Only analyze tests found in the database
+- Extract clean client result values
+- Pull Prism's optimal ranges from database when available
+- Generate rich explanations that educate the client on what each test is, what it measures, and what their specific result means for their bioenergetic function. Keep it clear concise and contextually relevant.
 
-**Note:** Think from first principles about how each lab value connects to bioenergetic function and the client's clinical picture.`.trim();
+**Note:** Connect each result to the client's specific symptoms and bioenergetic principles.`.trim();
 
   logger?.logToolInternalStep("analyzeExistingLabsTool", "INVOKE_SUB_AGENT", {
     promptLength: promptText.length,

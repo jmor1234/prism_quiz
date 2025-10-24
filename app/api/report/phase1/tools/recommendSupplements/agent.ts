@@ -77,6 +77,8 @@ ${input.objective}
 
 **Personalization:** Tailor rationale to client's specific context, concerns, and constraints.
 
+**Important:** Minimal fluff - only what's relevant and important. Clear, concise, interconnected. We dont need to be verbose here, just provide the information that is relevant and important.
+
 **Note:** Think from first principles about which database entries best match the directive.`.trim();
 
   logger?.logToolInternalStep("recommendSupplementsTool", "INVOKE_SUB_AGENT", {
