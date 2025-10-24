@@ -43,6 +43,8 @@ export async function curateCitations(
 }>> {
   const { subsection, topics, citations, targetCount } = input;
 
+  console.log(`      → Curator sub-agent: selecting ${targetCount} from ${citations.length} citations...`);
+
   const prompt = `
 <subsection>
 ${subsection}
@@ -64,6 +66,8 @@ Select the ${targetCount} most relevant citations for this subsection based on t
     schema: curatorOutputSchema,
     prompt,
   });
+
+  console.log(`      ✓ Curator selected ${result.object.selectedCitations.length} citations`);
 
   return result.object.selectedCitations;
 }

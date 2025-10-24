@@ -31,18 +31,15 @@ app/report/
 - `analysis/[caseId]/report-analysis-stream.tsx`
   - Checks for existing result via `/api/report/phase1/result` before initiating new analysis.
   - If result exists: Loads from cache instantly (no re-run).
-  - If not found: Initiates streaming analysis.
-  - Manually consumes SSE stream from `/api/report/phase1/analyze`.
-  - Manages streaming state (idle → checking → streaming → complete → error).
-  - Parses typed stream events:
-    - `data-tool-status` (shows **lab analysis** (if PDFs uploaded) + **per-item enrichment calls** + **citation gathering**: "Analyzing uploaded lab results...", "Enriching diagnostic: comprehensive stool test", "Gathering citations for 28 topics...")
-    - `data-report-text` (report content chunks)
-    - `reasoning` (visible thinking)
-  - Updates UI state for progress visibility.
+  - If not found: Initiates generation via POST to `/api/report/phase1/analyze`.
+  - Manages generation state (idle → checking → generating → complete → error).
+  - Simple loading indicator during generation (typically 2-3 minutes).
+  - No real-time progress updates - generation happens on backend, frontend waits for completion.
+  - After generation completes: Fetches complete report from `/api/report/phase1/result`.
   - Renders:
-    - **Tool status updates** (1 lab analysis call if PDFs uploaded + 8-15+ per-item enrichment calls + 1 citation tool call visible in real-time)
-    - Final report in markdown (`Response` component) - streamed in real-time with **Existing Lab Results table** (if PDFs) in Assessment Findings + **References section** at bottom (40 curated citations organized by subsection)
-    - Reasoning panel (`Reasoning` component)
+    - Loading state with generation status message
+    - Final report in markdown (`Response` component) with **Existing Lab Results table** (if PDFs) in Assessment Findings + **Scientific References section** at bottom (curated citations organized by subsection)
+    - Success confirmation when complete
   - Error handling with retry functionality.
 
 ## Related Docs

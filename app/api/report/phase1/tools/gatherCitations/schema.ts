@@ -28,30 +28,12 @@ export const gatherCitationsInputSchema = z.object({
 
 // Output schema
 export const gatherCitationsOutputSchema = z.object({
-  citationsBySubsection: z
-    .record(
-      z.string(),
-      z.array(
-        z.object({
-          title: z.string().describe("Paper title"),
-          author: z.string().optional().describe("Author(s) if available"),
-          publishedDate: z
-            .string()
-            .optional()
-            .describe("Publication date if available"),
-          url: z.string().describe("Full URL to the paper"),
-        })
-      )
-    )
-    .describe(
-      "Citations organized by subsection, ready for References formatting"
-    ),
-  totalCitations: z
+  acknowledged: z
+    .literal(true)
+    .describe("Confirmation that citations have been gathered and stored"),
+  citationCount: z
     .number()
-    .describe("Total number of citations gathered across all subsections"),
-  uniqueCitations: z
-    .number()
-    .describe("Number of unique citations after deduplication"),
+    .describe("Total number of citations gathered"),
 });
 
 export type GatherCitationsInput = z.infer<typeof gatherCitationsInputSchema>;

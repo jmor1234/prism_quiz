@@ -57,6 +57,7 @@ interface AsyncContext {
     logger: TraceLogger;
     threadId?: string;
     submission?: unknown; // Report-specific: Phase1Submission when used in report routes
+    citationsBuffer?: { formattedReferences: string }; // Report-specific: Buffer for pre-formatted citations
 }
 
 // Create AsyncLocalStorage instance to hold the context for the current request

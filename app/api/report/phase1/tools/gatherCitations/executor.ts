@@ -1,6 +1,6 @@
 // app/api/report/phase1/tools/gatherCitations/executor.ts
 
-import { getLogger } from "@/app/api/chat/lib/traceLogger";
+import { getLogger, asyncLocalStorage } from "@/app/api/chat/lib/traceLogger";
 import { searchExa } from "@/app/api/chat/tools/researchOrchestratorTool/exaSearch/exaClient";
 import type { ExaSearchConfig, ExaSearchHit } from "@/app/api/chat/tools/researchOrchestratorTool/exaSearch/types";
 import type { GatherCitationsInput, GatherCitationsOutput } from "./schema";
@@ -59,10 +59,14 @@ export async function executeGatherCitations(
   const logger = getLogger();
   const startTime = Date.now();
 
+  const totalTopics = input.citationRequests.reduce((acc, req) => acc + req.topics.length, 0);
+
   logger?.logToolInternalStep(TOOL_NAME, "START_CITATION_GATHERING", {
     subsectionsCount: input.citationRequests.length,
-    totalTopics: input.citationRequests.reduce((acc, req) => acc + req.topics.length, 0),
+    totalTopics,
   });
+
+  console.log(`\n[${TOOL_NAME}] Starting: ${totalTopics} topics across ${input.citationRequests.length} subsections`);
 
   // 1. Flatten all topics into search tasks
   const searchTasks: SearchTask[] = [];
@@ -209,8 +213,11 @@ export async function executeGatherCitations(
       // Already at or below target, keep all
       curatedBySubsection[subsection] = citations;
       totalCurated += citations.length;
+      console.log(`    ${subsection}: ${citations.length} citations (no curation needed)`);
     } else {
       // Curate to target count
+      console.log(`    ${subsection}: curating ${citations.length} → ${CITATIONS_PER_SUBSECTION}...`);
+
       const curated = await curateCitations({
         subsection,
         topics,
@@ -220,6 +227,8 @@ export async function executeGatherCitations(
 
       curatedBySubsection[subsection] = curated;
       totalCurated += curated.length;
+
+      console.log(`    ${subsection}: ✓ curated to ${curated.length} citations`);
 
       logger?.logToolInternalStep(TOOL_NAME, "SUBSECTION_CURATED", {
         subsection,
@@ -242,9 +251,76 @@ export async function executeGatherCitations(
 
   console.log(`✓ [${TOOL_NAME}] Complete: ${totalCurated} curated citations (from ${totalAfterDedup} unique) in ${(executionTime / 1000).toFixed(1)}s\n`);
 
+  // 6. Format citations into markdown (deterministic)
+  const formattedReferences = formatReferencesSection(curatedBySubsection);
+
+  console.log(`  Formatted ${totalCurated} citations into markdown (${formattedReferences.length} chars)`);
+
+  logger?.logToolInternalStep(TOOL_NAME, "REFERENCES_FORMATTED", {
+    markdownLength: formattedReferences.length,
+  });
+
+  // 7. Write to buffer (hidden from agent context)
+  const store = asyncLocalStorage.getStore();
+  if (store?.citationsBuffer) {
+    store.citationsBuffer.formattedReferences = formattedReferences;
+    console.log(`  ✓ Citations stored in buffer (${Object.keys(curatedBySubsection).length} subsections)`);
+    logger?.logToolInternalStep(TOOL_NAME, "CITATIONS_BUFFERED", {
+      bufferWritten: true,
+    });
+  } else {
+    console.warn(`  ✗ [${TOOL_NAME}] citationsBuffer not found in context - citations will not be appended`);
+  }
+
+  // Return minimal acknowledgment to agent
+  console.log(`  Returning acknowledgment to primary agent (citationCount: ${totalCurated})\n`);
+
   return {
-    citationsBySubsection: curatedBySubsection,
-    totalCitations: totalBeforeDedup,
-    uniqueCitations: totalCurated, // Return curated count as "unique"
+    acknowledged: true as const,
+    citationCount: totalCurated,
   };
+}
+
+/**
+ * Formats citations into academic markdown ready for report appendix
+ * Pure deterministic transformation - no LLM needed
+ */
+function formatReferencesSection(
+  citationsBySubsection: Record<string, Array<{
+    title: string;
+    author?: string;
+    publishedDate?: string;
+    url: string;
+  }>>
+): string {
+  let markdown = "## Scientific References\n\n";
+
+  for (const [subsection, citations] of Object.entries(citationsBySubsection)) {
+    markdown += `### ${subsection}\n\n`;
+
+    for (const citation of citations) {
+      // Format based on available metadata
+      let formatted: string;
+
+      if (citation.author && citation.publishedDate) {
+        // Full format: [Author (Year). Title.](url)
+        formatted = `[${citation.author} (${citation.publishedDate}). ${citation.title}.](${citation.url})`;
+      } else if (citation.author) {
+        // Author only: [Author. Title.](url)
+        formatted = `[${citation.author}. ${citation.title}.](${citation.url})`;
+      } else if (citation.publishedDate) {
+        // Date only: [(Year). Title.](url)
+        formatted = `[(${citation.publishedDate}). ${citation.title}.](${citation.url})`;
+      } else {
+        // Minimal: [Title.](url)
+        formatted = `[${citation.title}.](${citation.url})`;
+      }
+
+      markdown += `- ${formatted}\n`;
+    }
+
+    markdown += "\n";
+  }
+
+  return markdown.trim();
 }

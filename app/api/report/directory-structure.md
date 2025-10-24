@@ -7,9 +7,9 @@ app/api/report/
     ├── result/
     │   └── route.ts          # Result retrieval endpoint: returns cached analysis by caseId
     ├── analyze/
-    │   ├── route.ts          # Three-phase streaming agent endpoint (passes submission via asyncLocalStorage)
+    │   ├── route.ts          # Three-phase generation endpoint using generateText (passes submission + citationsBuffer via asyncLocalStorage)
     │   ├── systemPrompt.ts   # Builds 3-phase system prompt with context + interpretation guides
-    │   └── streamCallbacks.ts # Report-specific streaming callbacks (no caching)
+    │   └── streamCallbacks.ts # Report-specific callbacks for step logging (renamed, no longer streaming-specific)
     ├── lib/
     │   └── asyncContext.ts   # Helper to access submission from asyncLocalStorage
     ├── tools/                # Report-specific tools
@@ -62,11 +62,11 @@ app/api/report/
 
 ### Analysis Flow (Directive-Driven Three-Phase Pipeline)
 - `phase1/analyze/route.ts`
-  - Directive-driven three-phase streaming agent endpoint (POST with `{ caseId }`).
+  - Directive-driven three-phase generation endpoint (POST with `{ caseId }`).
   - Loads submission from storage via `getPhase1Case(caseId)`.
-  - **Passes submission via asyncLocalStorage** for tool access (enables PDF bypass pattern).
+  - **Initializes citationsBuffer and passes submission + buffer via asyncLocalStorage** for tool access (enables PDF bypass + citation buffer pattern).
   - Builds directive-driven 3-phase system prompt with `buildPhase1SystemPrompt(submission)`.
-  - Runs streaming agent (Sonnet 4.5) with 6 tools:
+  - Runs agent (Sonnet 4.5) with `generateText` and 6 tools:
     - **Report-specific cognitive tool:**
       - `reportThinkTool` - extraction tracking, enrichment planning, completion verification
     - **Lab analysis tool (Sonnet 4.5 sub-agent with multimodal PDF injection):**
@@ -76,19 +76,21 @@ app/api/report/
       - `recommendDietLifestyleTool` - CSV lookup + enrichment per directive item
       - `recommendSupplementsTool` - CSV lookup + enrichment per directive item
     - **Citation tool:**
-      - `gatherCitationsTool` - Parallel Exa search + Gemini Flash curation for References section
-  - Reuses streaming infrastructure from chat route:
-    - `TraceLogger` + `asyncLocalStorage` (progress emissions)
+      - `gatherCitationsTool` - Parallel Exa search + Gemini Flash curation, stores formatted citations in buffer, returns minimal acknowledgment
+  - Reuses infrastructure from chat route:
+    - `TraceLogger` + `asyncLocalStorage` (logging and context)
     - `TokenEconomics` (cost tracking)
-  - Uses report-specific streaming callbacks:
-    - `createReportStreamCallbacks` (step handlers without caching)
-  - Streams report text via custom `data-report-text` events (manually iterates `result.textStream`).
+  - Uses report-specific callbacks:
+    - `createReportCallbacks` (step logging via onStepFinish, prepareStep)
+  - Blocks until generation completes (no streaming).
   - Executes full 3-phase workflow:
     - **Phase 1:** Extract directives from Dalton's/Advisor notes; parse questionnaire/takehome against interpretation guides
-    - **Phase 2:** If PDFs uploaded: call analyzeExistingLabsTool once (comprehensive analysis); map data to guide implications; enrich directives via per-item tool calls (8-15+); organize citation topics by subsection; call gatherCitationsTool once (returns 40-60 curated citations)
-    - **Phase 3:** Format References section from curated citations; stream final report with Existing Lab Results table (if PDFs analyzed)
+    - **Phase 2:** If PDFs uploaded: call analyzeExistingLabsTool once (comprehensive analysis); map data to guide implications; enrich directives via per-item tool calls (8-15+); organize citation topics by subsection; call gatherCitationsTool once (tool stores formatted citations in buffer, returns acknowledgment only)
+    - **Phase 3:** Agent generates report body (Introduction → Conclusion); backend concatenates body + citations from buffer
+  - **Backend assembly:** Concatenates agent output (report body) + citationsBuffer (formatted Scientific References section).
   - Saves final comprehensive report to `storage/phase1-results/<caseId>.json`.
-  - Max duration: 15 minutes.
+  - Returns JSON response with success status and metadata.
+  - Max duration: 30 minutes.
 
 - `phase1/analyze/systemPrompt.ts`
   - Loads interpretation guides from `data/` directory (cached after first load).
@@ -99,10 +101,10 @@ app/api/report/
     - `<client_data>` (questionnaire responses, takehome assessment, advisor notes, **Dalton's final notes**, `<previous_labs_uploaded>` indicator if PDFs present)
     - **Agent role:** Executor & Enricher (not decision-maker)
     - **Authority hierarchy:** Dalton's notes (PRIMARY) > Advisor notes (SECONDARY) > Guides (mapping) > Agent reasoning (gaps only)
-    - **Phase 1:** Extract directives from notes; parse questionnaire/takehome against guides
-    - **Phase 2:** If PDFs uploaded: call analyzeExistingLabsTool once; map to guide implications; enrich directives via per-item tool calls; gather citations
-    - **Phase 3:** Build References section; stream final report
-  - Returns array of message objects for `streamText`.
+    - **Phase 1:** Extract directives from notes; parse questionnaire/takehome against guides (use thinkTool for tracking)
+    - **Phase 2:** If PDFs uploaded: call analyzeExistingLabsTool once; map to guide implications; enrich directives via per-item tool calls; organize citation topics and call gatherCitationsTool (receives acknowledgment only)
+    - **Phase 3:** Generate report body (Introduction → Conclusion); do NOT include Scientific References section (appended automatically by backend)
+  - Returns array of message objects for `generateText`.
   - **Prompt philosophy:** Intent over prescription, data clarity, enabling autonomy within bounded context
 
 ### Report-Specific Cognitive Tool
@@ -113,9 +115,10 @@ app/api/report/
   - **Usage:** Agent uses for capturing parsed directives, noting ambiguities, tracking pending tool calls, verifying operations complete before proceeding
 
 - `phase1/analyze/streamCallbacks.ts`
-  - **Purpose:** Report-specific streaming event handlers without caching overhead
-  - **Differences from chat:** Removed `cache` dependency, simplified `prepareStep` to return messages as-is
-  - **Rationale:** Report execution is single-shot with unique client data per case - caching provides no benefit
+  - **Purpose:** Report-specific callbacks for step logging (no longer streaming-specific, name retained for minimal diff)
+  - **Callbacks:** `onStepFinish` (step logging, planning thought capture) and `prepareStep` (returns messages as-is)
+  - **Removed:** `onFinish`, `onError`, `onAbort` (finalization logic moved to route.ts after generateText completes)
+  - **Rationale:** Report execution is single-shot with unique client data per case - no caching, simplified finalization
 
 ### Lab Analysis Tool (Existing Lab Results - Comprehensive One-Shot Analysis)
 - `phase1/tools/analyzeExistingLabs/`
@@ -184,26 +187,31 @@ app/api/report/
   - Supplements and pharmaceuticals database (334 entries).
   - Used by recommendSupplementsTool in Phase 2.
 
-### Citation Tool (Comprehensive Gathering + Intelligent Curation)
+### Citation Tool (Comprehensive Gathering + Intelligent Curation + Buffer Storage)
 - `phase1/tools/gatherCitations/`
-  - **tool.ts:** Tool definition with streaming status emissions
-  - **executor.ts:** Orchestrates 5-step process:
+  - **tool.ts:** Tool definition
+  - **executor.ts:** Orchestrates 6-step process:
     1. Flatten topics from agent's citation requests (organized by subsection)
     2. Execute parallel Exa neural searches (12 concurrent, `category: "research paper"`)
     3. Group results by subsection
     4. Deduplicate via URL canonicalization
     5. Curate per subsection (70 → 10 citations via Gemini Flash curator)
+    6. **Format citations into markdown** (deterministic code, not LLM) and **store in citationsBuffer** (asyncLocalStorage)
   - **curator.ts:** Gemini Flash sub-agent for relevance-based citation selection
-  - **schema.ts:** Input (citationRequests by subsection), Output (curated citations by subsection)
+  - **schema.ts:** Input (citationRequests by subsection), Output (minimal acknowledgment: `{ acknowledged: true, citationCount: number }`)
   - **constants.ts:** Configuration (RESULTS_PER_TOPIC=10, CITATIONS_PER_SUBSECTION=10, date ranges, concurrency limits)
 
-**Citation workflow:**
+**Citation workflow (buffer pattern):**
 - Agent organizes topics by References subsection (Assessment Findings, Diagnostic Recommendations, etc.)
 - Tool gathers comprehensively (28 topics × 10 = 280 citations)
-- Tool curates intelligently (4 subsections × 10 = 40 citations returned to agent)
-- Agent formats References section with curated citations
-- **Total time:** ~5 seconds (3s gathering + 2s curation)
-- **Context preservation:** Agent receives 40 citations, not 280
+- Tool curates intelligently (4 subsections × 10 = 40 citations)
+- Tool formats citations into markdown (deterministic: `[Author (Year). Title.](url)`)
+- **Tool stores formatted markdown in citationsBuffer** (hidden from agent context)
+- **Agent receives minimal acknowledgment** (`{ acknowledged: true, citationCount: 40 }`) - only ~100 tokens, not 3,000
+- Agent writes report body only (Introduction → Conclusion)
+- Backend concatenates agent output + citationsBuffer after generation completes
+- **Total time:** ~5 seconds (3s gathering + 2s curation + <1s formatting)
+- **Token savings:** ~5,000 tokens per report (~$0.08) - agent never sees or writes citations
 
 ## Related Modules
 - `server/phase1Cases.ts` – Submission persistence (`upsertPhase1Case`, `getPhase1Case`).
@@ -222,19 +230,20 @@ app/api/report/
 
 **Single-session directive-driven 3-phase pipeline:**
 1. **Phase 1:** Primary agent (Sonnet 4.5) extracts directives from Dalton's/Advisor notes → parses questionnaire/takehome data → flags items ≥2 against interpretation guides
-2. **Phase 2:** Primary agent detects if PDFs uploaded → if yes: calls analyzeExistingLabsTool ONCE (Sonnet 4.5 sub-agent with multimodal PDF injection) → receives structured findings → maps flagged items to guide implications → calls per-item enrichment tools 8-15+ times (Gemini Flash sub-agents) → receives CSV-matched details (specific or options) → organizes citation topics by subsection → calls gatherCitationsTool once (receives 40 curated citations)
-3. **Phase 3:** Primary agent formats References section from curated citations → streams final report with Existing Lab Results table (if PDFs analyzed)
+2. **Phase 2:** Primary agent detects if PDFs uploaded → if yes: calls analyzeExistingLabsTool ONCE (Sonnet 4.5 sub-agent with multimodal PDF injection) → receives structured findings → maps flagged items to guide implications → calls per-item enrichment tools 8-15+ times (Gemini Flash sub-agents) → receives CSV-matched details (specific or options) → organizes citation topics by subsection → calls gatherCitationsTool once (tool stores formatted citations in buffer, returns acknowledgment only)
+3. **Phase 3:** Primary agent generates report body only (Introduction → Conclusion) → backend concatenates body + citations from buffer → saves complete report
 
 **Key architectural principles:**
 - **Directive-driven:** Human expertise (Dalton/Advisor) directs interventions; agent executes and enriches
 - **Cognitive hierarchy:** Primary agent (Sonnet 4.5: Executor & Enricher) → Sub-agents (Sonnet 4.5 for labs, Gemini Flash for recommendations/curation)
 - **Authority hierarchy:** Dalton's notes (PRIMARY directives) > Advisor notes (SECONDARY) > Guides (mapping) > Agent reasoning (gaps only)
 - **PDF bypass pattern:** Lab PDFs accessed via asyncLocalStorage (not through primary agent context) → multimodal injection into sub-agent → preserves context economy
+- **Citation buffer pattern:** Tool formats citations → stores in asyncLocalStorage buffer → returns minimal acknowledgment → backend concatenates after generation → ~5,000 token savings per report
 - **One-shot lab analysis:** analyzeExistingLabsTool called ONCE to analyze ALL PDFs comprehensively (vs per-item pattern for recommendations)
 - **Per-item enrichment:** Recommendation tools called once per directive item (not batch selection)
-- **Citation workflow:** Comprehensive gathering (280) → Intelligent curation (40) → Context preservation
+- **Citation workflow:** Comprehensive gathering (280) → Intelligent curation (40) → Deterministic formatting → Buffer storage → Backend assembly
 - **Discriminated unions:** Clear contract for specific vs ambiguous matches enabling flexible orchestration
 - **Prompt philosophy:** Intent over prescription, schema defines contract, enable autonomy within bounded context
 - **Model selection:** Sonnet 4.5 for orchestration/reasoning + medical analysis, Gemini Flash for structured lookup/curation tasks
-- **Streaming visibility:** Real-time progress for all operations (lab analysis, per-item enrichment, citation gathering, report generation)
+- **Generation pattern:** `generateText` with await → JSON response (no streaming) → simple frontend loading state
 

@@ -1,4 +1,5 @@
 // app/api/report/phase1/analyze/streamCallbacks.ts
+// Note: File name retained for minimal diff, but this is no longer streaming-specific
 
 import { TraceLogger } from '@/app/api/chat/lib/traceLogger';
 import { TokenEconomics } from '@/app/api/chat/lib/tokenEconomics';
@@ -10,40 +11,7 @@ interface StepFinishEvent {
   toolCalls: Array<{ toolName: string; args?: unknown }>;
 }
 
-interface FinishEvent {
-  text: string;
-  finishReason: string;
-  totalUsage: unknown;
-  providerMetadata?: unknown;
-  [key: string]: unknown;
-}
-
-// Type augmentation for economics module compatibility
-interface EventWithMetadata {
-  text: string;
-  finishReason: string;
-  providerMetadata?: {
-    anthropic?: {
-      cache_read_input_tokens?: number;
-      cache_creation_input_tokens?: number;
-      [key: string]: unknown;
-    };
-  };
-  totalUsage?: {
-    inputTokens?: number;
-    outputTokens?: number;
-    totalTokens?: number;
-    cachedInputTokens?: number;
-    [key: string]: unknown;
-  };
-  [key: string]: unknown;
-}
-
-interface AbortEvent {
-  steps: unknown[];
-}
-
-interface ReportStreamCallbackDeps {
+interface ReportCallbackDeps {
   logger: TraceLogger;
   economics: TokenEconomics;
   stepIndexRef: { current: number };
@@ -52,10 +20,11 @@ interface ReportStreamCallbackDeps {
 }
 
 /**
- * Creates all streaming event callbacks for report generation (no caching)
+ * Creates callbacks for report generation with generateText
+ * Finalization logic (metrics, logging) moved to route.ts after await
  */
-export function createReportStreamCallbacks(deps: ReportStreamCallbackDeps) {
-  const { logger, economics, stepIndexRef, threadId, hasToolsRef } = deps;
+export function createReportCallbacks(deps: ReportCallbackDeps) {
+  const { logger, stepIndexRef, hasToolsRef } = deps;
 
   return {
     /**
@@ -84,69 +53,8 @@ export function createReportStreamCallbacks(deps: ReportStreamCallbackDeps) {
         logger.logAgentPlanning(thought);
       }
 
-      // Emit processing status after research tools complete
-      const hasResearchTool = step.toolCalls.some((tc) =>
-        tc.toolName === 'executeResearchPlanTool' ||
-        tc.toolName === 'targetedExtractionTool'
-      );
-
-      if (hasResearchTool) {
-        // Show thinking component while processing research results
-        logger.emitToolStatus({
-          toolName: 'thinkTool',
-          action: 'Processing research findings...'
-        });
-      }
-    },
-
-    /**
-     * Handles stream completion with metrics and logging
-     */
-    onFinish: async (event: FinishEvent) => {
-      // Calculate and log metrics (pass tool usage flag)
-      const metrics = economics.updateFromEvent(event as EventWithMetadata, {
-        threadId,
-        hasTools: hasToolsRef.current
-      });
-      economics.formatConsoleOutput(metrics);
-
-      // Reset tool flag for next request
-      hasToolsRef.current = false;
-
-      // Log performance to trace
-      logger.logToolInternalStep('primary_agent', 'PERFORMANCE', {
-        provider: 'anthropic',
-        request: metrics.request,
-        session: metrics.session,
-        metadata: metrics.metadata,
-      });
-
-      // Log final response
-      logger.logFinalResponse({
-        text: event.text,
-        finishReason: event.finishReason,
-        usage: event.totalUsage,
-      });
-
-      // Finalize and write trace logs
-      await logger.finalizeAndWriteLog();
-    },
-
-    /**
-     * Handles errors with proper logging
-     */
-    onError: async (error: unknown) => {
-      await logger.finalizeAndWriteLog(error);
-    },
-
-    /**
-     * Handles stream abort with logging
-     */
-    onAbort: async (event: AbortEvent) => {
-      await logger.finalizeAndWriteLog({
-        reason: 'aborted',
-        steps: event.steps.length
-      });
+      // Note: Tool status emissions removed - no longer streamed to frontend in real-time
+      // Frontend now uses simple loading state during generation
     },
 
     /**

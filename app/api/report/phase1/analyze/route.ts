@@ -1,12 +1,7 @@
 // app/api/report/phase1/analyze/route.ts
 
 import { anthropic } from "@ai-sdk/anthropic";
-import {
-  streamText,
-  createUIMessageStream,
-  createUIMessageStreamResponse,
-  stepCountIs,
-} from "ai";
+import { generateText, stepCountIs } from "ai";
 
 // Import report-specific cognitive tools
 import { reportThinkTool } from "../tools/thinkTool";
@@ -22,20 +17,20 @@ import { gatherCitationsTool } from "../tools/gatherCitations/tool";
 // Import lab analysis tool
 import { analyzeExistingLabsTool } from "../tools/analyzeExistingLabs/tool";
 
-// Reuse streaming infrastructure
+// Reuse infrastructure
 import {
   TraceLogger,
   asyncLocalStorage,
 } from "@/app/api/chat/lib/traceLogger";
 import { TokenEconomics } from "@/app/api/chat/lib/tokenEconomics";
-import { createReportStreamCallbacks } from "./streamCallbacks";
+import { createReportCallbacks } from "./streamCallbacks";
 
 // Report-specific
 import { getPhase1Case } from "@/server/phase1Cases";
 import { savePhase1Result } from "@/server/phase1Results";
 import { buildPhase1SystemPrompt } from "./systemPrompt";
 
-export const maxDuration = 900; // 15 minutes
+export const maxDuration = 1800; // 30 minutes
 
 export async function POST(req: Request) {
   let caseId: string;
@@ -73,42 +68,43 @@ export async function POST(req: Request) {
 
   const economics = TokenEconomics.getInstance();
 
-  return await asyncLocalStorage.run({ logger, threadId: undefined, submission: caseRecord.submission }, async () => {
-    // Build system prompt with submission context
-    const systemMessages = await buildPhase1SystemPrompt(caseRecord.submission);
+  // Initialize citations buffer for tool to write formatted references
+  const citationsBuffer = { formattedReferences: "" };
 
-    // Prepare tools (cognitive + per-item enrichment + lab analysis + citations)
-    const tools = {
-      thinkTool: reportThinkTool,
-      recommendDiagnosticsTool,
-      recommendDietLifestyleTool,
-      recommendSupplementsTool,
-      analyzeExistingLabsTool,
-      gatherCitationsTool,
-    };
+  return await asyncLocalStorage.run(
+    { logger, threadId: undefined, submission: caseRecord.submission, citationsBuffer },
+    async () => {
+      try {
+        // Build system prompt with submission context
+        const systemMessages = await buildPhase1SystemPrompt(
+          caseRecord.submission
+        );
 
-    // Create stream callbacks
-    const stepIndexRef = { current: 0 };
-    const hasToolsRef = { current: false };
-    const callbacks = createReportStreamCallbacks({
-      logger,
-      economics,
-      stepIndexRef,
-      threadId: caseId, // Use caseId as threadId for metrics
-      hasToolsRef,
-    });
+        // Prepare tools (cognitive + per-item enrichment + lab analysis + citations)
+        const tools = {
+          thinkTool: reportThinkTool,
+          recommendDiagnosticsTool,
+          recommendDietLifestyleTool,
+          recommendSupplementsTool,
+          analyzeExistingLabsTool,
+          gatherCitationsTool,
+        };
 
-    // Create UI message stream
-    const stream = createUIMessageStream({
-      execute: async ({ writer }) => {
-        // Inject stream writer for progress updates
-        logger.setStreamWriter({
-          write: (data: unknown) =>
-            writer.write(data as Parameters<typeof writer.write>[0]),
+        // Create callbacks
+        const stepIndexRef = { current: 0 };
+        const hasToolsRef = { current: false };
+        const callbacks = createReportCallbacks({
+          logger,
+          economics,
+          stepIndexRef,
+          threadId: caseId, // Use caseId as threadId for metrics
+          hasToolsRef,
         });
 
-        // Stream with agent
-        const result = streamText({
+        console.log(`\n[Phase1 Analysis] Starting generation for case: ${caseId}`);
+
+        // Generate report (blocks until complete)
+        const result = await generateText({
           model: anthropic("claude-sonnet-4-5-20250929"),
           messages: systemMessages,
           tools,
@@ -121,49 +117,121 @@ export async function POST(req: Request) {
           },
         });
 
-        // Manually stream text chunks in the format frontend expects
-        (async () => {
-          try {
-            for await (const chunk of result.textStream) {
-              writer.write({
-                type: 'data-report-text' as const,
-                data: chunk,
-              });
-            }
-          } catch (error) {
-            console.error("Error streaming text:", error);
-          }
-        })();
+        console.log(`[Phase1 Analysis] Generation complete for case: ${caseId}`);
 
-        // Stream other events but filter out reasoning
-        (async () => {
-          try {
-            const uiStream = result.toUIMessageStream();
-            for await (const part of uiStream) {
-              // Filter out reasoning parts - keep thinking enabled for agent but don't send to frontend
-              if (part.type === 'reasoning-start' || part.type === 'reasoning-delta' || part.type === 'reasoning-end') {
-                continue;
-              }
-              writer.write(part);
-            }
-          } catch (error) {
-            console.error("Error streaming UI parts:", error);
-          }
-        })();
-
-        // Save result when complete
-        try {
-          const finalText = await result.text;
-          await savePhase1Result({
-            caseId,
-            report: finalText,
-          });
-        } catch (error) {
-          console.error("Failed to save Phase 1 result:", error);
+        // Type assertion for economics compatibility
+        interface EventWithMetadata {
+          text: string;
+          finishReason: string;
+          providerMetadata?: {
+            anthropic?: {
+              cache_read_input_tokens?: number;
+              cache_creation_input_tokens?: number;
+              [key: string]: unknown;
+            };
+          };
+          usage?: {
+            promptTokens?: number;
+            completionTokens?: number;
+            totalTokens?: number;
+            [key: string]: unknown;
+          };
+          [key: string]: unknown;
         }
-      },
-    });
 
-    return createUIMessageStreamResponse({ stream });
-  });
+        // Calculate and log metrics (moved from onFinish callback)
+        const metrics = economics.updateFromEvent(
+          result as unknown as EventWithMetadata,
+          {
+            threadId: caseId,
+            hasTools: hasToolsRef.current,
+          }
+        );
+        economics.formatConsoleOutput(metrics);
+
+        // Reset tool flag
+        hasToolsRef.current = false;
+
+        // Log performance to trace
+        logger.logToolInternalStep("primary_agent", "PERFORMANCE", {
+          provider: "anthropic",
+          request: metrics.request,
+          session: metrics.session,
+          metadata: metrics.metadata,
+        });
+
+        // Log final response
+        logger.logFinalResponse({
+          text: result.text,
+          finishReason: result.finishReason,
+          usage: result.usage,
+        });
+
+        // Verify buffer pattern worked correctly
+        const agentIncludesCitations = result.text.includes("## Scientific References");
+        const bufferHasCitations = citationsBuffer.formattedReferences.includes("## Scientific References");
+
+        // Show what agent output ends with (should be Conclusion, not References)
+        const agentLastLines = result.text.split('\n').slice(-3).join('\n');
+
+        console.log(`\n[Phase1 Analysis] Report Assembly:`);
+        console.log(`  Agent output: ${result.text.length} chars`);
+        console.log(`    - Contains "Scientific References": ${agentIncludesCitations ? '✗ UNEXPECTED' : '✓ NO'}`);
+        console.log(`    - Ends with: "${agentLastLines.slice(-60)}..."`);
+        console.log(`  Buffer: ${citationsBuffer.formattedReferences.length} chars`);
+        console.log(`    - Contains "Scientific References": ${bufferHasCitations ? '✓ YES' : '✗ MISSING'}`);
+
+        // Concatenate report body with citations from buffer
+        const fullReport = citationsBuffer.formattedReferences
+          ? `${result.text}\n\n${citationsBuffer.formattedReferences}`
+          : result.text;
+
+        console.log(`  Final report: ${fullReport.length} chars (body + citations concatenated)\n`);
+
+        // Save combined report to storage
+        await savePhase1Result({
+          caseId,
+          report: fullReport,
+        });
+
+        console.log(`[Phase1 Analysis] Report saved for case: ${caseId}`);
+
+        // Finalize and write trace logs
+        await logger.finalizeAndWriteLog();
+
+        // Return success response with metadata
+        return new Response(
+          JSON.stringify({
+            success: true,
+            caseId,
+            finishReason: result.finishReason,
+            usage: result.usage,
+            steps: stepIndexRef.current,
+          }),
+          {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          }
+        );
+      } catch (error) {
+        // Error handling (moved from onError callback)
+        console.error("[Phase1 Analysis] Generation failed:", error);
+        await logger.finalizeAndWriteLog(error);
+
+        return new Response(
+          JSON.stringify({
+            success: false,
+            error:
+              error instanceof Error
+                ? error.message
+                : "Unknown error during generation",
+          }),
+          {
+            status: 500,
+            headers: { "Content-Type": "application/json" },
+          }
+        );
+      }
+    }
+  );
 }

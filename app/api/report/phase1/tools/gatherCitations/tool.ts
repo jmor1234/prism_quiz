@@ -9,7 +9,7 @@ const TOOL_NAME = "gatherCitationsTool" as const;
 
 export const gatherCitationsTool = tool({
   description:
-    "Gather academic citations to support report content. Searches research papers for specified topics and returns organized citation metadata ready for References section formatting.",
+    "Gather and format academic citations to support report content. Searches research papers, curates most relevant sources, and stores formatted Scientific References section. Returns acknowledgment when complete - citations are appended automatically to final report.",
   inputSchema: gatherCitationsInputSchema,
   execute: async (input: GatherCitationsInput) => {
     const logger = getLogger();
@@ -50,8 +50,8 @@ export const gatherCitationsTool = tool({
         TOOL_NAME,
         result
           ? {
-              uniqueCitations: result.uniqueCitations,
-              subsections: Object.keys(result.citationsBySubsection).length,
+              acknowledged: result.acknowledged,
+              citationCount: result.citationCount,
             }
           : {},
         error
