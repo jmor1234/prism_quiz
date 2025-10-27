@@ -90,7 +90,7 @@
   - **Agent role:** Executor & Enricher (not decision-maker)
   - **Authority hierarchy:** Dalton's notes (PRIMARY) > Advisor notes (SECONDARY) > Guides (mapping) > Agent reasoning (gaps only)
   - Phase 1: Extract directives; parse questionnaire/takehome against guides
-  - Phase 2: If PDFs uploaded: call analyzeExistingLabsTool ONCE (comprehensive analysis); map to guide implications; enrich directives with per-item tool calls; organize citation topics and call gatherCitationsTool
+  - Phase 2: If PDFs uploaded: call analyzeExistingLabsTool ONCE (comprehensive analysis); map to guide implications; enrich directives with per-item tool calls; organize citation needs with pattern summaries and entities, call gatherCitationsTool ONCE
   - Phase 3: Format References section; if labs analyzed: include Existing Lab Results table in Assessment Findings; stream final report
 
 **`app/api/report/phase1/tools/analyzeExistingLabs/`** (Lab analysis tool - one-shot comprehensive analysis)
@@ -128,23 +128,25 @@
   - Called 8-15+ times per report (once per directive item)
   - **Execution:** ~0.5-1s per call (faster than Sonnet, cheaper)
 
-**`app/api/report/phase1/tools/gatherCitations/`** (Citation gathering + curation tool)
-- **Purpose:** Gather and curate academic citations to support report content (solves context obliteration problem)
+**`app/api/report/phase1/tools/gatherCitations/`** (Citation gathering + curation tool with query optimization)
+- **Purpose:** Generate optimized queries, gather and curate academic citations to support report content
 - **Flow:**
-  1. Receives citation requests organized by subsection with specific topics (e.g., 28 topics across 4 subsections)
-  2. Executes parallel Exa neural searches (12 concurrent, 10 results per topic, `category: "research paper"`)
-  3. Groups results by subsection and deduplicates URLs
-  4. **Curates intelligently** via **Gemini 2.5 Flash** sub-agent (selects 10 most relevant per subsection from ~70 gathered)
-  5. Returns ~40 curated citations to primary agent (not 280)
+  1. Receives citation requests with pattern summaries and entities (e.g., 12 patterns across 4 subsections)
+  2. **Generates optimized queries** via **Gemini 2.5 Flash** sub-agent (2-4 queries per pattern, ~36 total)
+  3. Executes parallel Exa neural searches (12 concurrent, 5 results per query, `category: "research paper"`)
+  4. Groups results by subsection/pattern and deduplicates URLs
+  5. **Curates intelligently** via **Gemini 2.5 Flash** sub-agent (selects up to 6 most relevant per pattern)
+  6. Formats into hierarchical markdown and stores in buffer
 - **Files:**
   - `tool.ts` - Tool definition with streaming status
-  - `executor.ts` - 5-step orchestration: flatten → search → group → deduplicate → curate
-  - `curator.ts` - Gemini Flash sub-agent for relevance-based selection (intent-focused prompt)
-  - `schema.ts` - Input (citationRequests by subsection), Output (curated citations by subsection)
-  - `constants.ts` - Config (RESULTS_PER_TOPIC=10, CITATIONS_PER_SUBSECTION=10, concurrency=12, model)
-- **Execution:** ~5 seconds total (3s gathering + 2s curation)
-- **Context preservation:** Primary agent receives 40 manageable citations instead of 280
-- **Output:** Pre-organized citations by subsection, ready for References formatting
+  - `executor.ts` - 8-step orchestration: generate queries → flatten → search → group → deduplicate → curate → format → buffer
+  - `curator.ts` - Gemini Flash sub-agent for relevance-based selection
+  - `schema.ts` - Input (summary + entities per pattern), Output (acknowledgment)
+  - `constants.ts` - Config (RESULTS_PER_QUERY=5, MAX_CITATIONS_PER_SUBSUBSECTION=6, concurrency=12)
+  - `queryGeneration/` - Query optimization sub-agent (agent.ts, schema.ts, prompt.ts, types.ts)
+- **Execution:** ~6-7 seconds total (2s query generation + 3s gathering + 2s curation)
+- **Context preservation:** Agent provides summaries, receives acknowledgment only
+- **Output:** Hierarchical References with subsections (###) and patterns (####)
 
 **`app/api/report/phase1/data/`**
 - `questionaire.md` - Maps questionnaire responses to bioenergetic implications (PRIMARY authority for Phase 1)

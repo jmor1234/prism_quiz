@@ -10,19 +10,38 @@ export const gatherCitationsInputSchema = z.object({
         subsection: z
           .string()
           .describe(
-            "References subsection name (e.g., 'Assessment Findings', 'Supplement Recommendations')"
+            "Primary report section (e.g., 'Assessment Findings', 'Supplement Recommendations')"
           ),
-        topics: z
-          .array(z.string())
+        subsubsections: z
+          .array(
+            z.object({
+              name: z
+                .string()
+                .describe(
+                  "Semantic pattern or conceptual grouping within this section"
+                ),
+              summary: z
+                .string()
+                .describe(
+                  "Brief summary of findings or mechanisms discussed for this pattern"
+                ),
+              entities: z
+                .array(z.string())
+                .min(1)
+                .describe(
+                  "Key technical terms and entities discussed in this pattern (e.g., TSH, T3, glucose, cortisol)"
+                ),
+            })
+          )
           .min(1)
           .describe(
-            "Specific research topics or mechanisms to find academic citations for"
+            "Semantic groupings within this section, each with context for query generation"
           ),
       })
     )
     .min(1)
     .describe(
-      "Citation requests organized by References subsection"
+      "Citation requests organized hierarchically by subsection and semantic pattern"
     ),
 });
 

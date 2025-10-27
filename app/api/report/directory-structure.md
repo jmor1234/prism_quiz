@@ -32,10 +32,15 @@ app/api/report/
     │   │   └── schema.ts
     │   └── gatherCitations/
     │       ├── tool.ts       # Tool definition
-    │       ├── executor.ts   # Parallel Exa search + curation orchestration
+    │       ├── executor.ts   # 8-step orchestration: query generation → search → curation
     │       ├── curator.ts    # Gemini Flash curation sub-agent
     │       ├── schema.ts     # Input/output schemas
-    │       └── constants.ts  # Configuration (date ranges, results per topic, etc.)
+    │       ├── constants.ts  # Configuration (results per query, max citations, etc.)
+    │       └── queryGeneration/
+    │           ├── agent.ts    # Gemini Flash query optimization sub-agent
+    │           ├── schema.ts   # Query generation input/output schemas
+    │           ├── prompt.ts   # Bioenergetic query optimization prompt
+    │           └── types.ts    # TypeScript interfaces
     └── data/
         ├── questionaire.md   # Questionnaire interpretation guide (PRIMARY for Phase 1)
         ├── takehome.md       # Take-home test interpretation guide (PRIMARY for Phase 1)
@@ -187,31 +192,34 @@ app/api/report/
   - Supplements and pharmaceuticals database (334 entries).
   - Used by recommendSupplementsTool in Phase 2.
 
-### Citation Tool (Comprehensive Gathering + Intelligent Curation + Buffer Storage)
+### Citation Tool (Query Optimization + Gathering + Curation + Buffer Storage)
 - `phase1/tools/gatherCitations/`
-  - **tool.ts:** Tool definition
-  - **executor.ts:** Orchestrates 6-step process:
-    1. Flatten topics from agent's citation requests (organized by subsection)
-    2. Execute parallel Exa neural searches (12 concurrent, `category: "research paper"`)
-    3. Group results by subsection
-    4. Deduplicate via URL canonicalization
-    5. Curate per subsection (70 → 10 citations via Gemini Flash curator)
-    6. **Format citations into markdown** (deterministic code, not LLM) and **store in citationsBuffer** (asyncLocalStorage)
+  - **tool.ts:** Tool definition (call ONCE with ALL patterns)
+  - **executor.ts:** Orchestrates 8-step process:
+    1. **Generate optimized queries** via Gemini Flash sub-agent (2-4 queries per pattern)
+    2. Flatten generated queries into search tasks
+    3. Execute parallel Exa neural searches (12 concurrent, 5 results per query, `category: "research paper"`)
+    4. Group results by subsection and pattern
+    5. Deduplicate via URL canonicalization
+    6. Curate per pattern (up to 6 citations via Gemini Flash curator)
+    7. **Format citations into hierarchical markdown** (deterministic code) and **store in citationsBuffer**
+    8. Return minimal acknowledgment
   - **curator.ts:** Gemini Flash sub-agent for relevance-based citation selection
-  - **schema.ts:** Input (citationRequests by subsection), Output (minimal acknowledgment: `{ acknowledged: true, citationCount: number }`)
-  - **constants.ts:** Configuration (RESULTS_PER_TOPIC=10, CITATIONS_PER_SUBSECTION=10, date ranges, concurrency limits)
+  - **schema.ts:** Input (summary + entities per pattern), Output (minimal acknowledgment)
+  - **constants.ts:** Configuration (RESULTS_PER_QUERY=5, MAX_CITATIONS_PER_SUBSUBSECTION=6, concurrency=12)
+  - **queryGeneration/:** Query optimization sub-agent (agent.ts, schema.ts, prompt.ts, types.ts)
 
-**Citation workflow (buffer pattern):**
-- Agent organizes topics by References subsection (Assessment Findings, Diagnostic Recommendations, etc.)
-- Tool gathers comprehensively (28 topics × 10 = 280 citations)
-- Tool curates intelligently (4 subsections × 10 = 40 citations)
-- Tool formats citations into markdown (deterministic: `[Author (Year). Title.](url)`)
+**Citation workflow (buffer pattern with query optimization):**
+- Agent provides pattern summaries and key entities (e.g., 12 patterns across 4 subsections)
+- Tool generates optimized neural queries (~36 queries from 12 patterns)
+- Tool gathers comprehensively (36 queries × 5 = 180 citations)
+- Tool curates intelligently (12 patterns × up to 6 = ~72 citations)
+- Tool formats into hierarchical markdown (### subsection, #### pattern)
 - **Tool stores formatted markdown in citationsBuffer** (hidden from agent context)
-- **Agent receives minimal acknowledgment** (`{ acknowledged: true, citationCount: 40 }`) - only ~100 tokens, not 3,000
-- Agent writes report body only (Introduction → Conclusion)
+- **Agent receives minimal acknowledgment** - only ~100 tokens
 - Backend concatenates agent output + citationsBuffer after generation completes
-- **Total time:** ~5 seconds (3s gathering + 2s curation + <1s formatting)
-- **Token savings:** ~5,000 tokens per report (~$0.08) - agent never sees or writes citations
+- **Total time:** ~6-7 seconds (2s query gen + 3s gathering + 2s curation)
+- **Token savings:** ~5,000 tokens per report - agent never sees or writes citations
 
 ## Related Modules
 - `server/phase1Cases.ts` – Submission persistence (`upsertPhase1Case`, `getPhase1Case`).

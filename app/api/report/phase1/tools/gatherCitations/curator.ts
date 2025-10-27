@@ -23,6 +23,7 @@ const curatorOutputSchema = z.object({
 
 interface CuratorInput {
   subsection: string;
+  subsubsection: string;
   topics: string[];
   citations: Array<{
     title: string;
@@ -41,14 +42,18 @@ export async function curateCitations(
   publishedDate?: string;
   url: string;
 }>> {
-  const { subsection, topics, citations, targetCount } = input;
+  const { subsection, subsubsection, topics, citations, targetCount } = input;
 
-  console.log(`      → Curator sub-agent: selecting ${targetCount} from ${citations.length} citations...`);
+  console.log(`      → Curator sub-agent: selecting up to ${targetCount} from ${citations.length} citations...`);
 
   const prompt = `
 <subsection>
 ${subsection}
 </subsection>
+
+<pattern>
+${subsubsection}
+</pattern>
 
 <topics_discussed>
 ${topics.join('\n')}
@@ -58,7 +63,7 @@ ${topics.join('\n')}
 ${JSON.stringify(citations, null, 2)}
 </available_citations>
 
-Select the ${targetCount} most relevant citations for this subsection based on the topics discussed.
+Select up to ${targetCount} most relevant citations for this pattern based on the topics discussed.
 `.trim();
 
   const result = await generateObject({

@@ -9,24 +9,24 @@ const TOOL_NAME = "gatherCitationsTool" as const;
 
 export const gatherCitationsTool = tool({
   description:
-    "Gather and format academic citations to support report content. Searches research papers, curates most relevant sources, and stores formatted Scientific References section. Returns acknowledgment when complete - citations are appended automatically to final report.",
+    "Gather and format academic citations to support report content. Call ONCE with ALL citation needs organized by subsection and pattern. Generates optimized queries, searches research papers, curates most relevant sources, and stores formatted Scientific References section. Returns acknowledgment when complete - citations are appended automatically to final report.",
   inputSchema: gatherCitationsInputSchema,
   execute: async (input: GatherCitationsInput) => {
     const logger = getLogger();
 
-    const totalTopics = input.citationRequests.reduce(
-      (acc, req) => acc + req.topics.length,
+    const totalPatterns = input.citationRequests.reduce(
+      (acc, req) => acc + req.subsubsections.length,
       0
     );
 
     logger?.logToolCallStart(TOOL_NAME, {
       subsectionsCount: input.citationRequests.length,
-      totalTopics,
+      totalPatterns,
     });
 
     logger?.emitToolStatus({
       toolName: "gatherCitationsTool",
-      action: `Gathering citations for ${totalTopics} topics...`,
+      action: `Generating optimized queries for ${totalPatterns} patterns...`,
     });
 
     console.log(`\n### [${TOOL_NAME}] Starting citation gathering ###`);

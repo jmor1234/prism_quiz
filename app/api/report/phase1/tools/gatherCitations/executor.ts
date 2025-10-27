@@ -6,11 +6,12 @@ import type { ExaSearchConfig, ExaSearchHit } from "@/app/api/chat/tools/researc
 import type { GatherCitationsInput, GatherCitationsOutput } from "./schema";
 import {
   DEFAULT_START_DATE,
-  RESULTS_PER_TOPIC,
+  RESULTS_PER_QUERY,
   CONCURRENT_SEARCH_LIMIT,
-  CITATIONS_PER_SUBSECTION,
+  MAX_CITATIONS_PER_SUBSUBSECTION,
 } from "./constants";
 import { curateCitations } from "./curator";
+import { generateCitationQueries } from "./queryGeneration/agent";
 
 const TOOL_NAME = "gatherCitationsTool";
 
@@ -43,12 +44,14 @@ function canonicalizeUrlForDedup(rawUrl: string): string {
 
 interface SearchTask {
   subsection: string;
+  subsubsection: string;
   topic: string;
   searchConfig: ExaSearchConfig;
 }
 
 interface SearchResult {
   subsection: string;
+  subsubsection: string;
   topic: string;
   citations: ExaSearchHit[];
 }
@@ -59,26 +62,83 @@ export async function executeGatherCitations(
   const logger = getLogger();
   const startTime = Date.now();
 
-  const totalTopics = input.citationRequests.reduce((acc, req) => acc + req.topics.length, 0);
+  const totalPatterns = input.citationRequests.reduce(
+    (acc, req) => acc + req.subsubsections.length,
+    0
+  );
 
   logger?.logToolInternalStep(TOOL_NAME, "START_CITATION_GATHERING", {
     subsectionsCount: input.citationRequests.length,
-    totalTopics,
+    totalPatterns,
   });
 
-  console.log(`\n[${TOOL_NAME}] Starting: ${totalTopics} topics across ${input.citationRequests.length} subsections`);
+  console.log(`\n[${TOOL_NAME}] Starting: ${totalPatterns} patterns across ${input.citationRequests.length} subsections`);
 
-  // 1. Flatten all topics into search tasks
-  const searchTasks: SearchTask[] = [];
+  // 1. Generate optimized queries for each pattern (parallel execution)
+  console.log(`\n[${TOOL_NAME}] ═══ Step 1: Query Generation ═══`);
+  console.log(`  Generating optimized queries for ${totalPatterns} patterns (parallel)...`);
+
+  const queryGenerationTasks: Array<{
+    subsection: string;
+    subsubsection: string;
+    promise: Promise<{ queryStrategy: string; queries: string[] }>;
+  }> = [];
+
   for (const request of input.citationRequests) {
-    for (const topic of request.topics) {
-      searchTasks.push({
+    for (const subsubsection of request.subsubsections) {
+      queryGenerationTasks.push({
         subsection: request.subsection,
-        topic,
+        subsubsection: subsubsection.name,
+        promise: generateCitationQueries({
+          subsection: request.subsection,
+          pattern: subsubsection.name,
+          summary: subsubsection.summary,
+          entities: subsubsection.entities,
+        }),
+      });
+    }
+  }
+
+  const generatedQueries = await Promise.all(
+    queryGenerationTasks.map(async (task) => {
+      const result = await task.promise;
+      return {
+        subsection: task.subsection,
+        subsubsection: task.subsubsection,
+        queryStrategy: result.queryStrategy,
+        queries: result.queries,
+      };
+    })
+  );
+
+  const totalQueries = generatedQueries.reduce(
+    (acc, gen) => acc + gen.queries.length,
+    0
+  );
+
+  console.log(`\n  ✓ Query generation complete: ${totalQueries} queries across ${totalPatterns} patterns`);
+  console.log(`  Query distribution:`);
+  for (const gen of generatedQueries) {
+    console.log(`    - ${gen.subsubsection}: ${gen.queries.length} queries`);
+  }
+
+  logger?.logToolInternalStep(TOOL_NAME, "QUERY_GENERATION_COMPLETE", {
+    totalPatterns,
+    totalQueries,
+  });
+
+  // 2. Flatten generated queries into search tasks
+  const searchTasks: SearchTask[] = [];
+  for (const generated of generatedQueries) {
+    for (const query of generated.queries) {
+      searchTasks.push({
+        subsection: generated.subsection,
+        subsubsection: generated.subsubsection,
+        topic: query, // For logging compatibility
         searchConfig: {
-          query: topic,
+          query: query,
           type: "neural",
-          numResults: RESULTS_PER_TOPIC,
+          numResults: RESULTS_PER_QUERY,
           category: "research paper",
           startPublishedDate: DEFAULT_START_DATE,
           // Note: No domain filtering - trust Exa's "research paper" classification
@@ -88,9 +148,10 @@ export async function executeGatherCitations(
     }
   }
 
-  console.log(`\n[${TOOL_NAME}] Gathering citations for ${searchTasks.length} topics across ${input.citationRequests.length} subsections`);
+  console.log(`\n[${TOOL_NAME}] ═══ Step 2: Exa Search ═══`);
+  console.log(`  Executing ${searchTasks.length} neural searches (${RESULTS_PER_QUERY} results per query)...`);
 
-  // 2. Execute searches in parallel batches
+  // 3. Execute searches in parallel batches
   const searchResults: SearchResult[] = [];
 
   for (let i = 0; i < searchTasks.length; i += CONCURRENT_SEARCH_LIMIT) {
@@ -106,12 +167,14 @@ export async function executeGatherCitations(
 
         logger?.logToolInternalStep(TOOL_NAME, "TOPIC_SEARCH_SUCCESS", {
           subsection: task.subsection,
+          subsubsection: task.subsubsection,
           topic: task.topic,
           resultsCount: results.length,
         });
 
         return {
           subsection: task.subsection,
+          subsubsection: task.subsubsection,
           topic: task.topic,
           citations: results,
         } as SearchResult;
@@ -120,6 +183,7 @@ export async function executeGatherCitations(
 
         logger?.logToolInternalStep(TOOL_NAME, "TOPIC_SEARCH_ERROR", {
           subsection: task.subsection,
+          subsubsection: task.subsubsection,
           topic: task.topic,
           error: { message: e.message, name: e.name },
         });
@@ -128,6 +192,7 @@ export async function executeGatherCitations(
 
         return {
           subsection: task.subsection,
+          subsubsection: task.subsubsection,
           topic: task.topic,
           citations: [],
         } as SearchResult;
@@ -138,47 +203,54 @@ export async function executeGatherCitations(
     searchResults.push(...batchResults);
   }
 
-  // 3. Group results by subsection
-  const citationsBySubsection: Record<string, ExaSearchHit[]> = {};
+  // 4. Group results by subsection and subsubsection (nested structure)
+  const citationsBySubsection: Record<string, Record<string, ExaSearchHit[]>> = {};
 
   for (const result of searchResults) {
     if (!citationsBySubsection[result.subsection]) {
-      citationsBySubsection[result.subsection] = [];
+      citationsBySubsection[result.subsection] = {};
     }
-    citationsBySubsection[result.subsection].push(...result.citations);
+    if (!citationsBySubsection[result.subsection][result.subsubsection]) {
+      citationsBySubsection[result.subsection][result.subsubsection] = [];
+    }
+    citationsBySubsection[result.subsection][result.subsubsection].push(...result.citations);
   }
 
-  // 4. Deduplicate within each subsection
-  const deduplicatedBySubsection: Record<string, Array<{
+  // 5. Deduplicate within each subsubsection
+  const deduplicatedBySubsection: Record<string, Record<string, Array<{
     title: string;
     author?: string;
     publishedDate?: string;
     url: string;
-  }>> = {};
+  }>>> = {};
 
   let totalBeforeDedup = 0;
   let totalAfterDedup = 0;
 
-  for (const [subsection, citations] of Object.entries(citationsBySubsection)) {
-    const seenUrls = new Map<string, ExaSearchHit>();
+  for (const [subsection, subsubsections] of Object.entries(citationsBySubsection)) {
+    deduplicatedBySubsection[subsection] = {};
 
-    for (const citation of citations) {
-      totalBeforeDedup++;
-      const canonicalUrl = canonicalizeUrlForDedup(citation.url);
+    for (const [subsubsection, citations] of Object.entries(subsubsections)) {
+      const seenUrls = new Map<string, ExaSearchHit>();
 
-      if (!seenUrls.has(canonicalUrl)) {
-        seenUrls.set(canonicalUrl, citation);
+      for (const citation of citations) {
+        totalBeforeDedup++;
+        const canonicalUrl = canonicalizeUrlForDedup(citation.url);
+
+        if (!seenUrls.has(canonicalUrl)) {
+          seenUrls.set(canonicalUrl, citation);
+        }
       }
+
+      deduplicatedBySubsection[subsection][subsubsection] = Array.from(seenUrls.values()).map((c) => ({
+        title: c.title || "Untitled",
+        author: c.author || undefined,
+        publishedDate: c.publishedDate || undefined,
+        url: c.url,
+      }));
+
+      totalAfterDedup += deduplicatedBySubsection[subsection][subsubsection].length;
     }
-
-    deduplicatedBySubsection[subsection] = Array.from(seenUrls.values()).map((c) => ({
-      title: c.title || "Untitled",
-      author: c.author || undefined,
-      publishedDate: c.publishedDate || undefined,
-      url: c.url,
-    }));
-
-    totalAfterDedup += deduplicatedBySubsection[subsection].length;
   }
 
   logger?.logToolInternalStep(TOOL_NAME, "DEDUPLICATION_COMPLETE", {
@@ -186,55 +258,67 @@ export async function executeGatherCitations(
     uniqueCitations: totalAfterDedup,
   });
 
-  console.log(`  Deduplication: ${totalAfterDedup} unique citations from ${totalBeforeDedup} total`);
+  console.log(`\n[${TOOL_NAME}] ═══ Step 5: Deduplication ═══`);
+  console.log(`  ${totalAfterDedup} unique citations (from ${totalBeforeDedup} total)`);
 
-  // 5. Curate citations per subsection (select most relevant)
-  console.log(`  Curating to ${CITATIONS_PER_SUBSECTION} citations per subsection...`);
+  // 6. Curate citations per subsubsection (select up to max most relevant)
+  console.log(`\n[${TOOL_NAME}] ═══ Step 6: Curation ═══`);
+  console.log(`  Curating to up to ${MAX_CITATIONS_PER_SUBSUBSECTION} citations per pattern...`);
 
-  const curatedBySubsection: Record<string, Array<{
+  const curatedBySubsection: Record<string, Record<string, Array<{
     title: string;
     author?: string;
     publishedDate?: string;
     url: string;
-  }>> = {};
+  }>>> = {};
 
-  // Build topic map from original input
-  const topicsBySubsection = new Map<string, string[]>();
-  for (const request of input.citationRequests) {
-    topicsBySubsection.set(request.subsection, request.topics);
+  // Helper to extract entities for specific subsubsection
+  function getEntitiesForSubsubsection(
+    subsection: string,
+    subsubsection: string
+  ): string[] {
+    const request = input.citationRequests.find(r => r.subsection === subsection);
+    const subsub = request?.subsubsections.find(s => s.name === subsubsection);
+    return subsub?.entities || [];
   }
 
   let totalCurated = 0;
 
-  for (const [subsection, citations] of Object.entries(deduplicatedBySubsection)) {
-    const topics = topicsBySubsection.get(subsection) || [];
+  for (const [subsection, subsubsections] of Object.entries(deduplicatedBySubsection)) {
+    curatedBySubsection[subsection] = {};
 
-    if (citations.length <= CITATIONS_PER_SUBSECTION) {
-      // Already at or below target, keep all
-      curatedBySubsection[subsection] = citations;
-      totalCurated += citations.length;
-      console.log(`    ${subsection}: ${citations.length} citations (no curation needed)`);
-    } else {
-      // Curate to target count
-      console.log(`    ${subsection}: curating ${citations.length} → ${CITATIONS_PER_SUBSECTION}...`);
+    for (const [subsubsection, citations] of Object.entries(subsubsections)) {
+      const entities = getEntitiesForSubsubsection(subsection, subsubsection);
 
-      const curated = await curateCitations({
-        subsection,
-        topics,
-        citations,
-        targetCount: CITATIONS_PER_SUBSECTION,
-      });
+      if (citations.length <= MAX_CITATIONS_PER_SUBSUBSECTION) {
+        // Already at or below max, keep all
+        curatedBySubsection[subsection][subsubsection] = citations;
+        totalCurated += citations.length;
+        console.log(`    ${subsection} > ${subsubsection}: ${citations.length} citations (no curation needed)`);
+      } else {
+        // Curate to up to max count
+        console.log(`    ${subsection} > ${subsubsection}: curating ${citations.length} → up to ${MAX_CITATIONS_PER_SUBSUBSECTION}...`);
 
-      curatedBySubsection[subsection] = curated;
-      totalCurated += curated.length;
+        const curated = await curateCitations({
+          subsection,
+          subsubsection,
+          topics: entities, // Pass entities as topics for curator context
+          citations,
+          targetCount: MAX_CITATIONS_PER_SUBSUBSECTION,
+        });
 
-      console.log(`    ${subsection}: ✓ curated to ${curated.length} citations`);
+        curatedBySubsection[subsection][subsubsection] = curated;
+        totalCurated += curated.length;
 
-      logger?.logToolInternalStep(TOOL_NAME, "SUBSECTION_CURATED", {
-        subsection,
-        before: citations.length,
-        after: curated.length,
-      });
+        console.log(`    ${subsection} > ${subsubsection}: ✓ curated to ${curated.length} citations`);
+
+        logger?.logToolInternalStep(TOOL_NAME, "SUBSUBSECTION_CURATED", {
+          subsection,
+          subsubsection,
+          before: citations.length,
+          after: curated.length,
+        });
+      }
     }
   }
 
@@ -249,9 +333,9 @@ export async function executeGatherCitations(
     executionTimeMs: executionTime,
   });
 
-  console.log(`✓ [${TOOL_NAME}] Complete: ${totalCurated} curated citations (from ${totalAfterDedup} unique) in ${(executionTime / 1000).toFixed(1)}s\n`);
+  console.log(`\n[${TOOL_NAME}] ═══ Step 7: Formatting ═══`);
 
-  // 6. Format citations into markdown (deterministic)
+  // 7. Format citations into markdown (deterministic)
   const formattedReferences = formatReferencesSection(curatedBySubsection);
 
   console.log(`  Formatted ${totalCurated} citations into markdown (${formattedReferences.length} chars)`);
@@ -260,7 +344,9 @@ export async function executeGatherCitations(
     markdownLength: formattedReferences.length,
   });
 
-  // 7. Write to buffer (hidden from agent context)
+  // 8. Write to buffer (hidden from agent context)
+  console.log(`\n[${TOOL_NAME}] ═══ Step 8: Buffer Storage ═══`);
+
   const store = asyncLocalStorage.getStore();
   if (store?.citationsBuffer) {
     store.citationsBuffer.formattedReferences = formattedReferences;
@@ -273,6 +359,7 @@ export async function executeGatherCitations(
   }
 
   // Return minimal acknowledgment to agent
+  console.log(`\n✓ [${TOOL_NAME}] COMPLETE: ${totalCurated} curated citations in ${(executionTime / 1000).toFixed(1)}s`);
   console.log(`  Returning acknowledgment to primary agent (citationCount: ${totalCurated})\n`);
 
   return {
@@ -286,40 +373,44 @@ export async function executeGatherCitations(
  * Pure deterministic transformation - no LLM needed
  */
 function formatReferencesSection(
-  citationsBySubsection: Record<string, Array<{
+  citationsBySubsection: Record<string, Record<string, Array<{
     title: string;
     author?: string;
     publishedDate?: string;
     url: string;
-  }>>
+  }>>>
 ): string {
   let markdown = "## Scientific References\n\n";
 
-  for (const [subsection, citations] of Object.entries(citationsBySubsection)) {
+  for (const [subsection, subsubsections] of Object.entries(citationsBySubsection)) {
     markdown += `### ${subsection}\n\n`;
 
-    for (const citation of citations) {
-      // Format based on available metadata
-      let formatted: string;
+    for (const [subsubsection, citations] of Object.entries(subsubsections)) {
+      markdown += `#### ${subsubsection}\n\n`;
 
-      if (citation.author && citation.publishedDate) {
-        // Full format: [Author (Year). Title.](url)
-        formatted = `[${citation.author} (${citation.publishedDate}). ${citation.title}.](${citation.url})`;
-      } else if (citation.author) {
-        // Author only: [Author. Title.](url)
-        formatted = `[${citation.author}. ${citation.title}.](${citation.url})`;
-      } else if (citation.publishedDate) {
-        // Date only: [(Year). Title.](url)
-        formatted = `[(${citation.publishedDate}). ${citation.title}.](${citation.url})`;
-      } else {
-        // Minimal: [Title.](url)
-        formatted = `[${citation.title}.](${citation.url})`;
+      for (const citation of citations) {
+        // Format based on available metadata
+        let formatted: string;
+
+        if (citation.author && citation.publishedDate) {
+          // Full format: [Author (Year). Title.](url)
+          formatted = `[${citation.author} (${citation.publishedDate}). ${citation.title}.](${citation.url})`;
+        } else if (citation.author) {
+          // Author only: [Author. Title.](url)
+          formatted = `[${citation.author}. ${citation.title}.](${citation.url})`;
+        } else if (citation.publishedDate) {
+          // Date only: [(Year). Title.](url)
+          formatted = `[(${citation.publishedDate}). ${citation.title}.](${citation.url})`;
+        } else {
+          // Minimal: [Title.](url)
+          formatted = `[${citation.title}.](${citation.url})`;
+        }
+
+        markdown += `- ${formatted}\n`;
       }
 
-      markdown += `- ${formatted}\n`;
+      markdown += "\n";
     }
-
-    markdown += "\n";
   }
 
   return markdown.trim();

@@ -155,9 +155,11 @@ Generate a comprehensive report that executes expert directives with intelligent
 
 3. **Organize Citation Needs:**
    - Review mechanisms and concepts discussed across all report sections
-   - Group specific research topics by References subsection (Assessment Findings, Diagnostic Recommendations, Diet & Lifestyle Recommendations, Supplement Recommendations)
-   - Call gatherCitationsTool once with all organized citation requests
-   - **WAIT for the tool to acknowledge completion before proceeding**
+   - For each semantic pattern across ALL subsections, provide:
+     - Pattern summary (describing findings/mechanisms discussed)
+     - Key entities (technical terms like TSH, cortisol, glucose, endotoxin)
+   - Call gatherCitationsTool ONCE with ALL patterns organized by subsection (this tool processes all citation needs in a single comprehensive call - do NOT call it multiple times)
+   - **WAIT for acknowledgment before proceeding**
 
 **Note:** Recommendations come from directives, not your analysis. Your job is enrichment and personalization. Continue using thinkTool for tracking enrichment progress and organizing citation needs.
 
