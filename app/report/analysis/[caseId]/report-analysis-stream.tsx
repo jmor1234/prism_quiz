@@ -6,7 +6,7 @@ import { useEffect, useState, useCallback } from "react";
 import { Response } from "@/components/ai-elements/response";
 import { Loader } from "@/components/ai-elements/loader";
 import { Button } from "@/components/ui/button";
-import { AlertCircle, CheckCircle2 } from "lucide-react";
+import { AlertCircle, CheckCircle2, FileDown } from "lucide-react";
 
 interface ReportAnalysisStreamProps {
   caseId: string;
@@ -18,6 +18,7 @@ export function ReportAnalysisStream({ caseId }: ReportAnalysisStreamProps) {
   >("idle");
   const [reportText, setReportText] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
 
   const startGeneration = useCallback(async () => {
     setStatus("generating");
@@ -57,6 +58,45 @@ export function ReportAnalysisStream({ caseId }: ReportAnalysisStreamProps) {
       setStatus("error");
       setError(err instanceof Error ? err.message : "Unknown error during generation");
       console.error("[Report] Generation error:", err);
+    }
+  }, [caseId]);
+
+  const downloadPdf = useCallback(async () => {
+    setIsDownloadingPdf(true);
+
+    try {
+      console.log(`[PDF Download] Requesting PDF for case: ${caseId}`);
+
+      const response = await fetch("/api/report/phase1/pdf", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ caseId }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: response.statusText }));
+        throw new Error(errorData.error || `PDF generation failed: ${response.statusText}`);
+      }
+
+      // Convert response to blob and trigger download
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `prism-report-${caseId}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+
+      console.log(`[PDF Download] Download triggered successfully`);
+    } catch (err) {
+      console.error("[PDF Download] Error:", err);
+      alert(
+        `Failed to download PDF: ${err instanceof Error ? err.message : "Unknown error"}`
+      );
+    } finally {
+      setIsDownloadingPdf(false);
     }
   }, [caseId]);
 
@@ -150,11 +190,32 @@ export function ReportAnalysisStream({ caseId }: ReportAnalysisStreamProps) {
       {status === "complete" && reportText && (
         <>
           <div className="rounded-lg border border-green-500/50 bg-green-500/10 p-4">
-            <div className="flex items-center gap-2">
-              <CheckCircle2 className="h-4 w-4 text-green-600" />
-              <p className="text-sm font-medium text-green-600">
-                Report generated successfully
-              </p>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className="h-4 w-4 text-green-600" />
+                <p className="text-sm font-medium text-green-600">
+                  Report generated successfully
+                </p>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={downloadPdf}
+                disabled={isDownloadingPdf}
+                className="gap-2"
+              >
+                {isDownloadingPdf ? (
+                  <>
+                    <Loader className="h-4 w-4" />
+                    Generating PDF...
+                  </>
+                ) : (
+                  <>
+                    <FileDown className="h-4 w-4" />
+                    Download PDF
+                  </>
+                )}
+              </Button>
             </div>
           </div>
 

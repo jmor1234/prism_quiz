@@ -6,6 +6,12 @@ app/api/report/
     ├── route.ts              # Submit endpoint: ingests submission (text + base64 PDFs), returns caseId
     ├── result/
     │   └── route.ts          # Result retrieval endpoint: returns cached analysis by caseId
+    ├── pdf/
+    │   ├── route.ts          # PDF export endpoint: converts markdown to PDF and returns download
+    │   └── lib/
+    │       ├── markdownToHtml.ts  # Converts markdown to HTML using unified pipeline
+    │       ├── generatePdf.ts     # Generates PDF from HTML using Puppeteer
+    │       └── pdfStyles.ts       # Print-optimized CSS for professional PDF output
     ├── analyze/
     │   ├── route.ts          # Three-phase generation endpoint using generateText (passes submission + citationsBuffer via asyncLocalStorage)
     │   ├── systemPrompt.ts   # Builds 3-phase system prompt with context + interpretation guides
@@ -64,6 +70,32 @@ app/api/report/
   - Retrieves existing analysis result via `getPhase1Result(caseId)`.
   - Returns `{ report, createdAt }` if found (200), or 404 if not found.
   - Used by frontend to check for cached results before initiating new analysis.
+
+### PDF Export
+- `phase1/pdf/route.ts`
+  - POST endpoint accepting `{ caseId }` in request body.
+  - Loads report markdown from storage via `getPhase1Result(caseId)`.
+  - Converts markdown → HTML using `markdownToHtml()` (unified pipeline with same plugins as frontend).
+  - Generates PDF using `generatePdf()` (Puppeteer with print-optimized CSS).
+  - Returns PDF blob with download headers (`application/pdf`, `Content-Disposition: attachment`).
+  - Max duration: 60 seconds (~2-3s typical).
+
+- `phase1/pdf/lib/markdownToHtml.ts`
+  - Uses unified pipeline: remark-parse → remark-gfm → remark-rehype → rehype-stringify.
+  - Same plugins as frontend Streamdown component ensures consistent rendering.
+  - Returns HTML string ready for PDF generation.
+
+- `phase1/pdf/lib/generatePdf.ts`
+  - Launches headless Puppeteer browser.
+  - Embeds HTML content with PDF-optimized styles.
+  - Generates PDF with professional settings (Letter format, proper margins).
+  - Returns PDF as Uint8Array buffer.
+
+- `phase1/pdf/lib/pdfStyles.ts`
+  - Print-optimized CSS adapted from `globals.css` Streamdown styles.
+  - Professional typography: serif fonts, proper spacing, justified text.
+  - Smart page breaks: sections (H2) start new pages, tables/items never split.
+  - Static colors (no CSS variables for PDF compatibility).
 
 ### Analysis Flow (Directive-Driven Three-Phase Pipeline)
 - `phase1/analyze/route.ts`

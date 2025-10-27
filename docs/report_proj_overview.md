@@ -47,6 +47,7 @@
 - Simple loading state during generation (typically 2-3 minutes).
 - No real-time progress updates - generation happens on backend, frontend waits for completion.
 - After completion: Fetches complete report from result endpoint and displays markdown.
+- **PDF Download:** Provides "Download PDF" button that triggers server-side PDF generation and browser download.
 
 ### Backend
 
@@ -60,6 +61,14 @@
 - GET endpoint that retrieves existing analysis results by `caseId`.
 - Returns `{ report, createdAt }` if found, 404 if not found.
 - Used by frontend to check for cached results before re-running analysis.
+
+**`app/api/report/phase1/pdf/route.ts`** (PDF export endpoint)
+- POST endpoint that generates professional PDF from stored markdown report.
+- Accepts `{ caseId }` and loads report from storage.
+- Converts markdown → HTML using unified pipeline (same plugins as frontend for consistency).
+- Generates PDF via Puppeteer with print-optimized CSS (smart page breaks, professional typography).
+- Returns PDF blob with download headers (`application/pdf`).
+- Max duration: 60 seconds (~2-3s typical).
 
 **`app/api/report/phase1/analyze/route.ts`** (Directive-driven three-phase generation endpoint)
 - Accepts `{ caseId }` and loads submission from storage.
@@ -148,6 +157,11 @@
 - **Context preservation:** Agent provides summaries, receives acknowledgment only
 - **Output:** Hierarchical References with subsections (###) and patterns (####)
 
+**`app/api/report/phase1/pdf/lib/`** (PDF generation libraries)
+- `markdownToHtml.ts` - Converts markdown to HTML using unified pipeline (remark-parse → remark-gfm → remark-rehype → rehype-stringify)
+- `generatePdf.ts` - Generates PDF from HTML using Puppeteer (launches browser, renders, returns PDF buffer)
+- `pdfStyles.ts` - Print-optimized CSS adapted from globals.css (professional typography, smart page breaks, table formatting)
+
 **`app/api/report/phase1/data/`**
 - `questionaire.md` - Maps questionnaire responses to bioenergetic implications (PRIMARY authority for Phase 1)
 - `takehome.md` - Interprets take-home test results (PRIMARY authority for Phase 1)
@@ -190,6 +204,7 @@
 9. Final comprehensive report saved to storage with complete markdown (body + citations).
 10. Frontend receives completion, fetches complete report, displays with Existing Lab Results table (if PDFs) + Scientific References section.
 11. On page refresh: Cached result loads instantly from storage (no re-analysis).
+12. **PDF Export (optional):** User clicks "Download PDF" button → Frontend POSTs to `/api/report/phase1/pdf` → Backend converts markdown to HTML (unified) → generates PDF (Puppeteer) → returns PDF blob → browser downloads file.
 
 Files written:
 - `storage/phase1-submissions/<caseId>.json` (submission data)
@@ -238,6 +253,14 @@ Files written:
    - Non-prescriptive approach enabling agent autonomy within bounded context
    - **Status:** Applied consistently across all tools and sub-agents
 
+6. **PDF Export**
+   - Server-side markdown → HTML → PDF pipeline using unified + Puppeteer
+   - Print-optimized CSS with smart page breaks (sections start new page, tables never split)
+   - Professional typography (serif fonts, proper spacing, margins)
+   - Consistent rendering with frontend (same markdown plugins)
+   - **Performance:** ~2-3s per PDF generation
+   - **Status:** Fully implemented with download button in analysis view
+
 ## 6. Key Files & Entry Points
 
 ### Frontend
@@ -247,6 +270,8 @@ Files written:
 ### Backend
 - Submit API: `app/api/report/phase1/route.ts`
 - Result retrieval API: `app/api/report/phase1/result/route.ts`
+- PDF export API: `app/api/report/phase1/pdf/route.ts`
+- PDF generation libs: `app/api/report/phase1/pdf/lib/` (markdownToHtml, generatePdf, pdfStyles)
 - Analyze API (3-phase): `app/api/report/phase1/analyze/route.ts`
 - System prompt (3-phase): `app/api/report/phase1/analyze/systemPrompt.ts`
 - Recommendation tools: `app/api/report/phase1/tools/` (3 Gemini Flash sub-agent tools)
@@ -285,6 +310,7 @@ Files written:
 - **Authority hierarchy**: Dalton's notes (PRIMARY directives) > Advisor notes (SECONDARY) > Guides (mapping) > Agent reasoning (gaps only)
 - **Prompt philosophy**: Intent over prescription, schema handles contract, enabling agent autonomy within bounded context
 - **Model selection**: Primary agent (Sonnet 4.5), Sub-agents (Gemini 2.5 Flash for speed + cost optimization)
+- **PDF export**: Server-side generation from markdown using unified (HTML) + Puppeteer (PDF) with print-optimized CSS; reuses frontend markdown parsing for consistency
 
 ## 8. Architecture Principles
 

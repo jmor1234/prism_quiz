@@ -39,7 +39,8 @@ app/report/
   - Renders:
     - Loading state with generation status message
     - Final report in markdown (`Response` component) with **Existing Lab Results table** (if PDFs) in Assessment Findings + **Scientific References section** at bottom (curated citations organized by subsection)
-    - Success confirmation when complete
+    - Success confirmation when complete with **"Download PDF" button**
+  - **PDF Download:** Button triggers POST to `/api/report/phase1/pdf` → receives PDF blob → triggers browser download.
   - Error handling with retry functionality.
 
 ## Related Docs
