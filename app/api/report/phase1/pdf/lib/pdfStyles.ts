@@ -20,8 +20,15 @@ export const PDF_STYLES = `
   }
 
   /* Page setup */
+  /* Default page (content sections) - with margins */
   @page {
     margin: 0.75in;
+    size: letter;
+  }
+
+  /* Cover and divider pages - no margins for full bleed */
+  @page cover-divider {
+    margin: 0;
     size: letter;
   }
 
@@ -36,12 +43,13 @@ export const PDF_STYLES = `
 
   /* Divider pages - Full gradient background, centered content */
   .divider-page {
-    height: 9.5in;
+    page: cover-divider;
+    height: 11in;
     background: linear-gradient(to bottom, #FFF5EE 0%, #F37521 50%, #EF0D23 100%);
     page-break-before: always;
     page-break-after: always;
     text-align: center;
-    padding-top: 3.5in;
+    padding-top: 2.5in;
     padding-bottom: 1in;
     padding-left: 1in;
     padding-right: 1in;
@@ -68,15 +76,17 @@ export const PDF_STYLES = `
     font-size: 18pt;
     color: #000000;
     margin: 0;
+    text-align: center;
   }
 
   /* Cover page - Full gradient background */
   .cover-page {
-    height: 9.5in;
+    page: cover-divider;
+    height: 11in;
     background: linear-gradient(to bottom, #FFF5EE 0%, #F37521 50%, #EF0D23 100%);
     page-break-after: always;
     text-align: center;
-    padding-top: 1.5in;
+    padding-top: 2in;
     padding-bottom: 1in;
     padding-left: 1in;
     padding-right: 1in;
@@ -151,6 +161,7 @@ export const PDF_STYLES = `
     font-size: 28pt;
     font-weight: 700;
     color: #FF0C01;
+    text-align: center;
     page-break-after: avoid;
   }
 
@@ -161,6 +172,7 @@ export const PDF_STYLES = `
     font-size: 20pt;
     font-weight: 600;
     color: #FF0C01;
+    text-align: center;
     page-break-after: avoid;
   }
 
