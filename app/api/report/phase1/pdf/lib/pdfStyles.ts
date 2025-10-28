@@ -4,6 +4,7 @@
  * PDF-optimized styles adapted from globals.css Streamdown typography
  *
  * Key principles:
+ * - Prism brand colors: red headings (#FF0C01), orange accents (#F37521)
  * - Static colors (no CSS variables - limited PDF support)
  * - Professional serif typography for readability
  * - Smart page breaks (sections start new page, keep items together)
@@ -33,60 +34,168 @@ export const PDF_STYLES = `
     background: white;
   }
 
-  /* Title (H1) - Report title */
+  /* Divider pages - Full gradient background, centered content */
+  .divider-page {
+    height: 9.5in;
+    background: linear-gradient(to bottom, #FFF5EE 0%, #F37521 50%, #EF0D23 100%);
+    page-break-before: always;
+    page-break-after: always;
+    text-align: center;
+    padding-top: 3.5in;
+    padding-bottom: 1in;
+    padding-left: 1in;
+    padding-right: 1in;
+  }
+
+  .divider-page img {
+    width: 150px;
+    height: auto;
+    margin-bottom: 1.5rem;
+    display: block;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .divider-page h1 {
+    font-size: 48pt;
+    font-style: italic;
+    color: #000000;
+    margin-bottom: 1rem;
+    font-weight: 400;
+  }
+
+  .divider-page p {
+    font-size: 18pt;
+    color: #000000;
+    margin: 0;
+  }
+
+  /* Cover page - Full gradient background */
+  .cover-page {
+    height: 9.5in;
+    background: linear-gradient(to bottom, #FFF5EE 0%, #F37521 50%, #EF0D23 100%);
+    page-break-after: always;
+    text-align: center;
+    padding-top: 1.5in;
+    padding-bottom: 1in;
+    padding-left: 1in;
+    padding-right: 1in;
+    position: relative;
+  }
+
+  .cover-page img {
+    width: 180px;
+    height: auto;
+    margin-bottom: 1rem;
+    display: block;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .cover-page h1 {
+    font-size: 28pt;
+    font-weight: 600;
+    color: #000000;
+    margin-top: 0;
+    margin-bottom: 0.75rem;
+    letter-spacing: 0.1em;
+  }
+
+  .cover-page h2 {
+    font-size: 32pt;
+    font-weight: 700;
+    color: #000000;
+    margin-top: 0;
+    margin-bottom: 0;
+    page-break-before: avoid;
+    page-break-after: avoid;
+  }
+
+  .cover-page .tagline {
+    font-size: 14pt;
+    font-style: italic;
+    color: #000000;
+    border-top: 2px solid #000000;
+    border-bottom: 2px solid #000000;
+    padding: 0.4rem 1.5rem;
+    margin-top: 1.5rem;
+    margin-left: auto;
+    margin-right: auto;
+    display: inline-block;
+    max-width: 80%;
+  }
+
+  .cover-page .disclaimer {
+    font-size: 9pt;
+    font-style: italic;
+    color: #000000;
+    position: absolute;
+    bottom: 1in;
+    left: 1in;
+    right: 1in;
+    text-align: center;
+    margin: 0;
+  }
+
+  /* Content sections - White background with orange top border */
+  .content-section {
+    border-top: 3px solid #F37521;
+    padding-top: 1rem;
+    background: white;
+  }
+
+  /* Title (H1) - Report title - RED */
   h1 {
     margin-top: 0;
     margin-bottom: 0.25rem;
     font-size: 28pt;
     font-weight: 700;
-    color: #1a1a1a;
+    color: #FF0C01;
     page-break-after: avoid;
   }
 
-  /* Major sections (H2) - Start new page */
+  /* Major sections (H2) - RED, no forced page breaks */
   h2 {
     margin-top: 2rem;
     margin-bottom: 0.75rem;
     font-size: 20pt;
     font-weight: 600;
-    color: #1a1a1a;
-    page-break-before: always;
+    color: #FF0C01;
     page-break-after: avoid;
   }
 
-  /* First H2 (client name) should NOT start new page */
+  /* First H2 should not have excessive top margin */
   h1 + h2 {
-    page-break-before: avoid;
     margin-top: 0.5rem;
   }
 
-  /* Subsections (H3) */
+  /* Subsections (H3) - RED */
   h3 {
     margin-top: 1.5rem;
     margin-bottom: 0.5rem;
     font-size: 16pt;
     font-weight: 600;
-    color: #1a1a1a;
+    color: #FF0C01;
     page-break-after: avoid;
   }
 
-  /* Sub-subsections (H4) - Used in citations */
+  /* Sub-subsections (H4) - Used in citations - RED */
   h4 {
     margin-top: 1rem;
     margin-bottom: 0.5rem;
     font-size: 13pt;
     font-weight: 600;
-    color: #1a1a1a;
+    color: #FF0C01;
     page-break-after: avoid;
   }
 
-  /* H5, H6 for completeness */
+  /* H5, H6 for completeness - RED */
   h5 {
     margin-top: 0.75rem;
     margin-bottom: 0.5rem;
     font-size: 12pt;
     font-weight: 600;
-    color: #1a1a1a;
+    color: #FF0C01;
     page-break-after: avoid;
   }
 
@@ -95,7 +204,7 @@ export const PDF_STYLES = `
     margin-bottom: 0.5rem;
     font-size: 11pt;
     font-weight: 600;
-    color: #1a1a1a;
+    color: #FF0C01;
     page-break-after: avoid;
   }
 
@@ -206,12 +315,12 @@ export const PDF_STYLES = `
     line-height: 1.5;
   }
 
-  /* Tables - Keep together on page */
+  /* Tables - Keep together on page - ORANGE BORDERS */
   table {
     width: 100%;
     margin: 1rem 0;
     border-collapse: collapse;
-    border: 1px solid #d1d5db;
+    border: 2px solid #F37521;
     page-break-inside: avoid;
   }
 
@@ -220,14 +329,14 @@ export const PDF_STYLES = `
     background-color: #f3f4f6;
   }
 
-  /* Table header cells */
+  /* Table header cells - ORANGE BORDERS */
   th {
     padding: 0.5rem 0.75rem;
     text-align: left;
     font-weight: 600;
     font-size: 10pt;
     color: #1a1a1a;
-    border: 1px solid #d1d5db;
+    border: 1px solid #F37521;
     white-space: nowrap;
   }
 
@@ -236,16 +345,16 @@ export const PDF_STYLES = `
     background-color: #fafafa;
   }
 
-  /* Table rows */
+  /* Table rows - ORANGE BORDERS */
   tr {
-    border-bottom: 1px solid #d1d5db;
+    border-bottom: 1px solid #F37521;
   }
 
-  /* Table cells */
+  /* Table cells - ORANGE BORDERS */
   td {
     padding: 0.5rem 0.75rem;
     font-size: 10pt;
-    border: 1px solid #d1d5db;
+    border: 1px solid #F37521;
     vertical-align: top;
   }
 

@@ -38,10 +38,27 @@ app/report/
   - After generation completes: Fetches complete report from `/api/report/phase1/result`.
   - Renders:
     - Loading state with generation status message
-    - Final report in markdown (`Response` component) with **Existing Lab Results table** (if PDFs) in Assessment Findings + **Scientific References section** at bottom (curated citations organized by subsection)
+    - Final report in markdown (`Response` component with `variant="report"`) displaying **Prism brand styling** (red headings, orange table borders) + **Existing Lab Results table** (if PDFs) in Assessment Findings + **Scientific References section** at bottom (curated citations organized by subsection)
     - Success confirmation when complete with **"Download PDF" button**
-  - **PDF Download:** Button triggers POST to `/api/report/phase1/pdf` → receives PDF blob → triggers browser download.
+  - **PDF Download:** Button triggers POST to `/api/report/phase1/pdf` → server processes markdown → extracts client name → injects branded cover page and section dividers → applies Prism styling → generates PDF with Puppeteer → returns PDF blob → triggers browser download.
   - Error handling with retry functionality.
+
+## Styling
+
+### Frontend Display
+- **Response component** (`components/ai-elements/response.tsx`):
+  - Accepts `variant="report"` prop to apply Prism styling
+  - Applies `.report-markdown` CSS class for red headings and orange tables
+- **Global styles** (`app/globals.css`):
+  - `.report-markdown` class styles all headings with red (#FF0C01)
+  - Table borders styled with orange (#F37521)
+  - Works in both light and dark mode
+
+### PDF Generation
+- **Branded cover page**: Logo + "PRISM" + "Client Care Report for [Name]" + tagline + disclaimer
+- **Section dividers**: Full-page gradient backgrounds for "Our Analysis" and "Our Recommendations"
+- **Prism colors**: Red headings (#FF0C01), orange table borders (#F37521), orange gradients (light peach → medium orange → deep red-orange)
+- **Print-optimized**: Fixed heights (9.5in) ensure single-page rendering, no viewport-based sizing
 
 ## Related Docs
 - `docs/report_proj_overview.md` – complete project overview and implementation state.

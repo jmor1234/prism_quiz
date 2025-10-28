@@ -221,7 +221,7 @@ export function ReportAnalysisStream({ caseId }: ReportAnalysisStreamProps) {
 
           <div className="rounded-lg border bg-card p-6 shadow-sm">
             <h2 className="mb-4 text-lg font-semibold">Root Cause Analysis</h2>
-            <Response>{reportText}</Response>
+            <Response variant="report">{reportText}</Response>
           </div>
         </>
       )}

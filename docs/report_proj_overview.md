@@ -253,13 +253,21 @@ Files written:
    - Non-prescriptive approach enabling agent autonomy within bounded context
    - **Status:** Applied consistently across all tools and sub-agents
 
-6. **PDF Export**
-   - Server-side markdown → HTML → PDF pipeline using unified + Puppeteer
-   - Print-optimized CSS with smart page breaks (sections start new page, tables never split)
-   - Professional typography (serif fonts, proper spacing, margins)
-   - Consistent rendering with frontend (same markdown plugins)
+6. **PDF Export with Prism Branding**
+   - **Branded cover page:** Client name extraction + gradient background + transparent logo
+   - **Section divider pages:** "Our Analysis" and "Our Recommendations" full-page dividers with gradients
+   - **Prism color scheme:** Red headings (#FF0C01), orange table borders (#F37521), orange gradient backgrounds
+   - **Pipeline:** Markdown processing → section extraction → HTML conversion → template assembly → PDF generation
+   - **Components:**
+     - `markdownProcessor.ts` - Extracts client name and identifies section boundaries
+     - `templateBuilder.ts` - Builds HTML with cover page, dividers, and styled content sections
+     - `pdfStyles.ts` - Print-optimized CSS with Prism brand colors and fixed page dimensions
+     - `generatePdf.ts` - Puppeteer-based PDF generation
+   - **Page structure:** Cover → "Our Analysis" divider → Introduction/Assessment → "Our Recommendations" divider → Recommendations/Conclusion/References
+   - Print-optimized with fixed heights (9.5in) for single-page rendering
+   - Consistent markdown parsing with frontend (same unified plugins)
    - **Performance:** ~2-3s per PDF generation
-   - **Status:** Fully implemented with download button in analysis view
+   - **Status:** Fully implemented with branded styling and download button in analysis view
 
 ## 6. Key Files & Entry Points
 
@@ -271,7 +279,8 @@ Files written:
 - Submit API: `app/api/report/phase1/route.ts`
 - Result retrieval API: `app/api/report/phase1/result/route.ts`
 - PDF export API: `app/api/report/phase1/pdf/route.ts`
-- PDF generation libs: `app/api/report/phase1/pdf/lib/` (markdownToHtml, generatePdf, pdfStyles)
+- PDF generation libs: `app/api/report/phase1/pdf/lib/` (markdownProcessor, templateBuilder, markdownToHtml, generatePdf, pdfStyles)
+- PDF assets: `app/api/report/phase1/pdf/lib/prism_transparent.png` (logo with transparent background)
 - Analyze API (3-phase): `app/api/report/phase1/analyze/route.ts`
 - System prompt (3-phase): `app/api/report/phase1/analyze/systemPrompt.ts`
 - Recommendation tools: `app/api/report/phase1/tools/` (3 Gemini Flash sub-agent tools)
@@ -310,7 +319,8 @@ Files written:
 - **Authority hierarchy**: Dalton's notes (PRIMARY directives) > Advisor notes (SECONDARY) > Guides (mapping) > Agent reasoning (gaps only)
 - **Prompt philosophy**: Intent over prescription, schema handles contract, enabling agent autonomy within bounded context
 - **Model selection**: Primary agent (Sonnet 4.5), Sub-agents (Gemini 2.5 Flash for speed + cost optimization)
-- **PDF export**: Server-side generation from markdown using unified (HTML) + Puppeteer (PDF) with print-optimized CSS; reuses frontend markdown parsing for consistency
+- **PDF export**: Server-side generation with branded templates - markdown processing → section extraction → HTML template assembly with cover/divider pages → Puppeteer PDF generation with Prism styling (red headings, orange tables, gradient backgrounds); reuses frontend markdown parsing for consistency
+- **Frontend styling**: Report markdown displays with Prism colors via `variant="report"` prop on Response component and global CSS classes
 
 ## 8. Architecture Principles
 

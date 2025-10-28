@@ -3,17 +3,22 @@
 import { getPhase1Result } from "@/server/phase1Results";
 import { markdownToHtml } from "./lib/markdownToHtml";
 import { generatePdf } from "./lib/generatePdf";
+import { processMarkdown } from "./lib/markdownProcessor";
+import { buildReportHtml } from "./lib/templateBuilder";
 
 /**
  * PDF Export API Endpoint
  *
  * Converts a stored Phase 1 report (markdown) to a professionally formatted PDF
+ * with branded cover page, section dividers, and Prism styling
  *
  * Flow:
  * 1. Load report markdown from storage by caseId
- * 2. Convert markdown → HTML using unified pipeline (same as frontend)
- * 3. Generate PDF using Puppeteer with print-optimized CSS
- * 4. Return PDF as downloadable file
+ * 2. Process markdown to extract client name and section boundaries
+ * 3. Convert each section markdown → HTML using unified pipeline
+ * 4. Build complete HTML with cover page, dividers, and styled sections
+ * 5. Generate PDF using Puppeteer with print-optimized CSS
+ * 6. Return PDF as downloadable file
  *
  * Request: POST { caseId: string }
  * Response: application/pdf with Content-Disposition header
@@ -55,12 +60,29 @@ export async function POST(req: Request) {
 
     console.log(`[PDF Export] Report loaded (${result.report.length} chars)`);
 
-    // 3. Convert markdown to HTML
-    console.log("[PDF Export] Converting markdown to HTML...");
-    const htmlContent = await markdownToHtml(result.report);
-    console.log(`[PDF Export] HTML generated (${htmlContent.length} chars)`);
+    // 3. Process markdown to extract metadata and sections
+    console.log("[PDF Export] Processing markdown sections...");
+    const processedReport = processMarkdown(result.report);
+    console.log(`[PDF Export] Client name: ${processedReport.clientName}`);
 
-    // 4. Generate PDF
+    // 4. Convert each section markdown to HTML
+    console.log("[PDF Export] Converting markdown sections to HTML...");
+    const convertedSections = {
+      beforeIntroduction: await markdownToHtml(processedReport.sections.beforeIntroduction),
+      introduction: await markdownToHtml(processedReport.sections.introduction),
+      recommendations: await markdownToHtml(processedReport.sections.recommendations),
+      references: processedReport.sections.references 
+        ? await markdownToHtml(processedReport.sections.references)
+        : "",
+    };
+    console.log("[PDF Export] HTML sections generated");
+
+    // 5. Build complete HTML with cover page, dividers, and styled sections
+    console.log("[PDF Export] Building complete HTML with templates...");
+    const htmlContent = await buildReportHtml(processedReport, convertedSections);
+    console.log(`[PDF Export] Complete HTML generated (${htmlContent.length} chars)`);
+
+    // 6. Generate PDF
     console.log("[PDF Export] Generating PDF...");
     const pdfBuffer = await generatePdf(htmlContent);
 

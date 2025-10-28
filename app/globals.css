@@ -242,3 +242,49 @@
     -webkit-tap-highlight-color: oklch(1 0 0 / 5%);
   }
 }
+
+/* Report markdown styling - Prism brand colors */
+.report-markdown [data-streamdown="heading-1"],
+.report-markdown [data-streamdown="heading-2"],
+.report-markdown [data-streamdown="heading-3"],
+.report-markdown [data-streamdown="heading-4"],
+.report-markdown [data-streamdown="heading-5"],
+.report-markdown [data-streamdown="heading-6"] {
+  color: #FF0C01;
+}
+
+.report-markdown [data-streamdown="table"] {
+  border: 2px solid #F37521;
+}
+
+.report-markdown [data-streamdown="table-header-cell"],
+.report-markdown [data-streamdown="table-cell"] {
+  border: 1px solid #F37521;
+}
+
+.report-markdown [data-streamdown="table-row"] {
+  border-color: #F37521;
+}
+
+/* Ensure dark mode doesn't override report colors */
+.dark .report-markdown [data-streamdown="heading-1"],
+.dark .report-markdown [data-streamdown="heading-2"],
+.dark .report-markdown [data-streamdown="heading-3"],
+.dark .report-markdown [data-streamdown="heading-4"],
+.dark .report-markdown [data-streamdown="heading-5"],
+.dark .report-markdown [data-streamdown="heading-6"] {
+  color: #FF0C01;
+}
+
+.dark .report-markdown [data-streamdown="table"] {
+  border-color: #F37521;
+}
+
+.dark .report-markdown [data-streamdown="table-header-cell"],
+.dark .report-markdown [data-streamdown="table-cell"] {
+  border-color: #F37521;
+}
+
+.dark .report-markdown [data-streamdown="table-row"] {
+  border-color: #F37521;
+}
