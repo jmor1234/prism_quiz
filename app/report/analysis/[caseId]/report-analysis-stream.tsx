@@ -81,10 +81,16 @@ export function ReportAnalysisStream({ caseId }: ReportAnalysisStreamProps) {
 
       // Convert response to blob and trigger download
       const blob = await response.blob();
+      
+      // Extract filename from Content-Disposition header, fallback to caseId
+      const contentDisposition = response.headers.get("Content-Disposition");
+      const filenameMatch = contentDisposition?.match(/filename="(.+)"/);
+      const filename = filenameMatch?.[1] || `prism-report-${caseId}.pdf`;
+      
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `prism-report-${caseId}.pdf`;
+      a.download = filename;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);

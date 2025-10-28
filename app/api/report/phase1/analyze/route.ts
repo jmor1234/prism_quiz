@@ -113,6 +113,7 @@ export async function POST(req: Request) {
           providerOptions: {
             anthropic: {
               thinking: { type: "enabled", budgetTokens: 16000 },
+              max_tokens: 64000,
             },
           },
         });
