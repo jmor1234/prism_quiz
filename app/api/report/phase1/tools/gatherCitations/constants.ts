@@ -4,8 +4,8 @@ export const DEFAULT_START_DATE = "2015-01-01"; // Last 10 years of research
 export const RESULTS_PER_QUERY = 5; // Optimized queries enable smaller result set per query
 export const MAX_CITATIONS_PER_SUBSUBSECTION = 6; // Up to 6 curated citations per semantic pattern
 export const CONCURRENT_SEARCH_LIMIT = 12; // Exa rate limit allows 12 QPS comfortably
-export const CURATION_MODEL = "gemini-2.5-flash-preview-09-2025";
-export const QUERY_GENERATION_MODEL = "gemini-2.5-flash-preview-09-2025";
+export const CURATION_MODEL = "gemini-2.5-flash-lite-preview-09-2025";
+export const QUERY_GENERATION_MODEL = "gemini-2.5-flash-lite-preview-09-2025";
 
 // Trusted academic domains (available for future optional filtering)
 // Currently unused - relying on Exa's "research paper" category classification

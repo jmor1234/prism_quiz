@@ -30,16 +30,15 @@ export const analyzeExistingLabsOutputSchema = z.object({
             .string()
             .optional()
             .describe("Prism's optimal range from database if available"),
-          explanation: z
+          interpretation: z
             .string()
-            .describe("Educational paragraph explaining what the test is, what it measures, clinical significance, and interpretation of this client's specific result in bioenergetic context"),
+            .describe("Concise clinical interpretation (2-3 sentences max) connecting this result to the client's symptoms through bioenergetic principles"),
         })
       )
       .describe("Individual lab result findings"),
     synthesis: z
       .string()
-      .optional()
-      .describe("Brief narrative connecting patterns across multiple findings"),
+      .describe("Brief overview (1-2 sentences) connecting the most significant patterns across findings"),
   }),
 });
 

@@ -2,6 +2,8 @@
 
 import { anthropic } from "@ai-sdk/anthropic";
 import { generateObject } from "ai";
+import { withRetry } from "@/app/api/chat/lib/llmRetry";
+import { getPhaseTimeoutMs } from "@/app/api/chat/lib/retryConfig";
 import { BIOENERGETIC_KNOWLEDGE } from "@/app/api/chat/lib/bioenergeticKnowledge";
 import {
   analyzeExistingLabsOutputSchema,
@@ -65,23 +67,21 @@ ${input.analysisObjective ? `<analysis_objective>
 ${input.analysisObjective}
 </analysis_objective>` : ''}
 
-# Goal: Educational Lab Analysis
+# Goal: Bioenergetic Lab Interpretation
 
-**Data provided:**
-- CSV database: Prism's diagnostic reference (test names, implications, optimal ranges)
-- PDF files: Client's previous lab results
-- Client profile: Symptoms and demographics
-- Analysis objective: Strategic context
-
-**Your job:** Extract lab results from PDFs, match against database, and generate educational analysis helping the client understand their results through a bioenergetic lens.
+Analyze the client's lab results from uploaded PDFs against Prism's diagnostic database.
 
 **Intent:**
-- Only analyze tests found in the database
-- Extract clean client result values
-- Pull Prism's optimal ranges from database when available
-- Generate rich explanations that educate the client on what each test is, what it measures, and what their specific result means for their bioenergetic function. Keep it clear concise and contextually relevant.
+- Extract test results that exist in the database
+- Match client values against Prism's optimal ranges
+- Generate concise interpretations connecting each result to the client's specific symptoms through bioenergetic principles
 
-**Note:** Connect each result to the client's specific symptoms and bioenergetic principles.`.trim();
+**Context hierarchy:**
+1. Client's specific result value
+2. Prism's optimal range (when available)
+3. Bioenergetic mechanism linking result to symptoms
+
+Keep interpretations clear, concise, and directly relevant to this client's situation.`.trim();
 
   logger?.logToolInternalStep("analyzeExistingLabsTool", "INVOKE_SUB_AGENT", {
     promptLength: promptText.length,
@@ -117,16 +117,29 @@ ${input.analysisObjective}
   });
   console.log(`  Total content parts: ${messageContent.length} (1 text + ${labPdfs.length} PDF${labPdfs.length > 1 ? 's' : ''})\n`);
 
-  const result = await generateObject({
-    model: anthropic("claude-sonnet-4-5-20250929"),
-    schema: analyzeExistingLabsOutputSchema,
-    messages: [
-      {
-        role: "user",
-        content: messageContent,
-      },
-    ],
-  });
+  const result = await withRetry(
+    (signal) =>
+      generateObject({
+        model: anthropic("claude-sonnet-4-5-20250929"),
+        schema: analyzeExistingLabsOutputSchema,
+        messages: [
+          {
+            role: "user",
+            content: messageContent,
+          },
+        ],
+        providerOptions: {
+          anthropic: {
+            max_tokens: 30000,
+          },
+        },
+        abortSignal: signal,
+      }),
+    {
+      phase: "analyzeExistingLabs",
+      timeoutMs: getPhaseTimeoutMs("analyzeExistingLabs"),
+    }
+  );
 
   // Log token usage
   console.log(`\n[analyzeExistingLabs] Token Usage:`);

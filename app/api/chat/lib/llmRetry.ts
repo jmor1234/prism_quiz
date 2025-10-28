@@ -6,7 +6,13 @@ export type RetryPhase =
   | "sqa"
   | "contentAnalysis"
   | "consolidation"
-  | "finalSynthesis";
+  | "finalSynthesis"
+  | "citationQueryGen"
+  | "citationCuration"
+  | "analyzeExistingLabs"
+  | "recommendDiagnostics"
+  | "recommendDietLifestyle"
+  | "recommendSupplements";
 
 export interface RetryConfig {
   phase: RetryPhase;

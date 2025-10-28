@@ -3,6 +3,8 @@
 import { generateObject } from "ai";
 import { google } from "@ai-sdk/google";
 import { getLogger } from "@/app/api/chat/lib/traceLogger";
+import { withRetry } from "@/app/api/chat/lib/llmRetry";
+import { getPhaseTimeoutMs } from "@/app/api/chat/lib/retryConfig";
 import { CitationQueryGenerationInput } from "./types";
 import {
   citationQueryGenerationOutputSchema,
@@ -11,7 +13,7 @@ import {
 import { getCitationQueryPrompt } from "./prompt";
 
 const TOOL_NAME = "citationQueryGenerator";
-const MODEL = "gemini-2.5-flash-preview-09-2025";
+const MODEL = "gemini-2.5-flash-lite-preview-09-2025";
 
 export async function generateCitationQueries(
   input: CitationQueryGenerationInput
@@ -28,11 +30,22 @@ export async function generateCitationQueries(
   );
 
   try {
-    const { object: result, usage } = await generateObject({
-      model: google(MODEL),
-      schema: citationQueryGenerationOutputSchema,
-      prompt: getCitationQueryPrompt(input),
-    });
+    const response = await withRetry(
+      (signal) =>
+        generateObject({
+          model: google(MODEL),
+          schema: citationQueryGenerationOutputSchema,
+          prompt: getCitationQueryPrompt(input),
+          abortSignal: signal,
+        }),
+      {
+        phase: "citationQueryGen",
+        timeoutMs: getPhaseTimeoutMs("citationQueryGen"),
+      }
+    );
+
+    const result = response.object as CitationQueryGenerationOutput;
+    const usage = response.usage;
 
     logger?.logToolInternalStep(TOOL_NAME, "QUERY_GENERATION_SUCCESS", {
       subsection: input.subsection,

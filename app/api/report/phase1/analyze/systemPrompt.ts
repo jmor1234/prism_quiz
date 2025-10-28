@@ -209,7 +209,7 @@ This sets the stage for the rest of the report.
    - Heading: "## Previous Diagnostics"
    - Intro line: "Here is your previous information viewed through a new lens:"
    - For each test: Create a table row with test name, "Your Result: [clientResult]", and "Our range: [prismRange]"
-   - Below each table: Place the explanation paragraph
+   - Below each table: Place the interpretation
    - Separator "---" between tests
 
    **Key Patterns:** Identify the most significant patterns by cross-referencing questionnaire responses (rated ≥2), takehome assessment data, and consult notes, and previous diagnostics (if relevant). Format as:

@@ -3,6 +3,8 @@
 import { google } from "@ai-sdk/google";
 import { generateObject } from "ai";
 import { z } from "zod";
+import { withRetry } from "@/app/api/chat/lib/llmRetry";
+import { getPhaseTimeoutMs } from "@/app/api/chat/lib/retryConfig";
 import { CURATION_MODEL } from "./constants";
 
 const curatorOutputSchema = z.object({
@@ -66,13 +68,21 @@ ${JSON.stringify(citations, null, 2)}
 Select up to ${targetCount} most relevant citations for this pattern based on the topics discussed.
 `.trim();
 
-  const result = await generateObject({
-    model: google(CURATION_MODEL),
-    schema: curatorOutputSchema,
-    prompt,
-  });
+  const response = await withRetry(
+    (signal) =>
+      generateObject({
+        model: google(CURATION_MODEL),
+        schema: curatorOutputSchema,
+        prompt,
+        abortSignal: signal,
+      }),
+    {
+      phase: "citationCuration",
+      timeoutMs: getPhaseTimeoutMs("citationCuration"),
+    }
+  );
 
-  console.log(`      ✓ Curator selected ${result.object.selectedCitations.length} citations`);
+  console.log(`      ✓ Curator selected ${response.object.selectedCitations.length} citations`);
 
-  return result.object.selectedCitations;
+  return response.object.selectedCitations;
 }

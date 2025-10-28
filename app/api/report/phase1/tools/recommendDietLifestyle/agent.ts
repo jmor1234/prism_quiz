@@ -2,6 +2,8 @@
 
 import { google } from "@ai-sdk/google";
 import { generateObject } from "ai";
+import { withRetry } from "@/app/api/chat/lib/llmRetry";
+import { getPhaseTimeoutMs } from "@/app/api/chat/lib/retryConfig";
 import { BIOENERGETIC_KNOWLEDGE } from "@/app/api/chat/lib/bioenergeticKnowledge";
 import {
   recommendDietLifestyleOutputSchema,
@@ -79,11 +81,19 @@ ${input.objective}
     promptLength: prompt.length,
   });
 
-  const result = await generateObject({
-    model: google("gemini-2.5-flash-preview-09-2025"),
-    schema: recommendDietLifestyleOutputSchema,
-    prompt,
-  });
+  const result = await withRetry(
+    (signal) =>
+      generateObject({
+        model: google("gemini-2.5-flash-preview-09-2025"),
+        schema: recommendDietLifestyleOutputSchema,
+        prompt,
+        abortSignal: signal,
+      }),
+    {
+      phase: "recommendDietLifestyle",
+      timeoutMs: getPhaseTimeoutMs("recommendDietLifestyle"),
+    }
+  );
 
   logger?.logToolInternalStep("recommendDietLifestyleTool", "SUB_AGENT_COMPLETE", {
     resultType: result.object.match.type,
