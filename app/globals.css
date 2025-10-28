@@ -244,13 +244,24 @@
 }
 
 /* Report markdown styling - Prism brand colors */
-.report-markdown [data-streamdown="heading-1"],
-.report-markdown [data-streamdown="heading-2"],
-.report-markdown [data-streamdown="heading-3"],
+.report-markdown [data-streamdown="heading-1"] {
+  color: #FF0C01;  /* Red */
+  text-align: center;
+}
+
+.report-markdown [data-streamdown="heading-2"] {
+  text-align: center;
+  /* Black - inherit default text color */
+}
+
+.report-markdown [data-streamdown="heading-3"] {
+  color: #FF0C01;  /* Red */
+}
+
 .report-markdown [data-streamdown="heading-4"],
 .report-markdown [data-streamdown="heading-5"],
 .report-markdown [data-streamdown="heading-6"] {
-  color: #FF0C01;
+  /* Black - inherit default text color */
 }
 
 .report-markdown [data-streamdown="table"] {
@@ -267,13 +278,24 @@
 }
 
 /* Ensure dark mode doesn't override report colors */
-.dark .report-markdown [data-streamdown="heading-1"],
-.dark .report-markdown [data-streamdown="heading-2"],
-.dark .report-markdown [data-streamdown="heading-3"],
+.dark .report-markdown [data-streamdown="heading-1"] {
+  color: #FF0C01;  /* Red */
+  text-align: center;
+}
+
+.dark .report-markdown [data-streamdown="heading-2"] {
+  text-align: center;
+  /* Black - inherit default text color */
+}
+
+.dark .report-markdown [data-streamdown="heading-3"] {
+  color: #FF0C01;  /* Red */
+}
+
 .dark .report-markdown [data-streamdown="heading-4"],
 .dark .report-markdown [data-streamdown="heading-5"],
 .dark .report-markdown [data-streamdown="heading-6"] {
-  color: #FF0C01;
+  /* Black - inherit default text color */
 }
 
 .dark .report-markdown [data-streamdown="table"] {

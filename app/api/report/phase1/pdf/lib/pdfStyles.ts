@@ -158,20 +158,20 @@ export const PDF_STYLES = `
   h1 {
     margin-top: 0;
     margin-bottom: 0.25rem;
-    font-size: 28pt;
-    font-weight: 700;
+    font-size: 22pt;
+    font-weight: 600;
     color: #FF0C01;
     text-align: center;
     page-break-after: avoid;
   }
 
-  /* Major sections (H2) - RED, no forced page breaks */
+  /* Major sections (H2) - BLACK, no forced page breaks */
   h2 {
     margin-top: 2rem;
     margin-bottom: 0.75rem;
     font-size: 20pt;
     font-weight: 600;
-    color: #FF0C01;
+    color: #1a1a1a;
     text-align: center;
     page-break-after: avoid;
   }
@@ -191,23 +191,23 @@ export const PDF_STYLES = `
     page-break-after: avoid;
   }
 
-  /* Sub-subsections (H4) - Used in citations - RED */
+  /* Sub-subsections (H4) - Used in citations - BLACK */
   h4 {
     margin-top: 1rem;
     margin-bottom: 0.5rem;
     font-size: 13pt;
     font-weight: 600;
-    color: #FF0C01;
+    color: #1a1a1a;
     page-break-after: avoid;
   }
 
-  /* H5, H6 for completeness - RED */
+  /* H5, H6 for completeness - BLACK */
   h5 {
     margin-top: 0.75rem;
     margin-bottom: 0.5rem;
     font-size: 12pt;
     font-weight: 600;
-    color: #FF0C01;
+    color: #1a1a1a;
     page-break-after: avoid;
   }
 
@@ -216,7 +216,7 @@ export const PDF_STYLES = `
     margin-bottom: 0.5rem;
     font-size: 11pt;
     font-weight: 600;
-    color: #FF0C01;
+    color: #1a1a1a;
     page-break-after: avoid;
   }
 
