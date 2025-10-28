@@ -2,7 +2,7 @@
 
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { Response } from "@/components/ai-elements/response";
 import { Loader } from "@/components/ai-elements/loader";
 import { Button } from "@/components/ui/button";
@@ -19,6 +19,7 @@ export function ReportAnalysisStream({ caseId }: ReportAnalysisStreamProps) {
   const [reportText, setReportText] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
+  const isCheckingRef = useRef(false);
 
   const startGeneration = useCallback(async () => {
     setStatus("generating");
@@ -102,7 +103,8 @@ export function ReportAnalysisStream({ caseId }: ReportAnalysisStreamProps) {
 
   // Check for existing result first, then start generation if needed
   useEffect(() => {
-    if (status === "idle") {
+    if (status === "idle" && !isCheckingRef.current) {
+      isCheckingRef.current = true;
       const checkExistingResult = async () => {
         try {
           setStatus("checking");
@@ -130,7 +132,8 @@ export function ReportAnalysisStream({ caseId }: ReportAnalysisStreamProps) {
 
       checkExistingResult();
     }
-  }, [status, startGeneration, caseId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [status, caseId]);
 
   return (
     <div className="space-y-6">
@@ -173,6 +176,7 @@ export function ReportAnalysisStream({ caseId }: ReportAnalysisStreamProps) {
                 variant="outline"
                 size="sm"
                 onClick={() => {
+                  isCheckingRef.current = false;
                   setStatus("idle");
                   setError(null);
                   setReportText("");

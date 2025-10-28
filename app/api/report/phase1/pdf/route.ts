@@ -7,6 +7,23 @@ import { processMarkdown } from "./lib/markdownProcessor";
 import { buildReportHtml } from "./lib/templateBuilder";
 
 /**
+ * Sanitize client name for use in filename
+ * - Convert to lowercase
+ * - Replace spaces with hyphens
+ * - Remove special characters (keep only alphanumeric and hyphens)
+ * - Collapse multiple hyphens into one
+ */
+function sanitizeFilename(name: string): string {
+  return name
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, '-')           // Replace spaces with hyphens
+    .replace(/[^a-z0-9-]/g, '')     // Remove special characters
+    .replace(/-+/g, '-')            // Collapse multiple hyphens
+    .replace(/^-|-$/g, '');         // Remove leading/trailing hyphens
+}
+
+/**
  * PDF Export API Endpoint
  *
  * Converts a stored Phase 1 report (markdown) to a professionally formatted PDF
@@ -87,7 +104,11 @@ export async function POST(req: Request) {
     const pdfBuffer = await generatePdf(htmlContent);
 
     // 5. Return PDF as downloadable file
-    const filename = `prism-report-${caseId}.pdf`;
+    // Use sanitized client name if available, fallback to caseId
+    const sanitizedName = processedReport.clientName 
+      ? sanitizeFilename(processedReport.clientName)
+      : caseId;
+    const filename = `prism-report-${sanitizedName}.pdf`;
 
     console.log(`[PDF Export] Export complete: ${filename} (${pdfBuffer.length} bytes)\n`);
 

@@ -200,6 +200,10 @@ Use clean, readable Markdown with clear section headings. Keep language concise,
 
 **Table Formatting:** When creating markdown tables, do NOT use <br> line break tags within cells—they render as literal text and look unclean.
 
+**Report Title (H1):** Start your report with an H1 title in this exact format: # Personalized Health Report: [Client Name]
+
+Extract the client's name from the questionnaire or advisor/Dalton notes. If no name is available, use "Client" as the placeholder.
+
 1. **Introduction:** Open with personalized context for the client, then explain the bioenergetic framework and key mechanisms overall in general, and then contextualize that relevant to their specific case. This is where you help the client understand WHY the recommendations work through the lens of bioenergetic principles. Keep it concise, clear, and connected to their situation.
 This sets the stage for the rest of the report.
 
