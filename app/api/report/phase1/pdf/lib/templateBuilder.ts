@@ -59,6 +59,26 @@ function buildContentSection(htmlContent: string): string {
   `;
 }
 
+/**
+ * Inject subtle browser hints below headings that contain links
+ * Helps users understand how to open links in new tabs when viewing PDF in browser
+ */
+function injectBrowserHints(html: string): string {
+  // Inject after Scientific References h2
+  html = html.replace(
+    /(<h2>Scientific References<\/h2>)/i,
+    '$1\n<p class="browser-hint">Tip: Ctrl+Click (Windows) or Cmd+Click (Mac) to open links in a new tab</p>'
+  );
+
+  // Inject after Supplement Recommendations h3
+  html = html.replace(
+    /(<h3>Supplement Recommendations<\/h3>)/i,
+    '$1\n<p class="browser-hint">Tip: Provider links can be opened in new tabs using Ctrl/Cmd+Click</p>'
+  );
+
+  return html;
+}
+
 export async function buildReportHtml(
   processedReport: ProcessedReport,
   convertedSections: {
@@ -69,6 +89,12 @@ export async function buildReportHtml(
   }
 ): Promise<string> {
   const logoBase64 = await getLogoBase64();
+
+  // Inject browser hints into sections that contain links
+  const recommendationsWithHints = injectBrowserHints(convertedSections.recommendations);
+  const referencesWithHints = convertedSections.references
+    ? injectBrowserHints(convertedSections.references)
+    : "";
 
   // Build complete HTML body
   const bodyContent = [
@@ -88,8 +114,8 @@ export async function buildReportHtml(
 
     // 5. Recommendations + Conclusion + References
     buildContentSection(
-      convertedSections.recommendations +
-        (convertedSections.references ? "\n\n" + convertedSections.references : "")
+      recommendationsWithHints +
+        (referencesWithHints ? "\n\n" + referencesWithHints : "")
     ),
   ].join("\n");
 

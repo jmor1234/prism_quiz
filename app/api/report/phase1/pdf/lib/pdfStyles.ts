@@ -438,4 +438,15 @@ export const PDF_STYLES = `
     word-wrap: break-word;
     overflow-wrap: break-word;
   }
+
+  /* Browser hint text - appears below headings to instruct users about opening links */
+  .browser-hint {
+    font-size: 9pt;
+    font-style: italic;
+    color: #6b7280;
+    margin-top: 0.25rem;
+    margin-bottom: 0.75rem;
+    text-align: center;
+    page-break-after: avoid;
+  }
 `;
