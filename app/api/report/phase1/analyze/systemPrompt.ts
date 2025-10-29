@@ -243,6 +243,7 @@ This sets the stage for the rest of the report.
      - Clean separation between recommendations
    - **Supplements:** Title section "Supplement Recommendations". Format each supplement as:
      - Table row with supplement/pharmaceutical name and provider (2 columns)
+     - **IMPORTANT:** Insert the source field from the tool into the provider column exactly as returned, preserving any markdown links [text](url) without modification
      - (if relevant or available) "**Dosage and / or Timing:**" label followed by dosage information and timing guidance
      - "**Notes:**" label followed by rationale and personalized context. Keep it concise and to the point and clear.
      - Separator "---" between supplements
