@@ -190,6 +190,14 @@ Once ready for Phase 3, use thinkTool to outline and organize the final report s
 
 **Generate Report Body:**
 
+**CRITICAL - First Output:** Your next output MUST begin immediately with:
+
+# Personalized Health Report: [Client Name]
+
+## Introduction
+
+Do NOT include any preamble, commentary, or meta-text before this (e.g., "Now I'll generate...", "Here's the report:", etc.). Start directly with the H1 title.
+
 Write the complete report from Introduction through Conclusion.
 
 Do NOT include a Scientific References section - this is appended automatically by the system after your output completes.

@@ -30,7 +30,10 @@ import { getPhase1Case } from "@/server/phase1Cases";
 import { savePhase1Result } from "@/server/phase1Results";
 import { buildPhase1SystemPrompt } from "./systemPrompt";
 
-export const maxDuration = 1800; // 30 minutes
+export const maxDuration = 1800; // 30 minutes (platform safety net)
+
+// Primary agent timeout - fail cleanly if generation takes too long
+const REPORT_GENERATION_TIMEOUT_MS = Number(process.env.REPORT_GENERATION_TIMEOUT_MS) || 780_000; // 13 minutes default
 
 export async function POST(req: Request) {
   let caseId: string;
@@ -102,21 +105,47 @@ export async function POST(req: Request) {
         });
 
         console.log(`\n[Phase1 Analysis] Starting generation for case: ${caseId}`);
+        console.log(`[Phase1 Analysis] Timeout set to ${REPORT_GENERATION_TIMEOUT_MS}ms (${REPORT_GENERATION_TIMEOUT_MS / 60000} minutes)`);
 
-        // Generate report (blocks until complete)
-        const result = await generateText({
-          model: anthropic("claude-sonnet-4-5-20250929"),
-          messages: systemMessages,
-          tools,
-          stopWhen: stepCountIs(50),
-          ...callbacks,
-          providerOptions: {
-            anthropic: {
-              thinking: { type: "enabled", budgetTokens: 16000 },
-              max_tokens: 64000,
+        // Create abort controller with timeout
+        const abortController = new AbortController();
+        const timeoutHandle = setTimeout(() => {
+          console.log(`[Phase1 Analysis] Timeout reached (${REPORT_GENERATION_TIMEOUT_MS}ms), aborting generation`);
+          abortController.abort();
+        }, REPORT_GENERATION_TIMEOUT_MS);
+
+        let result;
+        try {
+          // Generate report (blocks until complete)
+          result = await generateText({
+            model: anthropic("claude-sonnet-4-5-20250929"),
+            messages: systemMessages,
+            tools,
+            stopWhen: stepCountIs(50),
+            abortSignal: abortController.signal,
+            ...callbacks,
+            providerOptions: {
+              anthropic: {
+                thinking: { type: "enabled", budgetTokens: 16000 },
+                max_tokens: 64000,
+              },
             },
-          },
-        });
+          });
+        } catch (error) {
+          // Clean up timeout handle
+          clearTimeout(timeoutHandle);
+
+          // Check if this was a timeout abort
+          if (error instanceof Error && error.name === 'AbortError') {
+            throw new Error(`Report generation timeout: exceeded ${REPORT_GENERATION_TIMEOUT_MS / 60000} minute limit`);
+          }
+
+          // Re-throw other errors
+          throw error;
+        }
+
+        // Clear timeout on successful completion
+        clearTimeout(timeoutHandle);
 
         console.log(`[Phase1 Analysis] Generation complete for case: ${caseId}`);
 
