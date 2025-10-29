@@ -66,7 +66,7 @@ ${input.objective}
   - Column 1: "Supplement or Pharmaceuticals" (name)
   - Column 2: "Rationale" (mechanism and use cases)
   - Column 4: "Dosage/Notes" (dosing instructions)
-  - Column 5: "Provider" (where to purchase, including discount codes)
+  - Column 5: "Provider" (where to purchase with markdown links [text](url) - PRESERVE EXACT FORMATTING, including discount codes)
 - Requested item: Specific supplement from expert directives
 - Client context: Personalization factors
 - Objective: Strategic guidance
@@ -78,6 +78,8 @@ ${input.objective}
 - If requested item is ambiguous (multiple valid matches) → return 2-5 options with reasoning about differences
 
 **Personalization:** Tailor rationale to client's specific context, concerns, and constraints.
+
+**Critical:** When extracting the Provider field, preserve markdown link formatting \`[text](url)\` exactly as written in the database when present. Some entries may only have plain text provider names without links - that's expected. Do not convert or reformat.
 
 **Important:** Minimal fluff - only what's relevant and important. Clear, concise, interconnected. We dont need to be verbose here, just provide the information that is relevant and important.
 

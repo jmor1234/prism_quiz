@@ -37,7 +37,7 @@ export const recommendSupplementsOutputSchema = z.object({
         supplement: z.string().describe("Full supplement/pharmaceutical name from database"),
         rationale: z.string().describe("Why this supplement addresses the directive, personalized to client"),
         dosage: z.string().describe("Dosage instructions from database"),
-        source: z.string().describe("Where to purchase (include discount codes if present in database)"),
+        source: z.string().describe("Where to purchase - preserve markdown formatted links exactly as in database [Provider](url) when present, or plain text provider name. Include any discount codes if present."),
         rootCauseAddressed: z.string().describe("The underlying issue this supplement targets"),
       }),
     }),
@@ -50,7 +50,7 @@ export const recommendSupplementsOutputSchema = z.object({
             supplement: z.string().describe("Full supplement/pharmaceutical name from database"),
             rationale: z.string().describe("Why this could match the directive"),
             dosage: z.string().describe("Dosage instructions from database"),
-            source: z.string().describe("Where to purchase (include discount codes if present in database)"),
+            source: z.string().describe("Where to purchase - preserve markdown formatted links exactly as in database [Provider](url) when present, or plain text provider name. Include any discount codes if present."),
             rootCauseAddressed: z.string().describe("The underlying issue this supplement targets"),
           })
         )
