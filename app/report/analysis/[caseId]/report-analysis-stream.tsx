@@ -161,7 +161,7 @@ export function ReportAnalysisStream({ caseId }: ReportAnalysisStreamProps) {
             <div className="flex-1 space-y-2">
               <p className="text-sm font-medium">Generating Report</p>
               <p className="text-sm text-muted-foreground">
-                This typically takes 2-3 minutes. The system is analyzing client data, enriching directives, and gathering citations...
+                This typically takes 5-10 minutes. The system is analyzing client data, enriching directives, and gathering citations...
               </p>
             </div>
           </div>
