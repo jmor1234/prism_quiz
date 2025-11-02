@@ -6,7 +6,8 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import { Response } from "@/components/ai-elements/response";
 import { Loader } from "@/components/ai-elements/loader";
 import { Button } from "@/components/ui/button";
-import { AlertCircle, CheckCircle2, FileDown } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { AlertCircle, CheckCircle2, FileDown, Edit3, Save, X } from "lucide-react";
 
 interface ReportAnalysisStreamProps {
   caseId: string;
@@ -19,6 +20,9 @@ export function ReportAnalysisStream({ caseId }: ReportAnalysisStreamProps) {
   const [reportText, setReportText] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editedText, setEditedText] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
   const isCheckingRef = useRef(false);
 
   const startGeneration = useCallback(async () => {
@@ -81,12 +85,12 @@ export function ReportAnalysisStream({ caseId }: ReportAnalysisStreamProps) {
 
       // Convert response to blob and trigger download
       const blob = await response.blob();
-      
+
       // Extract filename from Content-Disposition header, fallback to caseId
       const contentDisposition = response.headers.get("Content-Disposition");
       const filenameMatch = contentDisposition?.match(/filename="(.+)"/);
       const filename = filenameMatch?.[1] || `prism-report-${caseId}.pdf`;
-      
+
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
@@ -106,6 +110,51 @@ export function ReportAnalysisStream({ caseId }: ReportAnalysisStreamProps) {
       setIsDownloadingPdf(false);
     }
   }, [caseId]);
+
+  const handleEdit = useCallback(() => {
+    setEditedText(reportText);
+    setIsEditing(true);
+    console.log("[Report Edit] Entering edit mode");
+  }, [reportText]);
+
+  const handleCancel = useCallback(() => {
+    setIsEditing(false);
+    setEditedText("");
+    console.log("[Report Edit] Cancelled edit mode");
+  }, []);
+
+  const handleSave = useCallback(async () => {
+    setIsSaving(true);
+
+    try {
+      console.log(`[Report Edit] Saving edited report for case: ${caseId}`);
+
+      const response = await fetch("/api/report/phase1/result", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ caseId, report: editedText }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: response.statusText }));
+        throw new Error(errorData.error || `Save failed: ${response.statusText}`);
+      }
+
+      // Update display with edited text
+      setReportText(editedText);
+      setIsEditing(false);
+      setEditedText("");
+
+      console.log("[Report Edit] Save successful");
+    } catch (err) {
+      console.error("[Report Edit] Save error:", err);
+      alert(
+        `Failed to save changes: ${err instanceof Error ? err.message : "Unknown error"}`
+      );
+    } finally {
+      setIsSaving(false);
+    }
+  }, [caseId, editedText]);
 
   // Check for existing result first, then start generation if needed
   useEffect(() => {
@@ -207,31 +256,92 @@ export function ReportAnalysisStream({ caseId }: ReportAnalysisStreamProps) {
                   Report generated successfully
                 </p>
               </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={downloadPdf}
-                disabled={isDownloadingPdf}
-                className="gap-2"
-              >
-                {isDownloadingPdf ? (
+              <div className="flex items-center gap-2">
+                {isEditing ? (
                   <>
-                    <Loader className="h-4 w-4" />
-                    Generating PDF...
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleCancel}
+                      disabled={isSaving}
+                      className="gap-2"
+                    >
+                      <X className="h-4 w-4" />
+                      Cancel
+                    </Button>
+                    <Button
+                      variant="default"
+                      size="sm"
+                      onClick={handleSave}
+                      disabled={isSaving}
+                      className="gap-2"
+                    >
+                      {isSaving ? (
+                        <>
+                          <Loader className="h-4 w-4" />
+                          Saving...
+                        </>
+                      ) : (
+                        <>
+                          <Save className="h-4 w-4" />
+                          Save Changes
+                        </>
+                      )}
+                    </Button>
                   </>
                 ) : (
                   <>
-                    <FileDown className="h-4 w-4" />
-                    Download PDF
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleEdit}
+                      className="gap-2"
+                    >
+                      <Edit3 className="h-4 w-4" />
+                      Edit Report
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={downloadPdf}
+                      disabled={isDownloadingPdf}
+                      className="gap-2"
+                    >
+                      {isDownloadingPdf ? (
+                        <>
+                          <Loader className="h-4 w-4" />
+                          Generating PDF...
+                        </>
+                      ) : (
+                        <>
+                          <FileDown className="h-4 w-4" />
+                          Download PDF
+                        </>
+                      )}
+                    </Button>
                   </>
                 )}
-              </Button>
+              </div>
             </div>
           </div>
 
           <div className="rounded-lg border bg-card p-6 shadow-sm">
             <h2 className="mb-4 text-lg font-semibold">Root Cause Analysis</h2>
-            <Response variant="report">{reportText}</Response>
+            {isEditing ? (
+              <div className="space-y-3">
+                <p className="text-xs text-muted-foreground">
+                  Edit the report markdown below. Changes will be saved and used for PDF generation.
+                </p>
+                <Textarea
+                  value={editedText}
+                  onChange={(e) => setEditedText(e.target.value)}
+                  className="min-h-[600px] font-mono text-sm"
+                  disabled={isSaving}
+                />
+              </div>
+            ) : (
+              <Response variant="report">{reportText}</Response>
+            )}
           </div>
         </>
       )}
