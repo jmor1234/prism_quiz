@@ -1,6 +1,6 @@
 // app/api/report/phase1/lib/asyncContext.ts
 
-import { asyncLocalStorage } from "@/app/api/chat/lib/traceLogger";
+import { asyncLocalStorage } from "@/lib/ai/traceLogger";
 import type { Phase1Submission } from "@/lib/schemas/phase1";
 
 /**

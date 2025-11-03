@@ -21,8 +21,8 @@ import { analyzeExistingLabsTool } from "../tools/analyzeExistingLabs/tool";
 import {
   TraceLogger,
   asyncLocalStorage,
-} from "@/app/api/chat/lib/traceLogger";
-import { TokenEconomics } from "@/app/api/chat/lib/tokenEconomics";
+} from "@/lib/ai/traceLogger";
+import { TokenEconomics } from "@/lib/ai/tokenEconomics";
 import { createReportCallbacks } from "./streamCallbacks";
 
 // Report-specific

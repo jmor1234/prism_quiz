@@ -1,4 +1,4 @@
-import { EXA_CATEGORIES, ExaCategory as OriginalExaCategory } from "../constants";
+import { EXA_CATEGORIES, ExaCategory as OriginalExaCategory } from "./constants";
 
 export type ExaCategory = OriginalExaCategory;
 export { EXA_CATEGORIES };

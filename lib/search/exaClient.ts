@@ -1,6 +1,6 @@
 import Exa from 'exa-js';
-import { getLogger } from '@/app/api/chat/lib/traceLogger';
-import type { ExaCategory } from '../constants';
+import { getLogger } from '@/lib/ai/traceLogger';
+import type { ExaCategory } from './constants';
 import type { ExaSearchConfig, ExaSearchHit } from './types';
 
 // --- Start of Rate Limiter Implementation ---

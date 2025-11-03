@@ -1,7 +1,7 @@
 // app/api/report/phase1/tools/recommendDiagnostics/tool.ts
 
 import { tool } from "@ai-sdk/provider-utils";
-import { getLogger } from "@/app/api/chat/lib/traceLogger";
+import { getLogger } from "@/lib/ai/traceLogger";
 import { generateDiagnosticRecommendations } from "./agent";
 import { recommendDiagnosticsInputSchema, type RecommendDiagnosticsInput } from "./schema";
 

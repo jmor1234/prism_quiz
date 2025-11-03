@@ -1,8 +1,8 @@
 // app/api/report/phase1/analyze/streamCallbacks.ts
 // Note: File name retained for minimal diff, but this is no longer streaming-specific
 
-import { TraceLogger } from '@/app/api/chat/lib/traceLogger';
-import { TokenEconomics } from '@/app/api/chat/lib/tokenEconomics';
+import { TraceLogger } from '@/lib/ai/traceLogger';
+import { TokenEconomics } from '@/lib/ai/tokenEconomics';
 import type { ModelMessage } from 'ai';
 
 interface StepFinishEvent {

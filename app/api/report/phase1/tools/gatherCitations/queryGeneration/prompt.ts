@@ -1,7 +1,7 @@
 // app/api/report/phase1/tools/gatherCitations/queryGeneration/prompt.ts
 
 import { CitationQueryGenerationInput } from "./types";
-import { BIOENERGETIC_KNOWLEDGE } from "@/app/api/chat/lib/bioenergeticKnowledge";
+import { BIOENERGETIC_KNOWLEDGE } from "@/lib/knowledge/bioenergeticKnowledge";
 
 export const getCitationQueryPrompt = ({
   subsection,

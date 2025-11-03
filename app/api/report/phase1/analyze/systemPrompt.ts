@@ -1,7 +1,7 @@
 // app/api/report/phase1/analyze/systemPrompt.ts
 
 import type { Phase1Submission } from "@/lib/schemas/phase1";
-import { BIOENERGETIC_KNOWLEDGE } from "@/app/api/chat/lib/bioenergeticKnowledge";
+import { BIOENERGETIC_KNOWLEDGE } from "@/lib/knowledge/bioenergeticKnowledge";
 import { promises as fs } from "node:fs";
 import path from "node:path";
 

@@ -2,9 +2,9 @@
 
 import { generateObject } from "ai";
 import { google } from "@ai-sdk/google";
-import { getLogger } from "@/app/api/chat/lib/traceLogger";
-import { withRetry } from "@/app/api/chat/lib/llmRetry";
-import { getPhaseTimeoutMs } from "@/app/api/chat/lib/retryConfig";
+import { getLogger } from "@/lib/ai/traceLogger";
+import { withRetry } from "@/lib/ai/llmRetry";
+import { getPhaseTimeoutMs } from "@/lib/ai/retryConfig";
 import { CitationQueryGenerationInput } from "./types";
 import {
   citationQueryGenerationOutputSchema,

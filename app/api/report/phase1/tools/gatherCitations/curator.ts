@@ -3,8 +3,8 @@
 import { google } from "@ai-sdk/google";
 import { generateObject } from "ai";
 import { z } from "zod";
-import { withRetry } from "@/app/api/chat/lib/llmRetry";
-import { getPhaseTimeoutMs } from "@/app/api/chat/lib/retryConfig";
+import { withRetry } from "@/lib/ai/llmRetry";
+import { getPhaseTimeoutMs } from "@/lib/ai/retryConfig";
 import { CURATION_MODEL } from "./constants";
 
 const curatorOutputSchema = z.object({

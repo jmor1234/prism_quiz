@@ -1,8 +1,8 @@
 // app/api/report/phase1/tools/gatherCitations/executor.ts
 
-import { getLogger, asyncLocalStorage } from "@/app/api/chat/lib/traceLogger";
-import { searchExa } from "@/app/api/chat/tools/researchOrchestratorTool/exaSearch/exaClient";
-import type { ExaSearchConfig, ExaSearchHit } from "@/app/api/chat/tools/researchOrchestratorTool/exaSearch/types";
+import { getLogger, asyncLocalStorage } from "@/lib/ai/traceLogger";
+import { searchExa } from "@/lib/search/exaClient";
+import type { ExaSearchConfig, ExaSearchHit } from "@/lib/search/types";
 import type { GatherCitationsInput, GatherCitationsOutput } from "./schema";
 import {
   DEFAULT_START_DATE,

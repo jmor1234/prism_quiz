@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { tool } from "@ai-sdk/provider-utils";
-import { getLogger } from "@/app/api/chat/lib/traceLogger";
+import { getLogger } from "@/lib/ai/traceLogger";
 
 const TOOL_NAME = "thinkTool" as const;
 

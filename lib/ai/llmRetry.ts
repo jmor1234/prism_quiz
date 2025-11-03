@@ -1,5 +1,5 @@
-import { getLogger } from "@/app/api/chat/lib/traceLogger";
-import { getPhaseMaxAttempts, getPhaseTimeoutMs, getBaseBackoffMs, getMaxBackoffMs } from "@/app/api/chat/lib/retryConfig";
+import { getLogger } from "@/lib/ai/traceLogger";
+import { getPhaseMaxAttempts, getPhaseTimeoutMs, getBaseBackoffMs, getMaxBackoffMs } from "@/lib/ai/retryConfig";
 
 export type RetryPhase =
   | "queryGen"

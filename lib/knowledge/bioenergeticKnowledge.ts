@@ -3,7 +3,7 @@ import { join } from 'path';
 
 // Load bioenergetic knowledge once at module initialization
 // This runs server-side so synchronous loading is fine
-const KNOWLEDGE_PATH = join(process.cwd(), 'app/api/chat/data/knowledge.md');
+const KNOWLEDGE_PATH = join(process.cwd(), 'lib/knowledge/knowledge.md');
 
 export const BIOENERGETIC_KNOWLEDGE = readFileSync(KNOWLEDGE_PATH, 'utf-8');
 

@@ -1,7 +1,7 @@
 // app/api/report/phase1/tools/analyzeExistingLabs/tool.ts
 
 import { tool } from "@ai-sdk/provider-utils";
-import { getLogger } from "@/app/api/chat/lib/traceLogger";
+import { getLogger } from "@/lib/ai/traceLogger";
 import { analyzeExistingLabs } from "./agent";
 import { analyzeExistingLabsInputSchema, type AnalyzeExistingLabsInput } from "./schema";
 

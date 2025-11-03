@@ -2,9 +2,9 @@
 
 import { anthropic } from "@ai-sdk/anthropic";
 import { generateObject } from "ai";
-import { withRetry } from "@/app/api/chat/lib/llmRetry";
-import { getPhaseTimeoutMs } from "@/app/api/chat/lib/retryConfig";
-import { BIOENERGETIC_KNOWLEDGE } from "@/app/api/chat/lib/bioenergeticKnowledge";
+import { withRetry } from "@/lib/ai/llmRetry";
+import { getPhaseTimeoutMs } from "@/lib/ai/retryConfig";
+import { BIOENERGETIC_KNOWLEDGE } from "@/lib/knowledge/bioenergeticKnowledge";
 import {
   analyzeExistingLabsOutputSchema,
   type AnalyzeExistingLabsInput,
@@ -13,7 +13,7 @@ import {
 import { getSubmission } from "../../lib/asyncContext";
 import { promises as fs } from "node:fs";
 import path from "node:path";
-import { getLogger } from "@/app/api/chat/lib/traceLogger";
+import { getLogger } from "@/lib/ai/traceLogger";
 
 // Cache the CSV database after first load
 let cachedDiagnosticsDatabase: string | null = null;
