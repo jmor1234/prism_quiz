@@ -78,13 +78,19 @@ export async function getPhase1Result(
     // Use Redis storage
     try {
       const key = getResultKey(caseId);
-      const value = await redis.get<string>(key);
+      const value = await redis.get(key);
       
       if (value === null) {
         return null;
       }
 
-      return JSON.parse(value) as Phase1Result;
+      // Upstash Redis may return string or already-parsed object
+      if (typeof value === 'string') {
+        return JSON.parse(value) as Phase1Result;
+      }
+      
+      // Already an object (Upstash auto-deserializes JSON)
+      return value as Phase1Result;
     } catch (error) {
       // Redis errors should propagate
       throw error;
