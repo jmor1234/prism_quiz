@@ -108,8 +108,8 @@ app/api/report/
   - Runs agent (Sonnet 4.5) with `generateText` and 6 tools:
     - **Report-specific cognitive tool:**
       - `reportThinkTool` - extraction tracking, enrichment planning, completion verification
-    - **Lab analysis tool (Sonnet 4.5 sub-agent with multimodal PDF injection):**
-      - `analyzeExistingLabsTool` - Accesses PDFs via asyncLocalStorage, parses with Sonnet 4.5 + Diagnostics CSV, returns structured findings for Assessment Findings table
+    - **Lab analysis tool (Gemini 2.5 Flash sub-agent with multimodal PDF injection):**
+      - `analyzeExistingLabsTool` - Accesses PDFs via asyncLocalStorage, parses with Gemini 2.5 Flash + Diagnostics CSV, returns structured findings for Assessment Findings table
     - **Recommendation tools (per-item enrichment, Gemini Flash sub-agents):**
       - `recommendDiagnosticsTool` - CSV lookup + enrichment per directive item
       - `recommendDietLifestyleTool` - CSV lookup + enrichment per directive item
@@ -130,8 +130,8 @@ app/api/report/
   - Saves final comprehensive report via `savePhase1Result()`:
     - **Production:** Upstash Redis (key: `phase1-results:<caseId>`)
     - **Local Dev:** Filesystem (`storage/phase1-results/<caseId>.json`)
-  - Returns JSON response with success status and metadata.
-  - Max duration: 30 minutes.
+  - Returns JSON response with success status and metadata (connection may close before response delivered, but function continues and saves result).
+  - Max duration: 13.33 minutes (800s Vercel limit).
 
 - `phase1/analyze/systemPrompt.ts`
   - Loads interpretation guides from `data/` directory (cached after first load).
@@ -164,7 +164,7 @@ app/api/report/
 ### Lab Analysis Tool (Existing Lab Results - Comprehensive One-Shot Analysis)
 - `phase1/tools/analyzeExistingLabs/`
   - **tool.ts:** Tool definition with streaming status emissions ("Analyzing uploaded lab results...")
-  - **agent.ts:** Loads `Diagnostics_implications.csv` (cached), accesses PDFs via `getSubmission()` from asyncLocalStorage, invokes **Sonnet 4.5** sub-agent with multimodal message (text + CSV + PDF files)
+  - **agent.ts:** Loads `Diagnostics_implications.csv` (cached), accesses PDFs via `getSubmission()` from asyncLocalStorage, invokes **Gemini 2.5 Flash** sub-agent with multimodal message (text + CSV + PDF files)
   - **schema.ts:** Input (clientProfile + analysisObjective), Output (findings array with test/result/assessment/implication + optional synthesis)
   - **Sub-agent prompt:** Intent-focused (extract from PDFs + match against CSV + assess using Prism's Ranges + bioenergetic reasoning), includes explicit instruction to INCLUDE Prism's Range values in assessment field when available
   - **Token logging:** Logs inputTokens, outputTokens, totalTokens for visibility into PDF processing cost
@@ -172,7 +172,7 @@ app/api/report/
 **Key principles:**
 - **One-shot pattern:** Called ONCE per report to analyze ALL uploaded lab PDFs comprehensively (not per-item like recommendation tools)
 - **Context bypass:** PDFs accessed via asyncLocalStorage, not passed through primary agent's context (preserves context economy)
-- **Sonnet 4.5 model:** Quality medical reasoning for PDF extraction + clinical interpretation (vs Gemini Flash for simpler CSV lookups)
+- **Gemini 2.5 Flash model:** Reliable multimodal document analysis with native structured output (100% success rate, avoids Anthropic SDK schema serialization bug)
 - **Multimodal:** Directly injects PDF data into sub-agent alongside prompt and CSV database
 - **Optional assessment field:** Handles tests with and without Prism's Ranges (discriminated at field level)
 - **Placement:** Results integrated into Assessment Findings section as "Existing Lab Results" table before Recommendations

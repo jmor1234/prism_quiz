@@ -48,10 +48,11 @@
 
 **`app/report/analysis/[caseId]/report-analysis-stream.tsx`**
 - Checks for existing result before initiating new analysis (prevents re-running on refresh).
-- Initiates generation via POST to analyze endpoint (blocks until complete).
-- Simple loading state during generation (typically 2-3 minutes).
-- No real-time progress updates - generation happens on backend, frontend waits for completion.
-- After completion: Fetches complete report from result endpoint and displays markdown.
+- If not found: Fires POST to analyze endpoint (fire-and-forget, doesn't wait for response).
+- Immediately starts polling `/api/report/phase1/result` every 10 seconds.
+- Shows loading state: "Generating report... (typically 6-12 minutes)".
+- Polls until result is found (200) or timeout (15 minutes).
+- When result appears: Loads and displays complete report markdown.
 - **PDF Download:** Provides "Download PDF" button that triggers server-side PDF generation and browser download.
 
 ### Backend
@@ -81,7 +82,7 @@
 - Builds system prompt with bioenergetic knowledge + interpretation guides + client data + **Dalton's final notes** + PDF indicator.
 - Runs agent (Sonnet 4.5) with `generateText` and 6 tools:
   - **Report-specific cognitive tool:** `reportThinkTool`
-  - **Lab analysis tool (one-shot):** `analyzeExistingLabsTool` - Sonnet 4.5 sub-agent with multimodal PDF injection
+  - **Lab analysis tool (one-shot):** `analyzeExistingLabsTool` - Gemini 2.5 Flash sub-agent with multimodal PDF injection
   - **Recommendation tools (per-item enrichment):** `recommendDiagnosticsTool`, `recommendDietLifestyleTool`, `recommendSupplementsTool` - Gemini Flash sub-agents
   - **Citation tool:** `gatherCitationsTool` - Stores formatted citations in buffer, returns minimal acknowledgment
 - Uses report-specific callbacks via `createReportCallbacks` (step logging only, finalization in route).
@@ -92,8 +93,8 @@
   - **Phase 3:** Agent generates report body only (Introduction → Conclusion) - does NOT include Scientific References section
 - **Backend assembly:** Concatenates agent output (report body) + citationsBuffer (formatted Scientific References section).
 - Saves complete report to `storage/phase1-results/<caseId>.json`.
-- Returns JSON response with success status and metadata.
-- Max duration: 30 minutes.
+- Returns JSON response with success status and metadata (connection may close before response delivered, but function continues and saves result).
+- Max duration: 13.33 minutes (800s Vercel limit).
 
 **`app/api/report/phase1/analyze/systemPrompt.ts`**
 - Loads interpretation guides from `data/` directory (questionnaire.md, takehome.md).
@@ -112,19 +113,19 @@
 - **Flow:**
   1. Accesses PDFs via `getSubmission()` from asyncLocalStorage (bypasses primary agent's context)
   2. Loads Diagnostics CSV (cached, same database as recommendDiagnosticsTool)
-  3. Invokes **Sonnet 4.5** sub-agent with multimodal message (text prompt + CSV + PDF files)
+  3. Invokes **Gemini 2.5 Flash** sub-agent with multimodal message (text prompt + CSV + PDF files)
   4. Sub-agent extracts lab values from PDFs, matches against CSV, assesses using Prism's Ranges when available
   5. Returns structured findings array (test, result, optional assessment with Prism's Range, implication)
 - **Files:**
   - `tool.ts` - Tool definition with streaming status
-  - `agent.ts` - Sonnet 4.5 sub-agent with multimodal PDF injection + CSV database + bioenergetic framework
+  - `agent.ts` - Gemini 2.5 Flash sub-agent with multimodal PDF injection + CSV database + bioenergetic framework
   - `schema.ts` - Input (clientProfile + analysisObjective), Output (findings array + optional synthesis)
 - **Token logging:** Logs inputTokens, outputTokens, totalTokens for cost visibility
 - **Execution:** ~5-10 seconds depending on PDF complexity
 - **Key principles:**
   - **One-shot pattern:** Called ONCE per report to analyze ALL uploaded PDFs comprehensively
   - **Context bypass:** PDFs never flow through primary agent's context (preserves economy)
-  - **Sonnet 4.5 model:** Quality medical reasoning for PDF extraction + clinical interpretation
+  - **Gemini 2.5 Flash model:** Reliable multimodal document analysis with native structured output (100% success rate)
   - **Optional assessment field:** Handles tests with and without Prism's Ranges (flexible schema)
   - **Placement:** Results integrated into Assessment Findings as "Existing Lab Results" table
 
@@ -203,17 +204,16 @@
 4. Frontend navigates to `/report/analysis/<caseId>`.
 5. Analysis page checks for existing result:
    - **If exists:** Loads cached report from storage (instant display, no re-run)
-   - **If not found:** Initiates streaming agent by calling `/api/report/phase1/analyze`
-6. Agent loads submission + citationsBuffer (passed via asyncLocalStorage), builds directive-driven 3-phase system prompt, and executes:
+   - **If not found:** Fires POST to `/api/report/phase1/analyze` (fire-and-forget) and immediately starts polling `/api/report/phase1/result` every 10 seconds
+6. Backend receives analyze request, loads submission + citationsBuffer (passed via asyncLocalStorage), builds directive-driven 3-phase system prompt, and executes:
    - **Phase 1:** Extract directives from Dalton's/Advisor notes → parse questionnaire/takehome data → flag items ≥2 against interpretation guides
-   - **Phase 2:** If PDFs uploaded: call analyzeExistingLabsTool ONCE (Sonnet 4.5 analyzes all PDFs via multimodal injection, returns structured findings) → map flagged items to guide implications → enrich each directive item via per-item tool calls (8-15+) → organize citation topics and call gatherCitationsTool once (tool stores formatted citations in buffer, returns minimal acknowledgment)
+   - **Phase 2:** If PDFs uploaded: call analyzeExistingLabsTool ONCE (Gemini 2.5 Flash analyzes all PDFs via multimodal injection, returns structured findings) → map flagged items to guide implications → enrich each directive item via per-item tool calls (8-15+) → organize citation topics and call gatherCitationsTool once (tool stores formatted citations in buffer, returns minimal acknowledgment)
    - **Phase 3:** Agent generates report body only (Introduction → Conclusion) - does NOT include Scientific References section (appended by backend)
-7. Generation completes (blocks until done, typically 2-3 minutes).
-8. Backend concatenates agent output (report body) + citationsBuffer (formatted Scientific References section).
-9. Final comprehensive report saved to storage with complete markdown (body + citations).
-10. Frontend receives completion, fetches complete report, displays with Existing Lab Results table (if PDFs) + Scientific References section.
-11. On page refresh: Cached result loads instantly from storage (no re-analysis).
-12. **PDF Export (optional):** User clicks "Download PDF" button → Frontend POSTs to `/api/report/phase1/pdf` → Backend converts markdown to HTML (unified) → generates PDF (Puppeteer) → returns PDF blob → browser downloads file.
+7. Generation completes (typically 6-12 minutes). Backend concatenates agent output (report body) + citationsBuffer (formatted Scientific References section) and saves to storage.
+8. **HTTP connection may close** at ~6 minutes (Vercel timeout), but backend continues executing and saves result successfully.
+9. Frontend polling (every 10s) eventually finds result in storage, loads complete report, displays with Existing Lab Results table (if PDFs) + Scientific References section.
+10. On page refresh: Cached result loads instantly from storage (no re-analysis).
+11. **PDF Export (optional):** User clicks "Download PDF" button → Frontend POSTs to `/api/report/phase1/pdf` → Backend converts markdown to HTML (unified) → generates PDF (Puppeteer) → returns PDF blob → browser downloads file.
 
 Storage:
 - **Production:** Upstash Redis (keys: `phase1-submissions:<caseId>`, `phase1-results:<caseId>`)
@@ -248,11 +248,12 @@ Storage:
    - **Status:** Fully implemented with buffer pattern + backend concatenation
 
 4. **Generation & Caching**
-   - Backend generation with `generateText` (blocks until complete)
-   - Simple frontend loading state during generation
+   - Backend generation with `generateText` (blocks until complete, typically 6-12 minutes)
+   - Frontend uses fire-and-forget POST + polling pattern (handles HTTP connection timeouts)
+   - Polls `/result` endpoint every 10 seconds until report ready or timeout (15 minutes)
    - Result caching prevents re-analysis on page refresh
    - Instant load from storage for existing results
-   - **Status:** Simplified from streaming to awaitable generation pattern
+   - **Status:** Fire-and-forget polling architecture handles long-running operations reliably
 
 5. **Prompt Design Philosophy**
    - Clear separation: Prompt = intent, Schema = contract

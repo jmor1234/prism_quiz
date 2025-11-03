@@ -31,11 +31,12 @@ app/report/
 - `analysis/[caseId]/report-analysis-stream.tsx`
   - Checks for existing result via `/api/report/phase1/result` before initiating new analysis.
   - If result exists: Loads from cache instantly (no re-run).
-  - If not found: Initiates generation via POST to `/api/report/phase1/analyze`.
+  - If not found: Fires POST to `/api/report/phase1/analyze` (fire-and-forget, doesn't wait for response).
+  - Immediately starts polling `/api/report/phase1/result` every 10 seconds.
   - Manages generation state (idle → checking → generating → complete → error).
-  - Simple loading indicator during generation (typically 2-3 minutes).
-  - No real-time progress updates - generation happens on backend, frontend waits for completion.
-  - After generation completes: Fetches complete report from `/api/report/phase1/result`.
+  - Shows loading indicator: "Generating report... (typically 6-12 minutes)".
+  - Polls until result found (200) or timeout (15 minutes).
+  - When result appears: Loads complete report from `/api/report/phase1/result` and displays markdown.
   - Renders:
     - Loading state with generation status message
     - Final report in markdown (`Response` component with `variant="report"`) displaying **Prism brand styling** (red headings, orange table borders) + **Existing Lab Results table** (if PDFs) in Assessment Findings + **Scientific References section** at bottom (curated citations organized by subsection)

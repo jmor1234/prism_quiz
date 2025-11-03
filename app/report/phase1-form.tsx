@@ -435,7 +435,7 @@ export function Phase1ReportForm() {
             <div className="flex flex-col gap-3 text-xs text-muted-foreground">
               <div className="inline-flex items-center gap-1">
                 <span className="size-2 rounded-full bg-bio-energy"></span>
-                Expect 2–3 minutes processing time
+                Expect 6–12 minutes processing time
               </div>
               {caseId && (
                 <div className="flex items-center gap-2 rounded-md border border-success/40 bg-success/10 px-3 py-2 text-[11px] text-success-foreground">
