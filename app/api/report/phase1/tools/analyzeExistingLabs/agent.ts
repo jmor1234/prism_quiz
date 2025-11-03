@@ -1,6 +1,6 @@
 // app/api/report/phase1/tools/analyzeExistingLabs/agent.ts
 
-import { anthropic } from "@ai-sdk/anthropic";
+import { google } from "@ai-sdk/google";
 import { generateObject } from "ai";
 import { withRetry } from "@/lib/ai/llmRetry";
 import { getPhaseTimeoutMs } from "@/lib/ai/retryConfig";
@@ -120,7 +120,7 @@ Keep interpretations clear, concise, and directly relevant to this client's situ
   const result = await withRetry(
     (signal) =>
       generateObject({
-        model: anthropic("claude-sonnet-4-5-20250929"),
+        model: google("gemini-2.5-flash-preview-09-2025"),
         schema: analyzeExistingLabsOutputSchema,
         messages: [
           {
@@ -128,11 +128,6 @@ Keep interpretations clear, concise, and directly relevant to this client's situ
             content: messageContent,
           },
         ],
-        providerOptions: {
-          anthropic: {
-            max_tokens: 30000,
-          },
-        },
         abortSignal: signal,
       }),
     {
