@@ -23,11 +23,17 @@ export function ReportAnalysisStream({ caseId }: ReportAnalysisStreamProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editedText, setEditedText] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  const [retryTrigger, setRetryTrigger] = useState(0);
   const isCheckingRef = useRef(false);
+  const generationAbortControllerRef = useRef<AbortController | null>(null);
 
   const startGeneration = useCallback(async () => {
     setStatus("generating");
     setError(null);
+
+    // Create abort controller for generation request only
+    const abortController = new AbortController();
+    generationAbortControllerRef.current = abortController;
 
     try {
       console.log(`[Report] Starting generation for case: ${caseId}`);
@@ -37,6 +43,7 @@ export function ReportAnalysisStream({ caseId }: ReportAnalysisStreamProps) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ caseId }),
+        signal: abortController.signal,
       });
 
       if (!response.ok) {
@@ -44,11 +51,23 @@ export function ReportAnalysisStream({ caseId }: ReportAnalysisStreamProps) {
         throw new Error(errorData.error || `Generation failed: ${response.statusText}`);
       }
 
-      const result = await response.json() as { success: boolean; caseId: string };
-      console.log(`[Report] Generation complete for case: ${result.caseId}`);
+      const result = await response.json() as { 
+        success: boolean; 
+        caseId: string; 
+        alreadyExists?: boolean;
+      };
+
+      // If result already existed, backend returned early - still need to fetch it
+      if (result.alreadyExists) {
+        console.log(`[Report] Result already existed, fetching from storage`);
+      } else {
+        console.log(`[Report] Generation complete for case: ${result.caseId}`);
+      }
 
       // Report is saved to storage, now retrieve it
-      const resultResponse = await fetch(`/api/report/phase1/result?caseId=${caseId}`);
+      const resultResponse = await fetch(`/api/report/phase1/result?caseId=${caseId}`, {
+        signal: abortController.signal,
+      });
 
       if (!resultResponse.ok) {
         throw new Error("Failed to retrieve generated report");
@@ -60,9 +79,17 @@ export function ReportAnalysisStream({ caseId }: ReportAnalysisStreamProps) {
 
       console.log(`[Report] Report displayed successfully`);
     } catch (err) {
+      // Don't set error if this was an abort (component unmounted)
+      if (err instanceof Error && err.name === "AbortError") {
+        console.log(`[Report] Generation aborted (component unmounted)`);
+        return;
+      }
+
       setStatus("error");
       setError(err instanceof Error ? err.message : "Unknown error during generation");
       console.error("[Report] Generation error:", err);
+    } finally {
+      generationAbortControllerRef.current = null;
     }
   }, [caseId]);
 
@@ -158,37 +185,65 @@ export function ReportAnalysisStream({ caseId }: ReportAnalysisStreamProps) {
 
   // Check for existing result first, then start generation if needed
   useEffect(() => {
-    if (status === "idle" && !isCheckingRef.current) {
-      isCheckingRef.current = true;
-      const checkExistingResult = async () => {
-        try {
-          setStatus("checking");
-          console.log(`[Report] Checking for existing result: ${caseId}`);
-
-          const response = await fetch(`/api/report/phase1/result?caseId=${caseId}`);
-
-          if (response.ok) {
-            const data = await response.json() as { report: string };
-            setReportText(data.report);
-            setStatus("complete");
-            console.log(`[Report] Loaded cached result for case: ${caseId}`);
-          } else if (response.status === 404) {
-            // No existing result, start generation
-            console.log(`[Report] No cached result found, starting generation`);
-            startGeneration();
-          } else {
-            throw new Error("Failed to check for existing result");
-          }
-        } catch (err) {
-          console.warn("[Report] Could not check for existing result, starting generation:", err);
-          startGeneration();
-        }
-      };
-
-      checkExistingResult();
+    // Only run if not already checking
+    if (isCheckingRef.current) {
+      return;
     }
+
+    isCheckingRef.current = true;
+    const checkAbortController = new AbortController();
+
+    const checkExistingResult = async () => {
+      try {
+        setStatus("checking");
+        console.log(`[Report] Checking for existing result: ${caseId}`);
+
+        const response = await fetch(`/api/report/phase1/result?caseId=${caseId}`, {
+          signal: checkAbortController.signal,
+        });
+
+        if (response.ok) {
+          const data = await response.json() as { report: string };
+          setReportText(data.report);
+          setStatus("complete");
+          console.log(`[Report] Loaded cached result for case: ${caseId}`);
+        } else if (response.status === 404) {
+          // No existing result, start generation
+          console.log(`[Report] No cached result found, starting generation`);
+          // Reset checking ref before starting generation
+          isCheckingRef.current = false;
+          startGeneration();
+        } else {
+          throw new Error("Failed to check for existing result");
+        }
+      } catch (err) {
+        // Don't handle abort errors here - component unmounted
+        if (err instanceof Error && err.name === "AbortError") {
+          console.log(`[Report] Check aborted (component unmounted)`);
+          return;
+        }
+
+        console.warn("[Report] Could not check for existing result, starting generation:", err);
+        // Reset checking ref before starting generation
+        isCheckingRef.current = false;
+        startGeneration();
+      }
+    };
+
+    checkExistingResult();
+
+    // Cleanup: abort check request and generation request if component unmounts or dependencies change
+    return () => {
+      checkAbortController.abort();
+      // Abort generation if it's running
+      if (generationAbortControllerRef.current) {
+        generationAbortControllerRef.current.abort();
+        generationAbortControllerRef.current = null;
+      }
+      isCheckingRef.current = false;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [status, caseId]);
+  }, [caseId, retryTrigger]);
 
   return (
     <div className="space-y-6">
@@ -232,6 +287,7 @@ export function ReportAnalysisStream({ caseId }: ReportAnalysisStreamProps) {
                 size="sm"
                 onClick={() => {
                   isCheckingRef.current = false;
+                  setRetryTrigger(prev => prev + 1);
                   setStatus("idle");
                   setError(null);
                   setReportText("");

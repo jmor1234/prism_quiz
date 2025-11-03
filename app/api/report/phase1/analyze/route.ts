@@ -27,7 +27,7 @@ import { createReportCallbacks } from "./streamCallbacks";
 
 // Report-specific
 import { getPhase1Case } from "@/server/phase1Cases";
-import { savePhase1Result } from "@/server/phase1Results";
+import { getPhase1Result, savePhase1Result } from "@/server/phase1Results";
 import { buildPhase1SystemPrompt } from "./systemPrompt";
 
 export const maxDuration = 800; // 13.33 minutes - Vercel Pro maximum with Fluid Compute
@@ -62,6 +62,24 @@ export async function POST(req: Request) {
       status: 404,
       headers: { "Content-Type": "application/json" },
     });
+  }
+
+  // Check if result already exists - prevent duplicate generation
+  const existingResult = await getPhase1Result(caseId);
+  if (existingResult) {
+    console.log(`[Phase1 Analysis] Result already exists for case: ${caseId}, returning existing result`);
+    return new Response(
+      JSON.stringify({
+        success: true,
+        caseId,
+        alreadyExists: true,
+        finishReason: "existing",
+      }),
+      {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }
+    );
   }
 
   // Initialize services
