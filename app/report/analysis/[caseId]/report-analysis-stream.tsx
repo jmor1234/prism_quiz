@@ -9,6 +9,10 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { AlertCircle, CheckCircle2, FileDown, Edit3, Save, X } from "lucide-react";
 
+// Polling configuration
+const POLLING_INTERVAL_MS = 10_000; // 10 seconds
+const POLLING_TIMEOUT_MS = 900_000; // 15 minutes (100s buffer past 800s function max)
+
 interface ReportAnalysisStreamProps {
   caseId: string;
 }
@@ -25,73 +29,86 @@ export function ReportAnalysisStream({ caseId }: ReportAnalysisStreamProps) {
   const [isSaving, setIsSaving] = useState(false);
   const [retryTrigger, setRetryTrigger] = useState(0);
   const isCheckingRef = useRef(false);
-  const generationAbortControllerRef = useRef<AbortController | null>(null);
+  const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const pollingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  const startGeneration = useCallback(async () => {
-    setStatus("generating");
-    setError(null);
+  const pollForResult = useCallback(() => {
+    console.log(`[Report] Starting polling for case: ${caseId}`);
+    const startTime = Date.now();
 
-    // Create abort controller for generation request only
-    const abortController = new AbortController();
-    generationAbortControllerRef.current = abortController;
+    // Set up polling interval
+    pollingIntervalRef.current = setInterval(async () => {
+      try {
+        const elapsedMs = Date.now() - startTime;
+        console.log(`[Report] Polling check (${Math.floor(elapsedMs / 1000)}s elapsed)`);
 
-    try {
-      console.log(`[Report] Starting generation for case: ${caseId}`);
+        const response = await fetch(`/api/report/phase1/result?caseId=${caseId}`);
 
-      // POST to analyze endpoint - this will block until report is complete
-      const response = await fetch("/api/report/phase1/analyze", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ caseId }),
-        signal: abortController.signal,
-      });
+        if (response.ok) {
+          // Success - report is ready
+          const data = await response.json() as { report: string };
+          setReportText(data.report);
+          setStatus("complete");
+          console.log(`[Report] Report ready after ${Math.floor(elapsedMs / 1000)}s`);
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: response.statusText }));
-        throw new Error(errorData.error || `Generation failed: ${response.statusText}`);
+          // Clear polling
+          if (pollingIntervalRef.current) {
+            clearInterval(pollingIntervalRef.current);
+            pollingIntervalRef.current = null;
+          }
+          if (pollingTimeoutRef.current) {
+            clearTimeout(pollingTimeoutRef.current);
+            pollingTimeoutRef.current = null;
+          }
+        } else if (response.status === 404) {
+          // Still generating - continue polling
+          console.log(`[Report] Result not ready yet, continuing to poll...`);
+        } else {
+          throw new Error(`Unexpected status: ${response.status}`);
+        }
+      } catch (err) {
+        console.error("[Report] Polling error:", err);
+        // Continue polling on transient errors
       }
+    }, POLLING_INTERVAL_MS);
 
-      const result = await response.json() as { 
-        success: boolean; 
-        caseId: string; 
-        alreadyExists?: boolean;
-      };
-
-      // If result already existed, backend returned early - still need to fetch it
-      if (result.alreadyExists) {
-        console.log(`[Report] Result already existed, fetching from storage`);
-      } else {
-        console.log(`[Report] Generation complete for case: ${result.caseId}`);
-      }
-
-      // Report is saved to storage, now retrieve it
-      const resultResponse = await fetch(`/api/report/phase1/result?caseId=${caseId}`, {
-        signal: abortController.signal,
-      });
-
-      if (!resultResponse.ok) {
-        throw new Error("Failed to retrieve generated report");
-      }
-
-      const resultData = await resultResponse.json() as { report: string };
-      setReportText(resultData.report);
-      setStatus("complete");
-
-      console.log(`[Report] Report displayed successfully`);
-    } catch (err) {
-      // Don't set error if this was an abort (component unmounted)
-      if (err instanceof Error && err.name === "AbortError") {
-        console.log(`[Report] Generation aborted (component unmounted)`);
-        return;
+    // Set up timeout to stop polling after max duration
+    pollingTimeoutRef.current = setTimeout(() => {
+      console.log(`[Report] Polling timeout after ${POLLING_TIMEOUT_MS / 1000}s`);
+      
+      // Clear polling
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+        pollingIntervalRef.current = null;
       }
 
       setStatus("error");
-      setError(err instanceof Error ? err.message : "Unknown error during generation");
-      console.error("[Report] Generation error:", err);
-    } finally {
-      generationAbortControllerRef.current = null;
-    }
+      setError(
+        "Report generation timed out. This may indicate a backend error. Please try again."
+      );
+    }, POLLING_TIMEOUT_MS);
   }, [caseId]);
+
+  const startGeneration = useCallback(() => {
+    setStatus("generating");
+    setError(null);
+
+    console.log(`[Report] Initiating generation for case: ${caseId}`);
+
+    // Fire-and-forget: POST to analyze endpoint without waiting for response
+    // Backend will continue executing and save results even if connection closes
+    fetch("/api/report/phase1/analyze", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ caseId }),
+    }).catch((err) => {
+      // Ignore connection errors - backend continues executing
+      console.log(`[Report] Analyze request connection closed (expected):`, err.message);
+    });
+
+    // Immediately start polling for results
+    pollForResult();
+  }, [caseId, pollForResult]);
 
   const downloadPdf = useCallback(async () => {
     setIsDownloadingPdf(true);
@@ -232,14 +249,22 @@ export function ReportAnalysisStream({ caseId }: ReportAnalysisStreamProps) {
 
     checkExistingResult();
 
-    // Cleanup: abort check request and generation request if component unmounts or dependencies change
+    // Cleanup: abort check request and clear polling if component unmounts or dependencies change
     return () => {
       checkAbortController.abort();
-      // Abort generation if it's running
-      if (generationAbortControllerRef.current) {
-        generationAbortControllerRef.current.abort();
-        generationAbortControllerRef.current = null;
+      
+      // Clear polling interval
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+        pollingIntervalRef.current = null;
       }
+      
+      // Clear polling timeout
+      if (pollingTimeoutRef.current) {
+        clearTimeout(pollingTimeoutRef.current);
+        pollingTimeoutRef.current = null;
+      }
+      
       isCheckingRef.current = false;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -265,7 +290,7 @@ export function ReportAnalysisStream({ caseId }: ReportAnalysisStreamProps) {
             <div className="flex-1 space-y-2">
               <p className="text-sm font-medium">Generating Report</p>
               <p className="text-sm text-muted-foreground">
-                This typically takes 5-10 minutes. The system is analyzing client data, enriching directives, and gathering citations...
+                This typically takes 6-12 minutes. The system is analyzing client data, enriching directives, and gathering citations...
               </p>
             </div>
           </div>
