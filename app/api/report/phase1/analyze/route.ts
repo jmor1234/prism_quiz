@@ -30,10 +30,10 @@ import { getPhase1Case } from "@/server/phase1Cases";
 import { savePhase1Result } from "@/server/phase1Results";
 import { buildPhase1SystemPrompt } from "./systemPrompt";
 
-export const maxDuration = 1800; // 30 minutes (platform safety net)
+export const maxDuration = 800; // 13.33 minutes - Vercel Pro maximum with Fluid Compute
 
-// Primary agent timeout - fail cleanly if generation takes too long
-const REPORT_GENERATION_TIMEOUT_MS = Number(process.env.REPORT_GENERATION_TIMEOUT_MS) || 780_000; // 13 minutes default
+// Primary agent timeout - fail cleanly if generation takes too long (30s buffer for cleanup)
+const REPORT_GENERATION_TIMEOUT_MS = Number(process.env.REPORT_GENERATION_TIMEOUT_MS) || 770_000; // 12.83 minutes default
 
 export async function POST(req: Request) {
   let caseId: string;
@@ -105,7 +105,7 @@ export async function POST(req: Request) {
         });
 
         console.log(`\n[Phase1 Analysis] Starting generation for case: ${caseId}`);
-        console.log(`[Phase1 Analysis] Timeout set to ${REPORT_GENERATION_TIMEOUT_MS}ms (${REPORT_GENERATION_TIMEOUT_MS / 60000} minutes)`);
+        console.log(`[Phase1 Analysis] Timeout set to ${REPORT_GENERATION_TIMEOUT_MS}ms (${(REPORT_GENERATION_TIMEOUT_MS / 60000).toFixed(2)} minutes)`);
 
         // Create abort controller with timeout
         const abortController = new AbortController();
@@ -137,7 +137,7 @@ export async function POST(req: Request) {
 
           // Check if this was a timeout abort
           if (error instanceof Error && error.name === 'AbortError') {
-            throw new Error(`Report generation timeout: exceeded ${REPORT_GENERATION_TIMEOUT_MS / 60000} minute limit`);
+            throw new Error(`Report generation timeout: exceeded ${(REPORT_GENERATION_TIMEOUT_MS / 60000).toFixed(2)} minute limit`);
           }
 
           // Re-throw other errors
