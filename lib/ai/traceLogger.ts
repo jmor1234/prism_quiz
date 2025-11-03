@@ -78,11 +78,9 @@ const DEFAULT_SECTION_NAME = 'primary_agent_flow';
 
 // Ensure logs directory exists (skip on Vercel where filesystem is read-only)
 const logsDir = path.join(process.cwd(), 'logs');
-fs.mkdir(logsDir, { recursive: true }).catch((err) => {
-    // Silently ignore EROFS errors (read-only filesystem on Vercel)
-    if ((err as NodeJS.ErrnoException).code !== 'EROFS') {
-        console.error('[TraceLogger] Error creating logs directory:', err);
-    }
+fs.mkdir(logsDir, { recursive: true }).catch(() => {
+    // Silently ignore directory creation errors (expected on Vercel's read-only filesystem)
+    // WriteFile calls below already handle errors gracefully
 });
 
 // Helper function to clean redundant parts from messages
