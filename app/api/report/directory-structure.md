@@ -61,7 +61,9 @@ app/api/report/
 - `phase1/route.ts`
   - Accepts Phase 1 submission payloads: 4 text fields + optional lab PDFs (base64-encoded).
   - Validates with `phase1SubmissionSchema` (includes `labPdfs` array with filename, data, mediaType).
-  - Persists complete submission (text + PDF data) to `storage/phase1-submissions/<caseId>.json`.
+  - Persists complete submission (text + PDF data) via `upsertPhase1Case()`:
+    - **Production:** Upstash Redis (key: `phase1-submissions:<caseId>`)
+    - **Local Dev:** Filesystem (`storage/phase1-submissions/<caseId>.json`)
   - Returns `{ caseId }` to frontend.
 
 ### Result Retrieval
@@ -125,7 +127,9 @@ app/api/report/
     - **Phase 2:** If PDFs uploaded: call analyzeExistingLabsTool once (comprehensive analysis); map data to guide implications; enrich directives via per-item tool calls (8-15+); organize citation topics by subsection; call gatherCitationsTool once (tool stores formatted citations in buffer, returns acknowledgment only)
     - **Phase 3:** Agent generates report body (Introduction → Conclusion); backend concatenates body + citations from buffer
   - **Backend assembly:** Concatenates agent output (report body) + citationsBuffer (formatted Scientific References section).
-  - Saves final comprehensive report to `storage/phase1-results/<caseId>.json`.
+  - Saves final comprehensive report via `savePhase1Result()`:
+    - **Production:** Upstash Redis (key: `phase1-results:<caseId>`)
+    - **Local Dev:** Filesystem (`storage/phase1-results/<caseId>.json`)
   - Returns JSON response with success status and metadata.
   - Max duration: 30 minutes.
 
@@ -254,8 +258,8 @@ app/api/report/
 - **Token savings:** ~5,000 tokens per report - agent never sees or writes citations
 
 ## Related Modules
-- `server/phase1Cases.ts` – Submission persistence (`upsertPhase1Case`, `getPhase1Case`).
-- `server/phase1Results.ts` – Result persistence (`savePhase1Result`, `getPhase1Result`).
+- `server/phase1Cases.ts` – Submission persistence (`upsertPhase1Case`, `getPhase1Case`). Uses Upstash Redis in production, filesystem in local dev.
+- `server/phase1Results.ts` – Result persistence (`savePhase1Result`, `getPhase1Result`). Uses Upstash Redis in production, filesystem in local dev.
 - `lib/schemas/phase1.ts` – Shared Zod schema and constants for submissions (includes `labPdfs` with base64 PDF data).
 - `app/api/report/phase1/lib/asyncContext.ts` – Helper to access submission from asyncLocalStorage (enables PDF bypass pattern).
 - `app/api/report/phase1/tools/` – Report-specific tools (thinkTool, analyzeExistingLabs, recommendations, gatherCitations).

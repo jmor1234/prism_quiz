@@ -19,13 +19,18 @@
 | `labPdfs` | Optional previous lab results (up to 5 PDFs) | Base64-encoded PDF data with filename and mediaType - used for existing lab analysis |
 
 ### Persistence Layout (current state)
-- **Submissions:** `storage/phase1-submissions/<caseId>.json`
+- **Submissions:** 
+  - **Production (Vercel):** Stored in Upstash Redis with key `phase1-submissions:<caseId>`
+  - **Local Development:** Stored in `storage/phase1-submissions/<caseId>.json`
   - Contains raw inputs + metadata (`caseId`, timestamps).
   - Written immediately when the UI submits the form.
-- **Results:** `storage/phase1-results/<caseId>.json`
+- **Results:**
+  - **Production (Vercel):** Stored in Upstash Redis with key `phase1-results:<caseId>`
+  - **Local Development:** Stored in `storage/phase1-results/<caseId>.json`
   - Contains Phase 1 analysis output (root-cause report) + metadata.
   - Written when Phase 1 agent completes analysis.
 - **Identifiers:** `caseId` is returned to the UI and becomes the join key for later phases.
+- **Storage Implementation:** Environment-aware - automatically uses Redis when `UPSTASH_REDIS_REST_URL` is present (production), falls back to filesystem when missing (local dev).
 
 ## 3. Current Implementation Snapshot (Directive-Driven Three-Phase System)
 
@@ -183,9 +188,13 @@
 
 **`server/phase1Cases.ts`**
 - Persists canonical case records (inputs) and exposes `getPhase1Case` to rehydrate by `caseId`.
+- **Storage:** Uses Upstash Redis in production (when `UPSTASH_REDIS_REST_URL` env var present), filesystem fallback for local development.
+- **Redis keys:** `phase1-submissions:<caseId>`
 
 **`server/phase1Results.ts`**
 - Persists Phase 1 analysis results and exposes `getPhase1Result` to retrieve by `caseId`.
+- **Storage:** Uses Upstash Redis in production (when `UPSTASH_REDIS_REST_URL` env var present), filesystem fallback for local development.
+- **Redis keys:** `phase1-results:<caseId>`
 
 ## 4. What Happens Today (End-to-End Flow)
 1. User completes the Phase 1 form with **4 required fields** (questionnaire, takehome, advisor notes, **Dalton's final notes**) + **optional lab PDFs** (up to 5) and submits.
@@ -206,9 +215,9 @@
 11. On page refresh: Cached result loads instantly from storage (no re-analysis).
 12. **PDF Export (optional):** User clicks "Download PDF" button → Frontend POSTs to `/api/report/phase1/pdf` → Backend converts markdown to HTML (unified) → generates PDF (Puppeteer) → returns PDF blob → browser downloads file.
 
-Files written:
-- `storage/phase1-submissions/<caseId>.json` (submission data)
-- `storage/phase1-results/<caseId>.json` (full 3-phase report)
+Storage:
+- **Production:** Upstash Redis (keys: `phase1-submissions:<caseId>`, `phase1-results:<caseId>`)
+- **Local Dev:** Filesystem (`storage/phase1-submissions/<caseId>.json`, `storage/phase1-results/<caseId>.json`)
 
 ## 5. Current Status & Next Steps
 
@@ -290,7 +299,9 @@ Files written:
 ### Shared/Server
 - Schema: `lib/schemas/phase1.ts`
 - Persistence: `server/phase1Cases.ts`, `server/phase1Results.ts`
-- Storage: `storage/phase1-submissions/`, `storage/phase1-results/`
+  - **Storage:** Environment-aware (Upstash Redis in production, filesystem in local dev)
+  - **Redis keys:** `phase1-submissions:<caseId>`, `phase1-results:<caseId>`
+  - **Local filesystem:** `storage/phase1-submissions/`, `storage/phase1-results/`
 
 ### Reused from Chat
 - Exa client: `app/api/chat/tools/researchOrchestratorTool/exaSearch/exaClient.ts` (used by gatherCitationsTool)
@@ -306,6 +317,7 @@ Files written:
 - **Two-step pattern**: Submit (persist) → Analyze (generate with await)
 - **Single-session architecture**: All 3 phases execute in one generation call with generateText
 - **Directive-driven paradigm**: Agent executes expert directives, not autonomous decisions
+- **Environment-aware storage**: Production uses Upstash Redis (persistent, serverless-compatible), local dev uses filesystem (automatic fallback when Redis env vars missing)
 - **Tool composition**: Cognitive tool (think) + Per-item recommendation tools (Gemini Flash CSV enrichment) + Citation tool (Exa + Gemini Flash curation + buffer storage)
 - **Per-item enrichment**: 8-15+ tool calls per report (once per directive item) using Gemini Flash
 - **Citation workflow**: Single tool call → comprehensive Exa search → intelligent curation → deterministic formatting → buffer storage → backend concatenation
