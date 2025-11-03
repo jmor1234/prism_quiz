@@ -1,13 +1,15 @@
 // app/api/report/phase1/pdf/lib/generatePdf.ts
 
 import puppeteer from "puppeteer";
+import puppeteerCore from "puppeteer-core";
+import chromium from "@sparticuz/chromium";
 import { PDF_STYLES } from "./pdfStyles";
 
 /**
  * Generate a PDF from HTML content using Puppeteer
  *
  * Process:
- * 1. Launch headless Chromium browser
+ * 1. Launch headless Chromium browser (serverless-aware)
  * 2. Create new page with embedded CSS styles
  * 3. Set HTML content and wait for rendering
  * 4. Generate PDF with professional settings
@@ -19,15 +21,34 @@ import { PDF_STYLES } from "./pdfStyles";
 export async function generatePdf(htmlContent: string): Promise<Uint8Array> {
   console.log("[PDF Generator] Launching browser...");
 
-  const browser = await puppeteer.launch({
-    headless: true,
-    args: [
-      "--no-sandbox",
-      "--disable-setuid-sandbox",
-      "--disable-dev-shm-usage", // Overcome limited resource problems
-      "--disable-gpu",
-    ],
-  });
+  // Detect Vercel serverless environment
+  const isServerless = !!process.env.VERCEL;
+
+  let browser;
+  if (isServerless) {
+    // Use serverless-optimized Chromium for Vercel
+    console.log("[PDF Generator] Using serverless Chromium");
+    chromium.setGraphicsMode = false; // Required for serverless environments
+    
+    browser = await puppeteerCore.launch({
+      args: chromium.args,
+      defaultViewport: chromium.defaultViewport,
+      executablePath: await chromium.executablePath(),
+      headless: chromium.headless,
+    });
+  } else {
+    // Use regular Puppeteer with bundled Chromium for local development
+    console.log("[PDF Generator] Using local Puppeteer");
+    browser = await puppeteer.launch({
+      headless: true,
+      args: [
+        "--no-sandbox",
+        "--disable-setuid-sandbox",
+        "--disable-dev-shm-usage", // Overcome limited resource problems
+        "--disable-gpu",
+      ],
+    });
+  }
 
   try {
     const page = await browser.newPage();
