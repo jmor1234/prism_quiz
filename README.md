@@ -185,8 +185,6 @@ Agent identifies citation needs
   - Tool returns only acknowledgment
   - No impact on agent's context window
 
-**Why this matters:** Manual curators couldn't feasibly provide scientific citations at this depth and quality. The AI adds a capability that significantly enhances report credibility and value.
-
 ### Cognitive Architecture
 
 ```
@@ -196,31 +194,26 @@ Primary Agent (Claude Sonnet 4.5)
      ├─→ Lab Analysis Sub-Agent (Gemini 2.5 Flash)
      │   └─ Multimodal PDF analysis with diagnostic database
      │
-     ├─→ Enrichment Sub-Agents (Gemini Flash)
+     ├─→ Enrichment Sub-Agents (Gemini Flash lite)
      │   ├─ Diagnostic recommendations (CSV lookup + personalization)
      │   ├─ Diet & lifestyle recommendations
      │   └─ Supplement recommendations
      │
-     └─→ Citation Research Sub-Agents (Gemini Flash)
+     └─→ Citation Research Sub-Agents (Gemini Flash lite)
          ├─ Query optimization (patterns → Exa queries)
          └─ Curation (relevance filtering)
 ```
-
-**Why this hierarchy?**
-- **Sonnet 4.5:** Complex reasoning, tool calling, orchestration
-- **Gemini 2.5 Flash:** Multimodal document analysis (PDFs), reliable structured output
-- **Gemini Flash:** Fast, cost-effective for structured lookup and curation tasks
-
-Each layer handles what it's optimized for. Intelligence emerges from interaction patterns, not individual capabilities.
 
 ### Technical Stack
 
 **Models:**
 - Claude Sonnet 4.5 (primary agent, orchestration)
 - Gemini 2.5 Flash (multimodal lab analysis)
-- Gemini Flash (recommendation enrichment, citation curation)
+- Gemini 2.5 Flash lite (recommendation enrichment, citation curation)
 
 **Tools & Infrastructure:**
+- **Next.js 15.5**
+- **ShadCN UI** 
 - **AI SDK v5:** Unified provider interface with tool calling
 - **Vercel:** Deployment platform (13.33 min max duration for analysis)
 - **Upstash Redis:** Production storage for submissions and results
