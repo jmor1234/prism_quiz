@@ -8,6 +8,23 @@
 
 ---
 
+### Technical Stack
+
+**Models:**
+- Claude Sonnet 4.5 (primary agent, orchestration)
+- Gemini 2.5 Flash (multimodal lab analysis)
+- Gemini 2.5 Flash lite (recommendation enrichment, citation curation)
+
+**Stack**
+- **Next.js 15.5**
+- **ShadCN UI** 
+- **AI SDK v5:** Unified provider interface with tool calling
+- **Vercel:** Deployment platform (13.33 min max duration for analysis)
+- **Upstash Redis:** Production storage for submissions and results
+- **Puppeteer:** PDF generation with branded styling
+- **Exa API:** Neural search for scientific citations
+---
+
 ## The Problem
 
 Prism Therapeutics provides premium alternative healthcare services with comprehensive, evidence-based personalized reports for each client. Their process:
@@ -204,38 +221,43 @@ Primary Agent (Claude Sonnet 4.5)
          └─ Curation (relevance filtering)
 ```
 
-### Technical Stack
 
-**Models:**
-- Claude Sonnet 4.5 (primary agent, orchestration)
-- Gemini 2.5 Flash (multimodal lab analysis)
-- Gemini 2.5 Flash lite (recommendation enrichment, citation curation)
-
-**Tools & Infrastructure:**
-- **Next.js 15.5**
-- **ShadCN UI** 
-- **AI SDK v5:** Unified provider interface with tool calling
-- **Vercel:** Deployment platform (13.33 min max duration for analysis)
-- **Upstash Redis:** Production storage for submissions and results
-- **Puppeteer:** PDF generation with branded styling
-- **Exa API:** Neural search for scientific citations
----
 
 ## What's Next
 
-This report automation system serves as the foundation for Prism's next evolution: **a free-form chat agent** that clients can interact with directly.
+The report system solved Prism's immediate business bottleneck—but more importantly, it **proved the patterns work.**
 
-**Same cognitive architecture, different mode:**
-- **Report system = Execution mode** (directive-driven)
-- **Chat agent = Exploration mode** (curiosity-driven)
+The real vision: **A dynamic AI companion that clients interact with directly for ongoing health support.**
 
-Both leverage:
-- Prism's knowledge base
-- Client-specific data
-- Comprehensive Exa research tools
-- Bioenergetic framework
+### The Bigger Picture
 
-🔗 **Next project:** [Prism Research Engine](https://github.com/jmor1234/prism_research_engine) (currently in development)
+**Report System (This Repo):**
+- Solves urgent business need: scale expert decisions through automation
+- Proves core patterns: agentic architecture, knowledge base integration, Exa research tools
+- Static, one-time output: comprehensive report delivered after 6-10 minutes
+
+**Chat Agent (In Development):**
+- Applies proven patterns to a more comprehensive use case
+- Dynamic, real-time companion: available to clients at all times
+- Learns and grows with each client over time
+- Supports clients between advisor sessions and after consultations conclude
+- Autonomous decision-making within Prism's bioenergetic framework
+- Same foundations (knowledge base, Exa research, cognitive architecture), more comprehensive execution
+
+### From Static Report → Living Companion
+
+The report gives clients their roadmap. The chat agent walks with them on the journey:
+- Answer questions as they arise in daily life
+- Research new symptoms or concerns in real-time
+- Provide context-aware guidance between human advisor check-ins
+- Learn from client's ongoing data and experiences
+- Collaborate with human advisors as part of comprehensive care
+
+**Status:** MVP complete, currently in testing phase
+
+The agent is **fully interactive now**—you can ask health questions and receive research-backed comprehensive answers grounded in Prism's core knowledge and bioenergetic philosophies. The current MVP doesn't yet include client-specific data integration, but the foundational intelligence and research capabilities are operational.
+
+🔗 **Chat Agent Repository:** [Prism Research Engine](https://github.com/jmor1234/prism_research_engine)
 
 ---
 
