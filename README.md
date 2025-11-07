@@ -1,4 +1,4 @@
-# PRISM Report Automation System
+# PRISM Report Augmentation and Automation System
 
 **AI-powered execution engine that scales expert healthcare decisions through intelligent knowledge translation.**
 
@@ -23,8 +23,8 @@ Prism Therapeutics provides premium alternative healthcare services with compreh
 **The Bottleneck:**
 - **Time:** Hours per report
 - **Cost:** $75 per report in labor
-- **Limitations:** No personalization beyond what experts explicitly wrote, no comprehensive citations
-- **Scalability:** Doesn't scale as client base grows
+- **Limitations:** Descriptions in the final report we're not as contextual personalized as they could be
+- **Scalability:** Time delay and cost as client base grows becoming less feasible.
 
 The manual curators weren't making clinical decisions—they were executing a **knowledge translation process**. This is exactly what AI should handle.
 
@@ -64,9 +64,9 @@ This ensures safety, trust, and regulatory compliance while leveraging AI for wh
 
 | Metric | Before | After | Improvement |
 |--------|--------|-------|-------------|
-| **Time** | Hours | 6-10 minutes | **~95% reduction** |
-| **Cost** | $75/report | ~$2-5/report | **~95% reduction** |
-| **Quality** | Manual lookup | Personalized + Citations | **New capabilities** |
+| **Time** | 1-3 hours | 6-10 minutes | **~95% reduction** |
+| **Cost** | $75/report | ~$2-4/report | **~95% reduction** |
+| **Quality** | very good but lacking full personalization | improved personalized and contextual relevance | **Enhanced capabilities** |
 
 **Quality improvements:**
 - ✅ Contextual personalization based on full client profile
@@ -226,13 +226,6 @@ Each layer handles what it's optimized for. Intelligence emerges from interactio
 - **Upstash Redis:** Production storage for submissions and results
 - **Puppeteer:** PDF generation with branded styling
 - **Exa API:** Neural search for scientific citations
-
-**Key Patterns:**
-- **PDF bypass pattern:** Lab PDFs accessed via asyncLocalStorage (injected into sub-agent only, never through primary context)
-- **Citation buffer pattern:** Citations stored in buffer and concatenated by backend (agent never sees them)
-- **Per-item enrichment:** Recommendation tools called once per directive item (8-15+ calls per report)
-- **One-shot lab analysis:** Lab tool called once to analyze all PDFs comprehensively
-
 ---
 
 ## What's Next
