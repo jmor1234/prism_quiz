@@ -136,7 +136,7 @@ export async function POST(req: Request) {
         try {
           // Generate report (blocks until complete)
           result = await generateText({
-            model: anthropic("claude-sonnet-4-5-20250929"),
+            model: anthropic("claude-opus-4-5-20251101"),
             messages: systemMessages,
             tools,
             stopWhen: stepCountIs(50),
