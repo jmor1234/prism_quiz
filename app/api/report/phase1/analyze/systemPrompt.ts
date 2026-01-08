@@ -12,9 +12,11 @@ let foundationalGuidelines: string | null = null;
 
 async function loadGuides() {
   if (!questionnaireGuide || !takehomeGuide || !foundationalGuidelines) {
+    const knowledgeDir = path.join(process.cwd(), "lib", "knowledge");
     const dataDir = path.join(process.cwd(), "app", "api", "report", "phase1", "data");
+
     questionnaireGuide = await fs.readFile(
-      path.join(dataDir, "questionaire.md"),
+      path.join(knowledgeDir, "questionaire.md"),
       "utf-8"
     );
     takehomeGuide = await fs.readFile(
@@ -22,7 +24,7 @@ async function loadGuides() {
       "utf-8"
     );
     foundationalGuidelines = await fs.readFile(
-      path.join(dataDir, "diet_lifestyle_standardized.md"),
+      path.join(knowledgeDir, "diet_lifestyle_standardized.md"),
       "utf-8"
     );
   }
