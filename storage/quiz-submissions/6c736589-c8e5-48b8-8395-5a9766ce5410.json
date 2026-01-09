@@ -1,0 +1,24 @@
+{
+  "id": "6c736589-c8e5-48b8-8395-5a9766ce5410",
+  "createdAt": "2026-01-09T15:36:45.650Z",
+  "submission": {
+    "email": "test@example.com",
+    "name": "Test User",
+    "energyLevel": 5,
+    "crashAfterLunch": true,
+    "difficultyWaking": true,
+    "wakeAtNight": {
+      "wakes": false
+    },
+    "brainFog": true,
+    "bowelIssues": [
+      "pain",
+      "incomplete",
+      "diarrhea"
+    ],
+    "coldExtremities": true,
+    "whiteTongue": true,
+    "typicalEating": "Eggs and toast in the morning. Salad for lunch. Protein with rice and veggies for dinner. Snack on nuts and fruit.",
+    "healthGoals": "Sleep through the night without waking up. Feel sharper at work. Less brain fog."
+  }
+}

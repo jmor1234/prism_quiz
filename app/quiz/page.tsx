@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { CheckCircle2, FileDown, Edit3, Save, X } from "lucide-react";
+import { CheckCircle2, FileDown } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 import { Response } from "@/components/ai-elements/response";
@@ -272,10 +272,7 @@ export default function QuizPage(): React.ReactElement {
   const [step, setStep] = useState(0);
   const [direction, setDirection] = useState<Direction>("forward");
 
-  // Edit/Download state
-  const [isEditing, setIsEditing] = useState(false);
-  const [editedText, setEditedText] = useState("");
-  const [isSaving, setIsSaving] = useState(false);
+  // Download state
   const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
 
   // Form update helper
@@ -304,51 +301,9 @@ export default function QuizPage(): React.ReactElement {
     setStep(0);
     setStatus("idle");
     setError(null);
-    setIsEditing(false);
-    setEditedText("");
   }
 
-  // Edit/Download handlers
-  const handleEdit = useCallback(() => {
-    if (result) {
-      setEditedText(result.report);
-      setIsEditing(true);
-    }
-  }, [result]);
-
-  const handleCancelEdit = useCallback(() => {
-    setIsEditing(false);
-    setEditedText("");
-  }, []);
-
-  const handleSave = useCallback(async () => {
-    if (!result) return;
-
-    setIsSaving(true);
-    try {
-      const response = await fetch("/api/quiz/result", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ quizId: result.id, report: editedText }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: response.statusText }));
-        throw new Error(errorData.error || `Save failed: ${response.statusText}`);
-      }
-
-      // Update local state with edited text
-      setResult({ ...result, report: editedText });
-      setIsEditing(false);
-      setEditedText("");
-    } catch (err) {
-      console.error("[Quiz Edit] Save error:", err);
-      alert(`Failed to save changes: ${err instanceof Error ? err.message : "Unknown error"}`);
-    } finally {
-      setIsSaving(false);
-    }
-  }, [result, editedText]);
-
+  // Download handler
   const downloadPdf = useCallback(async () => {
     if (!result) return;
 
@@ -707,7 +662,7 @@ export default function QuizPage(): React.ReactElement {
 
         <main className="flex-1 px-4 py-8">
           <div className="max-w-2xl mx-auto space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            {/* Success banner with action buttons */}
+            {/* Success banner with download button */}
             <div className="rounded-lg border border-green-500/50 bg-green-500/10 p-4">
               <div className="flex items-center justify-between flex-wrap gap-3">
                 <div className="flex items-center gap-2">
@@ -716,93 +671,32 @@ export default function QuizPage(): React.ReactElement {
                     Assessment generated successfully
                   </p>
                 </div>
-                <div className="flex items-center gap-2">
-                  {isEditing ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={downloadPdf}
+                  disabled={isDownloadingPdf}
+                  className="gap-2"
+                >
+                  {isDownloadingPdf ? (
                     <>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={handleCancelEdit}
-                        disabled={isSaving}
-                        className="gap-2"
-                      >
-                        <X className="h-4 w-4" />
-                        Cancel
-                      </Button>
-                      <Button
-                        variant="default"
-                        size="sm"
-                        onClick={handleSave}
-                        disabled={isSaving}
-                        className="gap-2"
-                      >
-                        {isSaving ? (
-                          <>
-                            <Loader className="h-4 w-4" />
-                            Saving...
-                          </>
-                        ) : (
-                          <>
-                            <Save className="h-4 w-4" />
-                            Save Changes
-                          </>
-                        )}
-                      </Button>
+                      <Loader className="h-4 w-4" />
+                      Generating PDF...
                     </>
                   ) : (
                     <>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={handleEdit}
-                        className="gap-2"
-                      >
-                        <Edit3 className="h-4 w-4" />
-                        Edit
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={downloadPdf}
-                        disabled={isDownloadingPdf}
-                        className="gap-2"
-                      >
-                        {isDownloadingPdf ? (
-                          <>
-                            <Loader className="h-4 w-4" />
-                            Generating PDF...
-                          </>
-                        ) : (
-                          <>
-                            <FileDown className="h-4 w-4" />
-                            Download PDF
-                          </>
-                        )}
-                      </Button>
+                      <FileDown className="h-4 w-4" />
+                      Download PDF
                     </>
                   )}
-                </div>
+                </Button>
               </div>
             </div>
 
             {/* Content area */}
             <div className="rounded-lg border bg-card p-6 shadow-sm">
               <h2 className="mb-4 text-lg font-semibold">Your Health Assessment</h2>
-              {isEditing ? (
-                <div className="space-y-3">
-                  <p className="text-xs text-muted-foreground">
-                    Edit the assessment markdown below. Changes will be saved and used for PDF generation.
-                  </p>
-                  <Textarea
-                    value={editedText}
-                    onChange={(e) => setEditedText(e.target.value)}
-                    className="min-h-[400px] font-mono text-sm"
-                    disabled={isSaving}
-                  />
-                </div>
-              ) : (
-                <Response variant="report">{result.report}</Response>
-              )}
+              <Response variant="report">{result.report}</Response>
             </div>
 
             {/* Take quiz again button */}
