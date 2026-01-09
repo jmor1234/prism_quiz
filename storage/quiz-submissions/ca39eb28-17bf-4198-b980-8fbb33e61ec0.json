@@ -1,0 +1,21 @@
+{
+  "id": "ca39eb28-17bf-4198-b980-8fbb33e61ec0",
+  "createdAt": "2026-01-09T18:00:26.884Z",
+  "submission": {
+    "email": "test@example.com",
+    "energyLevel": 3,
+    "crashAfterLunch": false,
+    "difficultyWaking": true,
+    "wakeAtNight": {
+      "wakes": false
+    },
+    "brainFog": false,
+    "bowelIssues": [
+      "pain"
+    ],
+    "coldExtremities": true,
+    "whiteTongue": false,
+    "typicalEating": "Cereal or nothing for breakfast. Work through lunch, maybe a protein bar. Large dinner, often late. Snacks throughout the evening.",
+    "healthGoals": "Lose weight and feel less bloated. Want to have energy to exercise again."
+  }
+}
