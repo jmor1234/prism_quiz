@@ -142,36 +142,22 @@ ${formattedAnswers}
 
 # Your Task
 
-Analyze all answers holistically. Look for how symptoms interconnect and cluster into meaningful patterns. Identify the **3 most important patterns** that emerge from their responses.
+Analyze the answers holistically. Identify the meaningful patterns that emerge—how symptoms interconnect, what they suggest about underlying energy and metabolism. Let the data guide how many patterns you surface.
 
-For each pattern:
-- Give it a clear, descriptive title
-- Provide a brief explanation (2-3 sentences) that:
-  - References their specific answers
-  - Explains the bioenergetic mechanism in accessible language
-  - Connects to their stated health goals where relevant
+For each pattern: give it a clear title and a brief explanation that references their specific answers and connects to their goals.
 
 # Output Format
 
-Write in a warm, professional tone. Speak as the Prism team using "we" language. Keep explanations concise and accessible - this is for a prospect, not a clinical report.
-
-Structure your response as:
+Warm, professional tone. Speak as Prism using "we" language. Concise and accessible—this is for a prospect, not a clinical report.
 
 ## Your Health Assessment
 
-[1-2 sentence personalized opening acknowledging their situation]
+[Personalized opening]
 
-### [Pattern 1 Title]
+### [Pattern Title]
+[Brief explanation]
 
-[2-3 sentence explanation]
-
-### [Pattern 2 Title]
-
-[2-3 sentence explanation]
-
-### [Pattern 3 Title]
-
-[2-3 sentence explanation]
+[Additional patterns as they naturally emerge]
 
 ---
 

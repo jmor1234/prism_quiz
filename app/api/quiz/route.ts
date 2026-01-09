@@ -56,7 +56,7 @@ export async function POST(req: Request) {
       messages,
       providerOptions: {
         anthropic: {
-          max_tokens: 2000,
+          thinking: { type: "enabled", budgetTokens: 5000 },
         },
       },
     });

@@ -1,0 +1,23 @@
+{
+  "id": "5b884674-2970-4bd0-8b9e-61991238127f",
+  "createdAt": "2026-01-09T15:56:28.896Z",
+  "submission": {
+    "email": "test@example.com",
+    "name": "Test User",
+    "phone": "555-123-4567",
+    "energyLevel": 2,
+    "crashAfterLunch": true,
+    "difficultyWaking": false,
+    "wakeAtNight": {
+      "wakes": false
+    },
+    "brainFog": false,
+    "bowelIssues": [
+      "smell"
+    ],
+    "coldExtremities": false,
+    "whiteTongue": false,
+    "typicalEating": "Eggs and toast in the morning. Salad for lunch. Protein with rice and veggies for dinner. Snack on nuts and fruit.",
+    "healthGoals": "Better overall health. Preparing for pregnancy and want to optimize my body first."
+  }
+}

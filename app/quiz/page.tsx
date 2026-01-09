@@ -767,7 +767,7 @@ export default function QuizPage(): React.ReactElement {
                 strokeDasharray={circumference}
                 initial={{ strokeDashoffset: circumference }}
                 animate={{ strokeDashoffset: circumference * 0.1 }}
-                transition={{ duration: 12, ease: "easeInOut" }}
+                transition={{ duration: 25, ease: "easeInOut" }}
               />
             </svg>
 

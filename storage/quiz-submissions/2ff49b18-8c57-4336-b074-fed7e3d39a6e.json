@@ -1,0 +1,28 @@
+{
+  "id": "2ff49b18-8c57-4336-b074-fed7e3d39a6e",
+  "createdAt": "2026-01-09T15:45:01.758Z",
+  "submission": {
+    "email": "test@example.com",
+    "name": "Test User",
+    "phone": "555-123-4567",
+    "energyLevel": 10,
+    "crashAfterLunch": false,
+    "difficultyWaking": false,
+    "wakeAtNight": {
+      "wakes": true,
+      "reasons": [
+        "eat",
+        "drink"
+      ]
+    },
+    "brainFog": true,
+    "bowelIssues": [
+      "pain",
+      "smell"
+    ],
+    "coldExtremities": true,
+    "whiteTongue": false,
+    "typicalEating": "Eggs and toast in the morning. Salad for lunch. Protein with rice and veggies for dinner. Snack on nuts and fruit.",
+    "healthGoals": "Improve gut health and reduce digestive issues. More mental clarity and focus."
+  }
+}
