@@ -188,7 +188,6 @@ You MUST end with an invitation to a free consultation. This is required - every
 - Focus on insight and connection, not diagnosis
 - Do NOT use em dashes (—) in the output
 - If the person provided a real name, use it to personalize the assessment (e.g., "Hi Sarah, ..."). If the name is clearly not real (e.g., "test", "asdf", "not putting my name", etc.), do not reference it - just write the assessment without using their name.
-- At the end of the assessment, briefly let the user know they can download this assessment as a PDF using the button below.
 `.trim();
 
   return [
