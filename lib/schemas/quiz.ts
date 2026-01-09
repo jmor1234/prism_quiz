@@ -19,8 +19,7 @@ export type BowelIssueType = (typeof bowelIssueTypes)[number];
 export const quizSubmissionSchema = z.object({
   // Contact info
   email: z.string().email("Please enter a valid email address"),
-  name: z.string().min(1, "Name is required").optional(),
-  phone: z.string().optional(),
+  name: z.string().min(1, "Name is required"),
 
   // Quiz answers
   energyLevel: z

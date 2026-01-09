@@ -35,6 +35,8 @@ async function loadKnowledge() {
 function formatAnswers(submission: QuizSubmission): string {
   const lines: string[] = [];
 
+  lines.push(`**Name:** ${submission.name}`);
+
   lines.push(
     `**Energy Level:** ${submission.energyLevel}/10${submission.energyLevel <= 4 ? " (low)" : submission.energyLevel <= 6 ? " (moderate)" : " (good)"}`
   );
@@ -185,6 +187,7 @@ You MUST end with an invitation to a free consultation. This is required - every
 - Keep it brief and engaging - this is a lead generation tool
 - Focus on insight and connection, not diagnosis
 - Do NOT use em dashes (—) in the output
+- If the person provided a real name, use it to personalize the assessment (e.g., "Hi Sarah, ..."). If the name is clearly not real (e.g., "test", "asdf", "not putting my name", etc.), do not reference it - just write the assessment without using their name.
 `.trim();
 
   return [

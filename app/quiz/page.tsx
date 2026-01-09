@@ -28,7 +28,6 @@ import {
 type FormState = {
   email: string;
   name: string;
-  phone: string;
   energyLevel: number;
   crashAfterLunch: boolean | null;
   difficultyWaking: boolean | null;
@@ -56,7 +55,6 @@ const TOTAL_STEPS = 11;
 const initialFormState: FormState = {
   email: "",
   name: "",
-  phone: "",
   energyLevel: 5,
   crashAfterLunch: null,
   difficultyWaking: null,
@@ -116,8 +114,7 @@ function generateTestData(): FormState {
 
   return {
     email: "test@example.com",
-    name: randomBool() ? "Test User" : "",
-    phone: randomBool() ? "555-123-4567" : "",
+    name: "Test User",
     energyLevel: Math.floor(Math.random() * 10) + 1,
     crashAfterLunch: randomBool(),
     difficultyWaking: randomBool(),
@@ -355,7 +352,7 @@ export default function QuizPage(): React.ReactElement {
       case 7: return form.whiteTongue !== null;
       case 8: return form.typicalEating.trim().length > 0;
       case 9: return form.healthGoals.trim().length > 0;
-      case 10: return form.email.includes("@") && form.email.includes(".");
+      case 10: return form.email.includes("@") && form.email.includes(".") && form.name.trim().length > 0;
       default: return false;
     }
   }
@@ -371,8 +368,7 @@ export default function QuizPage(): React.ReactElement {
 
     const submission: QuizSubmission = {
       email: form.email,
-      name: form.name || undefined,
-      phone: form.phone || undefined,
+      name: form.name,
       energyLevel: form.energyLevel,
       crashAfterLunch: form.crashAfterLunch!,
       difficultyWaking: form.difficultyWaking!,
@@ -619,25 +615,13 @@ export default function QuizPage(): React.ReactElement {
               </div>
               <div className="space-y-2">
                 <label className="block text-sm font-medium">
-                  Name <span className="text-muted-foreground">(optional)</span>
+                  Name <span className="text-destructive">*</span>
                 </label>
                 <Input
                   type="text"
                   value={form.name}
                   onChange={(e) => updateForm("name", e.target.value)}
                   placeholder="Your name"
-                  className="h-12 text-base"
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="block text-sm font-medium">
-                  Phone <span className="text-muted-foreground">(optional)</span>
-                </label>
-                <Input
-                  type="tel"
-                  value={form.phone}
-                  onChange={(e) => updateForm("phone", e.target.value)}
-                  placeholder="Your phone"
                   className="h-12 text-base"
                 />
               </div>
