@@ -18,15 +18,10 @@ async function getLogoBase64(): Promise<string> {
     return logoBase64Cache;
   }
 
-  // Reuse the same logo from report PDF
   const logoPath = path.join(
     process.cwd(),
-    "app",
-    "api",
-    "report",
-    "phase1",
-    "pdf",
     "lib",
+    "pdf",
     "prism_transparent.png"
   );
   const logoBuffer = await fs.readFile(logoPath);

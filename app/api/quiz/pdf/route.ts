@@ -1,8 +1,8 @@
 // app/api/quiz/pdf/route.ts
 
 import { getQuizResult } from "@/server/quizResults";
-import { markdownToHtml } from "@/app/api/report/phase1/pdf/lib/markdownToHtml";
-import { generatePdf } from "@/app/api/report/phase1/pdf/lib/generatePdf";
+import { markdownToHtml } from "@/lib/pdf/markdownToHtml";
+import { generatePdf } from "@/lib/pdf/generatePdf";
 import { buildQuizHtml } from "./lib/quizTemplateBuilder";
 
 /**
