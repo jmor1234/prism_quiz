@@ -1,18 +1,30 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Loader2 } from "lucide-react";
+import ReactMarkdown from "react-markdown";
+import { motion, AnimatePresence } from "framer-motion";
+
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
+import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { ModeToggle } from "@/components/ui/mode-toggle";
+import { Progress } from "@/components/ui/progress";
+import { Slider } from "@/components/ui/slider";
+import { Textarea } from "@/components/ui/textarea";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { cn } from "@/lib/utils";
 import {
   type QuizSubmission,
-  wakeReasons,
-  bowelIssueTypes,
   type WakeReason,
   type BowelIssueType,
+  wakeReasons,
+  bowelIssueTypes,
 } from "@/lib/schemas/quiz";
-import ReactMarkdown from "react-markdown";
+
+// ============================================================================
+// Types
+// ============================================================================
 
 type FormState = {
   email: string;
@@ -33,6 +45,15 @@ type FormState = {
   healthGoals: string;
 };
 
+type SubmitStatus = "idle" | "submitting" | "success" | "error";
+type Direction = "forward" | "back";
+
+// ============================================================================
+// Constants
+// ============================================================================
+
+const TOTAL_STEPS = 11;
+
 const initialFormState: FormState = {
   email: "",
   name: "",
@@ -49,79 +70,11 @@ const initialFormState: FormState = {
   healthGoals: "",
 };
 
-function YesNoToggle({
-  value,
-  onChange,
-}: {
-  value: boolean | null;
-  onChange: (v: boolean) => void;
-}) {
-  return (
-    <div className="flex gap-2">
-      <button
-        type="button"
-        onClick={() => onChange(true)}
-        className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-          value === true
-            ? "bg-primary text-primary-foreground"
-            : "bg-muted hover:bg-muted/80"
-        }`}
-      >
-        Yes
-      </button>
-      <button
-        type="button"
-        onClick={() => onChange(false)}
-        className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-          value === false
-            ? "bg-primary text-primary-foreground"
-            : "bg-muted hover:bg-muted/80"
-        }`}
-      >
-        No
-      </button>
-    </div>
-  );
-}
-
-function MultiSelect<T extends string>({
-  options,
-  selected,
-  onChange,
-  labels,
-}: {
-  options: readonly T[];
-  selected: T[];
-  onChange: (selected: T[]) => void;
-  labels: Record<T, string>;
-}) {
-  const toggle = (option: T) => {
-    if (selected.includes(option)) {
-      onChange(selected.filter((s) => s !== option));
-    } else {
-      onChange([...selected, option]);
-    }
-  };
-
-  return (
-    <div className="flex flex-wrap gap-2">
-      {options.map((option) => (
-        <button
-          key={option}
-          type="button"
-          onClick={() => toggle(option)}
-          className={`px-3 py-1.5 rounded-md text-sm transition-colors ${
-            selected.includes(option)
-              ? "bg-primary text-primary-foreground"
-              : "bg-muted hover:bg-muted/80"
-          }`}
-        >
-          {labels[option]}
-        </button>
-      ))}
-    </div>
-  );
-}
+const LOADING_MESSAGES = [
+  "Analyzing your responses...",
+  "Identifying key patterns...",
+  "Preparing your assessment...",
+];
 
 const wakeReasonLabels: Record<WakeReason, string> = {
   no_reason: "No apparent reason",
@@ -138,46 +91,204 @@ const bowelIssueLabels: Record<BowelIssueType, string> = {
   smell: "Excessive smell/mess",
 };
 
-export default function QuizPage() {
-  const [form, setForm] = useState<FormState>(initialFormState);
-  const [status, setStatus] = useState<
-    "idle" | "submitting" | "success" | "error"
-  >("idle");
-  const [error, setError] = useState<string | null>(null);
-  const [result, setResult] = useState<{ id: string; report: string } | null>(
-    null
+// ============================================================================
+// Test Data Generator (dev only)
+// ============================================================================
+
+function generateTestData(): FormState {
+  const randomBool = () => Math.random() > 0.5;
+  const randomFrom = <T,>(arr: readonly T[]): T =>
+    arr[Math.floor(Math.random() * arr.length)];
+  const randomSubset = <T,>(arr: readonly T[]): T[] =>
+    arr.filter(() => Math.random() > 0.5);
+
+  const dietOptions = [
+    "Oatmeal with fruit for breakfast. Sandwich and chips for lunch. Pasta with vegetables for dinner. Coffee throughout the day.",
+    "Skip breakfast, just coffee. Big lunch usually fast food or leftovers. Dinner is whatever's easy - often takeout or frozen meals.",
+    "Eggs and toast in the morning. Salad for lunch. Protein with rice and veggies for dinner. Snack on nuts and fruit.",
+    "Smoothie for breakfast. Soup or sandwich for lunch. Home-cooked dinner with meat and vegetables. Lots of water, some wine at night.",
+    "Cereal or nothing for breakfast. Work through lunch, maybe a protein bar. Large dinner, often late. Snacks throughout the evening.",
+  ];
+
+  const goalOptions = [
+    "More consistent energy throughout the day, better sleep quality, improved digestion and mental clarity.",
+    "Lose weight and feel less bloated. Want to have energy to exercise again.",
+    "Sleep through the night without waking up. Feel sharper at work. Less brain fog.",
+    "Improve gut health and reduce digestive issues. More mental clarity and focus.",
+    "Feel like myself again. Used to have so much energy, now I'm always tired. Want to figure out what's wrong.",
+    "Better overall health. Preparing for pregnancy and want to optimize my body first.",
+  ];
+
+  const wakes = randomBool();
+
+  return {
+    email: "test@example.com",
+    name: randomBool() ? "Test User" : "",
+    phone: randomBool() ? "555-123-4567" : "",
+    energyLevel: Math.floor(Math.random() * 10) + 1,
+    crashAfterLunch: randomBool(),
+    difficultyWaking: randomBool(),
+    wakeAtNight: {
+      wakes,
+      reasons: wakes ? randomSubset(wakeReasons) : [],
+    },
+    brainFog: randomBool(),
+    bowelIssues: randomSubset(bowelIssueTypes),
+    coldExtremities: randomBool(),
+    whiteTongue: randomBool(),
+    typicalEating: randomFrom(dietOptions),
+    healthGoals: randomFrom(goalOptions),
+  };
+}
+
+// ============================================================================
+// Sub-components
+// ============================================================================
+
+function YesNoToggle({
+  value,
+  onChange,
+}: {
+  value: boolean | null;
+  onChange: (v: boolean) => void;
+}): React.ReactElement {
+  return (
+    <ToggleGroup
+      type="single"
+      value={value === null ? undefined : value ? "yes" : "no"}
+      onValueChange={(v) => v && onChange(v === "yes")}
+      className="justify-center"
+    >
+      <ToggleGroupItem value="yes" className="px-8 h-12 text-base">
+        Yes
+      </ToggleGroupItem>
+      <ToggleGroupItem value="no" className="px-8 h-12 text-base">
+        No
+      </ToggleGroupItem>
+    </ToggleGroup>
   );
+}
 
-  const updateForm = <K extends keyof FormState>(
-    key: K,
-    value: FormState[K]
-  ) => {
-    setForm((prev) => ({ ...prev, [key]: value }));
-  };
-
-  const isValid = (): boolean => {
-    if (!form.email) return false;
-    if (form.crashAfterLunch === null) return false;
-    if (form.difficultyWaking === null) return false;
-    if (form.wakeAtNight.wakes === null) return false;
-    if (form.brainFog === null) return false;
-    if (form.coldExtremities === null) return false;
-    if (form.whiteTongue === null) return false;
-    if (!form.typicalEating.trim()) return false;
-    if (!form.healthGoals.trim()) return false;
-    return true;
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!isValid()) {
-      setError("Please answer all required questions");
-      return;
+function MultiSelect<T extends string>({
+  options,
+  selected,
+  onChange,
+  labels,
+}: {
+  options: readonly T[];
+  selected: T[];
+  onChange: (selected: T[]) => void;
+  labels: Record<T, string>;
+}): React.ReactElement {
+  const toggle = (option: T) => {
+    if (selected.includes(option)) {
+      onChange(selected.filter((s) => s !== option));
+    } else {
+      onChange([...selected, option]);
     }
+  };
 
+  return (
+    <div className="flex flex-wrap justify-center gap-2">
+      {options.map((option) => (
+        <button
+          key={option}
+          type="button"
+          onClick={() => toggle(option)}
+          className={cn(
+            "px-4 py-2 rounded-md text-sm font-medium transition-colors border min-h-[44px]",
+            selected.includes(option)
+              ? "bg-primary text-primary-foreground border-primary"
+              : "bg-background border-input hover:bg-accent"
+          )}
+        >
+          {labels[option]}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+// ============================================================================
+// Main Component
+// ============================================================================
+
+export default function QuizPage(): React.ReactElement {
+  // Form state
+  const [form, setForm] = useState<FormState>(initialFormState);
+  const [status, setStatus] = useState<SubmitStatus>("idle");
+  const [error, setError] = useState<string | null>(null);
+  const [result, setResult] = useState<{ id: string; report: string } | null>(null);
+  const [loadingMsgIndex, setLoadingMsgIndex] = useState(0);
+
+  // Wizard state
+  const [step, setStep] = useState(0);
+  const [direction, setDirection] = useState<Direction>("forward");
+
+  // Rotate loading messages
+  useEffect(() => {
+    if (status !== "submitting") return;
+    const interval = setInterval(() => {
+      setLoadingMsgIndex((i) => (i + 1) % LOADING_MESSAGES.length);
+    }, 2500);
+    return () => clearInterval(interval);
+  }, [status]);
+
+  // Form update helper
+  function updateForm<K extends keyof FormState>(key: K, value: FormState[K]): void {
+    setForm((prev) => ({ ...prev, [key]: value }));
+  }
+
+  // Navigation
+  function goNext(): void {
+    if (step < TOTAL_STEPS - 1) {
+      setDirection("forward");
+      setStep((s) => s + 1);
+    }
+  }
+
+  function goBack(): void {
+    if (step > 0) {
+      setDirection("back");
+      setStep((s) => s - 1);
+    }
+  }
+
+  function resetQuiz(): void {
+    setForm(initialFormState);
+    setResult(null);
+    setStep(0);
+    setStatus("idle");
+    setError(null);
+  }
+
+  // Per-step validation
+  function isStepValid(stepIndex: number): boolean {
+    switch (stepIndex) {
+      case 0: return true; // Energy slider always has value
+      case 1: return form.crashAfterLunch !== null;
+      case 2: return form.difficultyWaking !== null;
+      case 3: return form.wakeAtNight.wakes !== null;
+      case 4: return form.brainFog !== null;
+      case 5: return true; // Bowel issues can be empty
+      case 6: return form.coldExtremities !== null;
+      case 7: return form.whiteTongue !== null;
+      case 8: return form.typicalEating.trim().length > 0;
+      case 9: return form.healthGoals.trim().length > 0;
+      case 10: return form.email.includes("@") && form.email.includes(".");
+      default: return false;
+    }
+  }
+
+  const isCurrentStepValid = isStepValid(step);
+  const isLastStep = step === TOTAL_STEPS - 1;
+  const progressPercent = ((step + 1) / TOTAL_STEPS) * 100;
+
+  // Submit handler
+  async function handleSubmit(): Promise<void> {
     setStatus("submitting");
     setError(null);
+    setLoadingMsgIndex(0);
 
     const submission: QuizSubmission = {
       email: form.email,
@@ -217,89 +328,79 @@ export default function QuizPage() {
       setResult(data);
       setStatus("success");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "An error occurred");
+      const message = err instanceof Error ? err.message : "An error occurred";
+      setError(message);
       setStatus("error");
     }
-  };
-
-  // Show result if we have one
-  if (result) {
-    return (
-      <div className="min-h-screen bg-background">
-        <div className="max-w-2xl mx-auto px-4 py-12">
-          <div className="prose prose-neutral dark:prose-invert max-w-none">
-            <ReactMarkdown>{result.report}</ReactMarkdown>
-          </div>
-        </div>
-      </div>
-    );
   }
 
-  return (
-    <div className="min-h-screen bg-background">
-      <div className="max-w-2xl mx-auto px-4 py-12">
-        <div className="text-center mb-10">
-          <h1 className="text-3xl font-bold mb-4">Health Assessment Quiz</h1>
-          <p className="text-muted-foreground">
-            Ready to take the quiz? This short assessment will give us key
-            insights into your health, and what you might need to work on to
-            feel your best.
-          </p>
-        </div>
+  // Step content renderer
+  function renderStepContent(): React.ReactElement {
+    const questionClass = "text-xl sm:text-2xl font-semibold text-center leading-relaxed";
+    const hintClass = "text-muted-foreground text-center text-sm";
 
-        <form onSubmit={handleSubmit} className="space-y-8">
-          {/* Question 1: Energy Level */}
-          <div className="space-y-3">
-            <label className="block text-sm font-medium">
-              1. Rate your average energy levels throughout the day
-              <span className="text-muted-foreground ml-1">
-                (1 = barely walk fatigued, 10 = perfect energy)
-              </span>
-            </label>
-            <div className="flex items-center gap-4">
-              <input
-                type="range"
-                min={1}
-                max={10}
-                value={form.energyLevel}
-                onChange={(e) =>
-                  updateForm("energyLevel", parseInt(e.target.value))
-                }
-                className="flex-1 h-2 bg-muted rounded-lg appearance-none cursor-pointer accent-primary"
-              />
-              <span className="text-2xl font-bold w-8 text-center">
+    switch (step) {
+      case 0:
+        return (
+          <div className="space-y-8">
+            <h2 className={questionClass}>
+              Rate your average energy levels throughout the day
+            </h2>
+            <p className={hintClass}>
+              1 = barely able to function, 10 = perfect energy all day
+            </p>
+            <div className="space-y-4">
+              <div className="flex items-center gap-4">
+                <span className="text-xs text-muted-foreground w-16">Exhausted</span>
+                <Slider
+                  value={[form.energyLevel]}
+                  onValueChange={([v]) => updateForm("energyLevel", v)}
+                  min={1}
+                  max={10}
+                  step={1}
+                  className="flex-1"
+                />
+                <span className="text-xs text-muted-foreground w-16 text-right">Energized</span>
+              </div>
+              <div className="text-center text-5xl font-bold tabular-nums">
                 {form.energyLevel}
-              </span>
+              </div>
             </div>
           </div>
+        );
 
-          {/* Question 2: Crash after lunch */}
-          <div className="space-y-3">
-            <label className="block text-sm font-medium">
-              2. Do you tend to have a crash in energy after lunch?
-            </label>
+      case 1:
+        return (
+          <div className="space-y-8">
+            <h2 className={questionClass}>
+              Do you tend to crash in energy after lunch?
+            </h2>
             <YesNoToggle
               value={form.crashAfterLunch}
               onChange={(v) => updateForm("crashAfterLunch", v)}
             />
           </div>
+        );
 
-          {/* Question 3: Difficulty waking */}
-          <div className="space-y-3">
-            <label className="block text-sm font-medium">
-              3. Do you have difficulty getting up in the morning?
-            </label>
+      case 2:
+        return (
+          <div className="space-y-8">
+            <h2 className={questionClass}>
+              Do you have difficulty getting up in the morning?
+            </h2>
             <YesNoToggle
               value={form.difficultyWaking}
               onChange={(v) => updateForm("difficultyWaking", v)}
             />
           </div>
+        );
 
-          {/* Question 4: Wake at night */}
-          <div className="space-y-3">
-            <label className="block text-sm font-medium">
-              4. Do you wake up in the middle of the night?
-            </label>
+      case 3:
+        return (
+          <div className="space-y-8">
+            <h2 className={questionClass}>
+              Do you wake up in the middle of the night?
+            </h2>
             <YesNoToggle
               value={form.wakeAtNight.wakes}
               onChange={(v) =>
@@ -310,10 +411,8 @@ export default function QuizPage() {
               }
             />
             {form.wakeAtNight.wakes && (
-              <div className="ml-4 mt-3 space-y-2">
-                <label className="block text-sm text-muted-foreground">
-                  If so, why?
-                </label>
+              <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-200">
+                <p className={hintClass}>If so, why? (select all that apply)</p>
                 <MultiSelect
                   options={wakeReasons}
                   selected={form.wakeAtNight.reasons}
@@ -325,105 +424,120 @@ export default function QuizPage() {
               </div>
             )}
           </div>
+        );
 
-          {/* Question 5: Brain fog */}
-          <div className="space-y-3">
-            <label className="block text-sm font-medium">
-              5. Do you experience brain fog, or a feeling of impaired
-              motivation, cognitive function and memory?
-            </label>
+      case 4:
+        return (
+          <div className="space-y-8">
+            <h2 className={questionClass}>
+              Do you experience brain fog, or impaired motivation, cognitive function, or memory?
+            </h2>
             <YesNoToggle
               value={form.brainFog}
               onChange={(v) => updateForm("brainFog", v)}
             />
           </div>
+        );
 
-          {/* Question 6: Bowel issues */}
-          <div className="space-y-3">
-            <label className="block text-sm font-medium">
-              6. Do you experience any of the following with your bowel
-              movements?
-            </label>
+      case 5:
+        return (
+          <div className="space-y-8">
+            <h2 className={questionClass}>
+              Do you experience any of the following with your bowel movements?
+            </h2>
+            <p className={hintClass}>Select all that apply, or skip if none</p>
             <MultiSelect
               options={bowelIssueTypes}
               selected={form.bowelIssues}
               onChange={(issues) => updateForm("bowelIssues", issues)}
               labels={bowelIssueLabels}
             />
-            <p className="text-xs text-muted-foreground">
-              Select all that apply, or leave empty if none
-            </p>
           </div>
+        );
 
-          {/* Question 7: Cold extremities */}
-          <div className="space-y-3">
-            <label className="block text-sm font-medium">
-              7. Do you frequently get cold, especially at the fingers, toes,
-              nose and ears?
-            </label>
+      case 6:
+        return (
+          <div className="space-y-8">
+            <h2 className={questionClass}>
+              Do you frequently get cold, especially at the fingers, toes, nose, or ears?
+            </h2>
             <YesNoToggle
               value={form.coldExtremities}
               onChange={(v) => updateForm("coldExtremities", v)}
             />
           </div>
+        );
 
-          {/* Question 8: White tongue */}
-          <div className="space-y-3">
-            <label className="block text-sm font-medium">
-              8. Do you notice your tongue has a white coating on it, especially
-              in the morning?
-            </label>
+      case 7:
+        return (
+          <div className="space-y-8">
+            <h2 className={questionClass}>
+              Do you notice a white coating on your tongue, especially in the morning?
+            </h2>
             <YesNoToggle
               value={form.whiteTongue}
               onChange={(v) => updateForm("whiteTongue", v)}
             />
           </div>
+        );
 
-          {/* Question 9: Typical eating */}
-          <div className="space-y-3">
-            <label className="block text-sm font-medium">
-              9. Write out what a typical day of eating looks like for you
-            </label>
+      case 8:
+        return (
+          <div className="space-y-6">
+            <h2 className={questionClass}>
+              Describe a typical day of eating for you
+            </h2>
+            <p className={hintClass}>
+              Include breakfast, lunch, dinner, snacks, and drinks
+            </p>
             <Textarea
               value={form.typicalEating}
               onChange={(e) => updateForm("typicalEating", e.target.value)}
-              placeholder="Breakfast, lunch, dinner, snacks..."
-              rows={4}
+              placeholder="Example: Coffee and toast for breakfast, salad for lunch, pasta for dinner..."
+              rows={5}
+              className="text-base"
             />
           </div>
+        );
 
-          {/* Question 10: Health goals */}
-          <div className="space-y-3">
-            <label className="block text-sm font-medium">
-              10. Let us know of any other health goals you&apos;re looking to
-              achieve!
-            </label>
+      case 9:
+        return (
+          <div className="space-y-6">
+            <h2 className={questionClass}>
+              What health goals are you looking to achieve?
+            </h2>
+            <p className={hintClass}>
+              What would feeling your best look like for you?
+            </p>
             <Textarea
               value={form.healthGoals}
               onChange={(e) => updateForm("healthGoals", e.target.value)}
-              placeholder="What would feeling your best look like?"
-              rows={3}
+              placeholder="Example: More energy, better sleep, improved focus..."
+              rows={4}
+              className="text-base"
             />
           </div>
+        );
 
-          {/* Contact Info */}
-          <div className="border-t pt-8 space-y-4">
-            <h3 className="font-medium">Your Information</h3>
-
-            <div className="space-y-2">
-              <label className="block text-sm font-medium">
-                Email <span className="text-destructive">*</span>
-              </label>
-              <Input
-                type="email"
-                value={form.email}
-                onChange={(e) => updateForm("email", e.target.value)}
-                placeholder="you@example.com"
-                required
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
+      case 10:
+        return (
+          <div className="space-y-6">
+            <h2 className={questionClass}>
+              Where should we send your results?
+            </h2>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <label className="block text-sm font-medium">
+                  Email <span className="text-destructive">*</span>
+                </label>
+                <Input
+                  type="email"
+                  value={form.email}
+                  onChange={(e) => updateForm("email", e.target.value)}
+                  placeholder="you@example.com"
+                  className="h-12 text-base"
+                />
+              </div>
               <div className="space-y-2">
                 <label className="block text-sm font-medium">
                   Name <span className="text-muted-foreground">(optional)</span>
@@ -433,48 +547,165 @@ export default function QuizPage() {
                   value={form.name}
                   onChange={(e) => updateForm("name", e.target.value)}
                   placeholder="Your name"
+                  className="h-12 text-base"
                 />
               </div>
               <div className="space-y-2">
                 <label className="block text-sm font-medium">
-                  Phone{" "}
-                  <span className="text-muted-foreground">(optional)</span>
+                  Phone <span className="text-muted-foreground">(optional)</span>
                 </label>
                 <Input
                   type="tel"
                   value={form.phone}
                   onChange={(e) => updateForm("phone", e.target.value)}
                   placeholder="Your phone"
+                  className="h-12 text-base"
                 />
               </div>
             </div>
           </div>
+        );
 
-          {/* Error message */}
+      default:
+        return <div />;
+    }
+  }
+
+  // Result view
+  if (result) {
+    return (
+      <div className="min-h-screen bg-background flex flex-col">
+        <header className="sticky top-0 z-10 bg-background/80 backdrop-blur-sm border-b">
+          <div className="max-w-2xl mx-auto px-4 py-3 flex justify-end">
+            <ModeToggle />
+          </div>
+        </header>
+
+        <main className="flex-1 px-4 py-8">
+          <div className="max-w-2xl mx-auto">
+            <Card className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+              <CardContent className="pt-6">
+                <div className="prose prose-neutral dark:prose-invert max-w-none">
+                  <ReactMarkdown>{result.report}</ReactMarkdown>
+                </div>
+              </CardContent>
+            </Card>
+
+            <div className="mt-6 text-center">
+              <Button variant="outline" onClick={resetQuiz}>
+                Take Quiz Again
+              </Button>
+            </div>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  // Loading view
+  if (status === "submitting") {
+    return (
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center px-4">
+        <div className="text-center space-y-4 animate-in fade-in duration-300">
+          <Loader2 className="w-12 h-12 animate-spin mx-auto text-primary" />
+          <p className="text-lg font-medium">{LOADING_MESSAGES[loadingMsgIndex]}</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Wizard view
+  return (
+    <div className="min-h-screen bg-background flex flex-col">
+      {/* Header */}
+      <header className="sticky top-0 z-10 bg-background/80 backdrop-blur-sm border-b">
+        <div className="max-w-2xl mx-auto px-4 py-3 space-y-2">
+          <Progress value={progressPercent} className="h-1" />
+          <div className="flex justify-between items-center">
+            <span className="text-sm text-muted-foreground">
+              {step + 1} of {TOTAL_STEPS}
+            </span>
+            <div className="flex items-center gap-2">
+              {process.env.NODE_ENV === "development" && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setForm(generateTestData());
+                    setStep(TOTAL_STEPS - 1);
+                  }}
+                  className="text-xs"
+                >
+                  Fill Test
+                </Button>
+              )}
+              <ModeToggle />
+            </div>
+          </div>
+        </div>
+      </header>
+
+      {/* Main content */}
+      <main className="flex-1 flex items-center justify-center px-4 py-8 overflow-hidden">
+        <AnimatePresence mode="wait" initial={false}>
+          <motion.div
+            key={step}
+            initial={{
+              opacity: 0,
+              x: direction === "forward" ? 80 : -80,
+              scale: 0.95
+            }}
+            animate={{
+              opacity: 1,
+              x: 0,
+              scale: 1
+            }}
+            exit={{
+              opacity: 0,
+              x: direction === "forward" ? -80 : 80,
+              scale: 0.95
+            }}
+            transition={{
+              type: "spring",
+              stiffness: 300,
+              damping: 30,
+              opacity: { duration: 0.2 }
+            }}
+            className="w-full max-w-md"
+          >
+            {renderStepContent()}
+          </motion.div>
+        </AnimatePresence>
+      </main>
+
+      {/* Footer navigation */}
+      <footer className="sticky bottom-0 bg-background border-t p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+        <div className="max-w-md mx-auto">
           {error && (
-            <div className="p-3 bg-destructive/10 text-destructive rounded-md text-sm">
+            <div className="mb-3 p-3 bg-destructive/10 text-destructive rounded-md text-sm text-center">
               {error}
             </div>
           )}
-
-          {/* Submit button */}
-          <Button
-            type="submit"
-            size="lg"
-            className="w-full"
-            disabled={status === "submitting"}
-          >
-            {status === "submitting" ? (
-              <>
-                <Loader2 className="animate-spin" />
-                Analyzing your responses...
-              </>
-            ) : (
-              "Get Your Assessment"
+          <div className="flex gap-3">
+            {step > 0 && (
+              <Button
+                variant="outline"
+                onClick={goBack}
+                className="h-12 px-6"
+              >
+                Back
+              </Button>
             )}
-          </Button>
-        </form>
-      </div>
+            <Button
+              onClick={isLastStep ? handleSubmit : goNext}
+              disabled={!isCurrentStepValid}
+              className="flex-1 h-12 text-base"
+            >
+              {isLastStep ? "Get Your Assessment" : "Next"}
+            </Button>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }

@@ -18,8 +18,10 @@
       "WebSearch",
       "Task"
     ],
-    "deny": [
-    ],
+    "deny": [],
     "defaultMode": "bypassPermissions"
+  },
+  "enabledPlugins": {
+    "frontend-design@claude-plugins-official": true
   }
 }
