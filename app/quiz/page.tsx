@@ -292,14 +292,6 @@ export default function QuizPage(): React.ReactElement {
     }
   }
 
-  function resetQuiz(): void {
-    setForm(initialFormState);
-    setResult(null);
-    setStep(0);
-    setStatus("idle");
-    setError(null);
-  }
-
   // Download handler
   const downloadPdf = useCallback(async () => {
     if (!result) return;
@@ -646,34 +638,13 @@ export default function QuizPage(): React.ReactElement {
 
         <main className="flex-1 px-4 py-8">
           <div className="max-w-2xl mx-auto space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            {/* Success banner with download button */}
+            {/* Success banner */}
             <div className="rounded-lg border border-green-500/50 bg-green-500/10 p-4">
-              <div className="flex items-center justify-between flex-wrap gap-3">
-                <div className="flex items-center gap-2">
-                  <CheckCircle2 className="h-4 w-4 text-green-600" />
-                  <p className="text-sm font-medium text-green-600">
-                    Assessment generated successfully
-                  </p>
-                </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={downloadPdf}
-                  disabled={isDownloadingPdf}
-                  className="gap-2"
-                >
-                  {isDownloadingPdf ? (
-                    <>
-                      <Loader className="h-4 w-4" />
-                      Generating PDF...
-                    </>
-                  ) : (
-                    <>
-                      <FileDown className="h-4 w-4" />
-                      Download PDF
-                    </>
-                  )}
-                </Button>
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className="h-4 w-4 text-green-600" />
+                <p className="text-sm font-medium text-green-600">
+                  Assessment generated successfully
+                </p>
               </div>
             </div>
 
@@ -683,10 +654,25 @@ export default function QuizPage(): React.ReactElement {
               <Response variant="report">{result.report}</Response>
             </div>
 
-            {/* Take quiz again button */}
+            {/* Download PDF button */}
             <div className="text-center">
-              <Button variant="outline" onClick={resetQuiz}>
-                Take Quiz Again
+              <Button
+                variant="outline"
+                onClick={downloadPdf}
+                disabled={isDownloadingPdf}
+                className="gap-2"
+              >
+                {isDownloadingPdf ? (
+                  <>
+                    <Loader className="h-4 w-4" />
+                    Generating PDF...
+                  </>
+                ) : (
+                  <>
+                    <FileDown className="h-4 w-4" />
+                    Download PDF
+                  </>
+                )}
               </Button>
             </div>
           </div>
