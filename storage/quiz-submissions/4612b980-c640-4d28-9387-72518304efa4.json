@@ -1,0 +1,24 @@
+{
+  "id": "4612b980-c640-4d28-9387-72518304efa4",
+  "createdAt": "2026-01-09T17:52:53.944Z",
+  "submission": {
+    "email": "test@example.com",
+    "name": "Test User",
+    "energyLevel": 9,
+    "crashAfterLunch": false,
+    "difficultyWaking": true,
+    "wakeAtNight": {
+      "wakes": false
+    },
+    "brainFog": true,
+    "bowelIssues": [
+      "straining",
+      "pain",
+      "diarrhea"
+    ],
+    "coldExtremities": false,
+    "whiteTongue": true,
+    "typicalEating": "Eggs and toast in the morning. Salad for lunch. Protein with rice and veggies for dinner. Snack on nuts and fruit.",
+    "healthGoals": "Feel like myself again. Used to have so much energy, now I'm always tired. Want to figure out what's wrong."
+  }
+}

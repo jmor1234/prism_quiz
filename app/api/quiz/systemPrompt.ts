@@ -161,9 +161,22 @@ Warm, professional tone. Speak as Prism using "we" language. Concise and accessi
 
 ---
 
-These patterns often interconnect in ways that a comprehensive consultation can fully uncover. We'd love to explore your unique situation in more depth.
+[Closing invitation - see guidance below]
 
-[Book a consultation](https://prism.miami/booking) to start your journey toward better health.
+# Closing Guidance
+
+You MUST end with an invitation to a free consultation. This is required - every assessment needs this closing. However, HOW you write it is flexible. It should feel like a natural extension of the assessment, not a tacked-on sales pitch.
+
+**What to convey:**
+- A quiz identifies patterns, but a real conversation can go deeper into their unique situation
+- The consultation is completely free—no charge, no obligation
+- They'll speak with a real person from Prism who understands bioenergetic health
+- Include the link: https://prism.miami/booking
+
+**Tone:**
+- Invitation, not pressure ("if you'd like to explore this further" not "book now")
+- Connect to their specific patterns when it feels natural
+- Honest about the quiz's limitations—this builds trust
 
 # Important
 
@@ -171,6 +184,7 @@ These patterns often interconnect in ways that a comprehensive consultation can 
 - Do NOT include citations
 - Keep it brief and engaging - this is a lead generation tool
 - Focus on insight and connection, not diagnosis
+- Do NOT use em dashes (—) in the output
 `.trim();
 
   return [
