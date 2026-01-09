@@ -9,7 +9,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { ModeToggle } from "@/components/ui/mode-toggle";
-import { Progress } from "@/components/ui/progress";
 import { Slider } from "@/components/ui/slider";
 import { Textarea } from "@/components/ui/textarea";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
@@ -145,6 +144,14 @@ function generateTestData(): FormState {
 // Sub-components
 // ============================================================================
 
+// Accent color for the quiz (teal/emerald for health/wellness feel)
+const ACCENT = {
+  base: "bg-teal-600 hover:bg-teal-700 border-teal-600",
+  light: "bg-teal-500 hover:bg-teal-600 border-teal-500",
+  text: "text-white",
+  ring: "ring-teal-500/20",
+};
+
 function YesNoToggle({
   value,
   onChange,
@@ -152,20 +159,50 @@ function YesNoToggle({
   value: boolean | null;
   onChange: (v: boolean) => void;
 }): React.ReactElement {
+  const baseStyles = cn(
+    "px-12 h-14 text-base font-medium !rounded-full border-2",
+    "transition-all duration-300 ease-out",
+    "hover:scale-105 active:scale-95"
+  );
+  const unselectedStyles = cn(
+    "border-border bg-background shadow-sm",
+    "hover:shadow-md hover:border-teal-300 hover:bg-teal-50/50",
+    "dark:hover:bg-teal-950/30 dark:hover:border-teal-700"
+  );
+  const selectedStyles = cn(
+    ACCENT.base, ACCENT.text,
+    "shadow-lg shadow-teal-500/25",
+    "hover:shadow-xl hover:shadow-teal-500/30"
+  );
+
   return (
-    <ToggleGroup
-      type="single"
-      value={value === null ? undefined : value ? "yes" : "no"}
-      onValueChange={(v) => v && onChange(v === "yes")}
-      className="justify-center"
-    >
-      <ToggleGroupItem value="yes" className="px-8 h-12 text-base">
-        Yes
-      </ToggleGroupItem>
-      <ToggleGroupItem value="no" className="px-8 h-12 text-base">
-        No
-      </ToggleGroupItem>
-    </ToggleGroup>
+    <div className="flex justify-center">
+      <ToggleGroup
+        type="single"
+        value={value === null ? undefined : value ? "yes" : "no"}
+        onValueChange={(v) => v && onChange(v === "yes")}
+        className="gap-4"
+      >
+        <ToggleGroupItem
+          value="yes"
+          className={cn(
+            baseStyles,
+            value === true ? selectedStyles : unselectedStyles
+          )}
+        >
+          Yes
+        </ToggleGroupItem>
+        <ToggleGroupItem
+          value="no"
+          className={cn(
+            baseStyles,
+            value === false ? selectedStyles : unselectedStyles
+          )}
+        >
+          No
+        </ToggleGroupItem>
+      </ToggleGroup>
+    </div>
   );
 }
 
@@ -188,23 +225,40 @@ function MultiSelect<T extends string>({
     }
   };
 
+  const baseStyles = cn(
+    "px-6 py-3 !rounded-full text-sm font-medium border-2 min-h-[48px]",
+    "transition-all duration-300 ease-out",
+    "hover:scale-105 active:scale-95"
+  );
+  const unselectedStyles = cn(
+    "border-border bg-background shadow-sm",
+    "hover:shadow-md hover:border-teal-300 hover:bg-teal-50/50",
+    "dark:hover:bg-teal-950/30 dark:hover:border-teal-700"
+  );
+  const selectedStyles = cn(
+    ACCENT.base, ACCENT.text,
+    "shadow-lg shadow-teal-500/25",
+    "hover:shadow-xl hover:shadow-teal-500/30"
+  );
+
   return (
-    <div className="flex flex-wrap justify-center gap-2">
-      {options.map((option) => (
-        <button
-          key={option}
-          type="button"
-          onClick={() => toggle(option)}
-          className={cn(
-            "px-4 py-2 rounded-md text-sm font-medium transition-colors border min-h-[44px]",
-            selected.includes(option)
-              ? "bg-primary text-primary-foreground border-primary"
-              : "bg-background border-input hover:bg-accent"
-          )}
-        >
-          {labels[option]}
-        </button>
-      ))}
+    <div className="flex flex-wrap justify-center gap-3">
+      {options.map((option) => {
+        const isSelected = selected.includes(option);
+        return (
+          <button
+            key={option}
+            type="button"
+            onClick={() => toggle(option)}
+            className={cn(
+              baseStyles,
+              isSelected ? selectedStyles : unselectedStyles
+            )}
+          >
+            {labels[option]}
+          </button>
+        );
+      })}
     </div>
   );
 }
@@ -607,7 +661,7 @@ export default function QuizPage(): React.ReactElement {
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center px-4">
         <div className="text-center space-y-4 animate-in fade-in duration-300">
-          <Loader2 className="w-12 h-12 animate-spin mx-auto text-primary" />
+          <Loader2 className="w-12 h-12 animate-spin mx-auto text-teal-600" />
           <p className="text-lg font-medium">{LOADING_MESSAGES[loadingMsgIndex]}</p>
         </div>
       </div>
@@ -616,11 +670,19 @@ export default function QuizPage(): React.ReactElement {
 
   // Wizard view
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="min-h-screen bg-gradient-to-b from-background via-background to-muted/30 flex flex-col">
       {/* Header */}
       <header className="sticky top-0 z-10 bg-background/80 backdrop-blur-sm border-b">
         <div className="max-w-2xl mx-auto px-4 py-3 space-y-2">
-          <Progress value={progressPercent} className="h-1" />
+          {/* Custom colored progress bar */}
+          <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
+            <motion.div
+              className="h-full bg-gradient-to-r from-teal-500 to-emerald-500 rounded-full"
+              initial={{ width: 0 }}
+              animate={{ width: `${progressPercent}%` }}
+              transition={{ type: "spring", stiffness: 300, damping: 30 }}
+            />
+          </div>
           <div className="flex justify-between items-center">
             <span className="text-sm text-muted-foreground">
               {step + 1} of {TOTAL_STEPS}
@@ -679,10 +741,10 @@ export default function QuizPage(): React.ReactElement {
       </main>
 
       {/* Footer navigation */}
-      <footer className="sticky bottom-0 bg-background border-t p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+      <footer className="sticky bottom-0 bg-background/80 backdrop-blur-sm border-t p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
         <div className="max-w-md mx-auto">
           {error && (
-            <div className="mb-3 p-3 bg-destructive/10 text-destructive rounded-md text-sm text-center">
+            <div className="mb-3 p-3 bg-destructive/10 text-destructive rounded-xl text-sm text-center">
               {error}
             </div>
           )}
@@ -691,7 +753,7 @@ export default function QuizPage(): React.ReactElement {
               <Button
                 variant="outline"
                 onClick={goBack}
-                className="h-12 px-6"
+                className="h-14 px-6 rounded-xl border-2"
               >
                 Back
               </Button>
@@ -699,7 +761,11 @@ export default function QuizPage(): React.ReactElement {
             <Button
               onClick={isLastStep ? handleSubmit : goNext}
               disabled={!isCurrentStepValid}
-              className="flex-1 h-12 text-base"
+              className={cn(
+                "flex-1 h-14 text-base font-semibold rounded-xl shadow-lg transition-all duration-200",
+                "bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700",
+                "disabled:from-muted disabled:to-muted disabled:text-muted-foreground disabled:shadow-none"
+              )}
             >
               {isLastStep ? "Get Your Assessment" : "Next"}
             </Button>
