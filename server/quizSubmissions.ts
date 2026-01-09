@@ -17,11 +17,11 @@ let redisClient: Redis | null = null;
  */
 function getRedisClient(): Redis | null {
   // Check if Redis is available via environment variable (separate database for quiz)
-  if (process.env.QUIZ_UPSTASH_REDIS_REST_URL) {
+  if (process.env.UPSTASH_REDIS_REST_URL) {
     if (!redisClient) {
       redisClient = new Redis({
-        url: process.env.QUIZ_UPSTASH_REDIS_REST_URL,
-        token: process.env.QUIZ_UPSTASH_REDIS_REST_TOKEN!,
+        url: process.env.UPSTASH_REDIS_REST_URL,
+        token: process.env.UPSTASH_REDIS_REST_TOKEN!,
       });
     }
     return redisClient;
