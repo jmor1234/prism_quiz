@@ -20,7 +20,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Bioenergetic Research System",
+  title: "Prism Assessment Quiz",
   description: "Trace health symptoms to root causes through energy metabolism, gut health, and stress cascades",
 };
 
