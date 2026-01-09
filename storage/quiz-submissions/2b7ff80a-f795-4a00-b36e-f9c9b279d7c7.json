@@ -1,0 +1,25 @@
+{
+  "id": "2b7ff80a-f795-4a00-b36e-f9c9b279d7c7",
+  "createdAt": "2026-01-09T15:20:49.521Z",
+  "submission": {
+    "email": "test@example.com",
+    "phone": "555-123-4567",
+    "energyLevel": 5,
+    "crashAfterLunch": true,
+    "difficultyWaking": false,
+    "wakeAtNight": {
+      "wakes": true,
+      "reasons": [
+        "pee"
+      ]
+    },
+    "brainFog": false,
+    "bowelIssues": [
+      "diarrhea"
+    ],
+    "coldExtremities": false,
+    "whiteTongue": true,
+    "typicalEating": "normal stuff.",
+    "healthGoals": "better energy"
+  }
+}

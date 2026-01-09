@@ -1,12 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Loader2 } from "lucide-react";
-import ReactMarkdown from "react-markdown";
+import { useState, useCallback } from "react";
+import { CheckCircle2, FileDown, Edit3, Save, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
+import { Response } from "@/components/ai-elements/response";
+import { Loader } from "@/components/ai-elements/loader";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { ModeToggle } from "@/components/ui/mode-toggle";
 import { Slider } from "@/components/ui/slider";
@@ -68,12 +68,6 @@ const initialFormState: FormState = {
   typicalEating: "",
   healthGoals: "",
 };
-
-const LOADING_MESSAGES = [
-  "Analyzing your responses...",
-  "Identifying key patterns...",
-  "Preparing your assessment...",
-];
 
 const wakeReasonLabels: Record<WakeReason, string> = {
   no_reason: "No apparent reason",
@@ -144,12 +138,12 @@ function generateTestData(): FormState {
 // Sub-components
 // ============================================================================
 
-// Accent color for the quiz (teal/emerald for health/wellness feel)
+// Accent color for the quiz (Prism brand: orange/red)
 const ACCENT = {
-  base: "bg-teal-600 hover:bg-teal-700 border-teal-600",
-  light: "bg-teal-500 hover:bg-teal-600 border-teal-500",
+  base: "bg-orange-500 hover:bg-orange-600 border-orange-500",
+  light: "bg-orange-400 hover:bg-orange-500 border-orange-400",
   text: "text-white",
-  ring: "ring-teal-500/20",
+  ring: "ring-orange-500/20",
 };
 
 function YesNoToggle({
@@ -166,13 +160,13 @@ function YesNoToggle({
   );
   const unselectedStyles = cn(
     "border-border bg-background shadow-sm",
-    "hover:shadow-md hover:border-teal-300 hover:bg-teal-50/50",
-    "dark:hover:bg-teal-950/30 dark:hover:border-teal-700"
+    "hover:shadow-md hover:border-orange-300 hover:bg-orange-50/50",
+    "dark:hover:bg-orange-950/30 dark:hover:border-orange-700"
   );
   const selectedStyles = cn(
     ACCENT.base, ACCENT.text,
-    "shadow-lg shadow-teal-500/25",
-    "hover:shadow-xl hover:shadow-teal-500/30"
+    "shadow-lg shadow-orange-500/25",
+    "hover:shadow-xl hover:shadow-orange-500/30"
   );
 
   return (
@@ -232,13 +226,13 @@ function MultiSelect<T extends string>({
   );
   const unselectedStyles = cn(
     "border-border bg-background shadow-sm",
-    "hover:shadow-md hover:border-teal-300 hover:bg-teal-50/50",
-    "dark:hover:bg-teal-950/30 dark:hover:border-teal-700"
+    "hover:shadow-md hover:border-orange-300 hover:bg-orange-50/50",
+    "dark:hover:bg-orange-950/30 dark:hover:border-orange-700"
   );
   const selectedStyles = cn(
     ACCENT.base, ACCENT.text,
-    "shadow-lg shadow-teal-500/25",
-    "hover:shadow-xl hover:shadow-teal-500/30"
+    "shadow-lg shadow-orange-500/25",
+    "hover:shadow-xl hover:shadow-orange-500/30"
   );
 
   return (
@@ -273,20 +267,16 @@ export default function QuizPage(): React.ReactElement {
   const [status, setStatus] = useState<SubmitStatus>("idle");
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<{ id: string; report: string } | null>(null);
-  const [loadingMsgIndex, setLoadingMsgIndex] = useState(0);
 
   // Wizard state
   const [step, setStep] = useState(0);
   const [direction, setDirection] = useState<Direction>("forward");
 
-  // Rotate loading messages
-  useEffect(() => {
-    if (status !== "submitting") return;
-    const interval = setInterval(() => {
-      setLoadingMsgIndex((i) => (i + 1) % LOADING_MESSAGES.length);
-    }, 2500);
-    return () => clearInterval(interval);
-  }, [status]);
+  // Edit/Download state
+  const [isEditing, setIsEditing] = useState(false);
+  const [editedText, setEditedText] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
+  const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
 
   // Form update helper
   function updateForm<K extends keyof FormState>(key: K, value: FormState[K]): void {
@@ -314,7 +304,88 @@ export default function QuizPage(): React.ReactElement {
     setStep(0);
     setStatus("idle");
     setError(null);
+    setIsEditing(false);
+    setEditedText("");
   }
+
+  // Edit/Download handlers
+  const handleEdit = useCallback(() => {
+    if (result) {
+      setEditedText(result.report);
+      setIsEditing(true);
+    }
+  }, [result]);
+
+  const handleCancelEdit = useCallback(() => {
+    setIsEditing(false);
+    setEditedText("");
+  }, []);
+
+  const handleSave = useCallback(async () => {
+    if (!result) return;
+
+    setIsSaving(true);
+    try {
+      const response = await fetch("/api/quiz/result", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ quizId: result.id, report: editedText }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: response.statusText }));
+        throw new Error(errorData.error || `Save failed: ${response.statusText}`);
+      }
+
+      // Update local state with edited text
+      setResult({ ...result, report: editedText });
+      setIsEditing(false);
+      setEditedText("");
+    } catch (err) {
+      console.error("[Quiz Edit] Save error:", err);
+      alert(`Failed to save changes: ${err instanceof Error ? err.message : "Unknown error"}`);
+    } finally {
+      setIsSaving(false);
+    }
+  }, [result, editedText]);
+
+  const downloadPdf = useCallback(async () => {
+    if (!result) return;
+
+    setIsDownloadingPdf(true);
+    try {
+      const response = await fetch("/api/quiz/pdf", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ quizId: result.id }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: response.statusText }));
+        throw new Error(errorData.error || `PDF generation failed: ${response.statusText}`);
+      }
+
+      // Convert response to blob and trigger download
+      const blob = await response.blob();
+      const contentDisposition = response.headers.get("Content-Disposition");
+      const filenameMatch = contentDisposition?.match(/filename="(.+)"/);
+      const filename = filenameMatch?.[1] || `prism-assessment-${result.id.slice(0, 8)}.pdf`;
+
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error("[Quiz PDF] Download error:", err);
+      alert(`Failed to download PDF: ${err instanceof Error ? err.message : "Unknown error"}`);
+    } finally {
+      setIsDownloadingPdf(false);
+    }
+  }, [result]);
 
   // Per-step validation
   function isStepValid(stepIndex: number): boolean {
@@ -342,7 +413,6 @@ export default function QuizPage(): React.ReactElement {
   async function handleSubmit(): Promise<void> {
     setStatus("submitting");
     setError(null);
-    setLoadingMsgIndex(0);
 
     const submission: QuizSubmission = {
       email: form.email,
@@ -636,16 +706,107 @@ export default function QuizPage(): React.ReactElement {
         </header>
 
         <main className="flex-1 px-4 py-8">
-          <div className="max-w-2xl mx-auto">
-            <Card className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-              <CardContent className="pt-6">
-                <div className="prose prose-neutral dark:prose-invert max-w-none">
-                  <ReactMarkdown>{result.report}</ReactMarkdown>
+          <div className="max-w-2xl mx-auto space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+            {/* Success banner with action buttons */}
+            <div className="rounded-lg border border-green-500/50 bg-green-500/10 p-4">
+              <div className="flex items-center justify-between flex-wrap gap-3">
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="h-4 w-4 text-green-600" />
+                  <p className="text-sm font-medium text-green-600">
+                    Assessment generated successfully
+                  </p>
                 </div>
-              </CardContent>
-            </Card>
+                <div className="flex items-center gap-2">
+                  {isEditing ? (
+                    <>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={handleCancelEdit}
+                        disabled={isSaving}
+                        className="gap-2"
+                      >
+                        <X className="h-4 w-4" />
+                        Cancel
+                      </Button>
+                      <Button
+                        variant="default"
+                        size="sm"
+                        onClick={handleSave}
+                        disabled={isSaving}
+                        className="gap-2"
+                      >
+                        {isSaving ? (
+                          <>
+                            <Loader className="h-4 w-4" />
+                            Saving...
+                          </>
+                        ) : (
+                          <>
+                            <Save className="h-4 w-4" />
+                            Save Changes
+                          </>
+                        )}
+                      </Button>
+                    </>
+                  ) : (
+                    <>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleEdit}
+                        className="gap-2"
+                      >
+                        <Edit3 className="h-4 w-4" />
+                        Edit
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={downloadPdf}
+                        disabled={isDownloadingPdf}
+                        className="gap-2"
+                      >
+                        {isDownloadingPdf ? (
+                          <>
+                            <Loader className="h-4 w-4" />
+                            Generating PDF...
+                          </>
+                        ) : (
+                          <>
+                            <FileDown className="h-4 w-4" />
+                            Download PDF
+                          </>
+                        )}
+                      </Button>
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
 
-            <div className="mt-6 text-center">
+            {/* Content area */}
+            <div className="rounded-lg border bg-card p-6 shadow-sm">
+              <h2 className="mb-4 text-lg font-semibold">Your Health Assessment</h2>
+              {isEditing ? (
+                <div className="space-y-3">
+                  <p className="text-xs text-muted-foreground">
+                    Edit the assessment markdown below. Changes will be saved and used for PDF generation.
+                  </p>
+                  <Textarea
+                    value={editedText}
+                    onChange={(e) => setEditedText(e.target.value)}
+                    className="min-h-[400px] font-mono text-sm"
+                    disabled={isSaving}
+                  />
+                </div>
+              ) : (
+                <Response variant="report">{result.report}</Response>
+              )}
+            </div>
+
+            {/* Take quiz again button */}
+            <div className="text-center">
               <Button variant="outline" onClick={resetQuiz}>
                 Take Quiz Again
               </Button>
@@ -658,12 +819,100 @@ export default function QuizPage(): React.ReactElement {
 
   // Loading view
   if (status === "submitting") {
+    const ringSize = 120;
+    const strokeWidth = 4;
+    const radius = (ringSize - strokeWidth) / 2;
+    const circumference = 2 * Math.PI * radius;
+
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center px-4">
-        <div className="text-center space-y-4 animate-in fade-in duration-300">
-          <Loader2 className="w-12 h-12 animate-spin mx-auto text-teal-600" />
-          <p className="text-lg font-medium">{LOADING_MESSAGES[loadingMsgIndex]}</p>
-        </div>
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="flex flex-col items-center"
+        >
+          {/* Progress ring with pulsing dots */}
+          <div className="relative" style={{ width: ringSize, height: ringSize }}>
+            {/* Background ring */}
+            <svg
+              className="absolute inset-0 -rotate-90"
+              width={ringSize}
+              height={ringSize}
+            >
+              <circle
+                cx={ringSize / 2}
+                cy={ringSize / 2}
+                r={radius}
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={strokeWidth}
+                className="text-muted"
+              />
+            </svg>
+
+            {/* Animated progress ring */}
+            <svg
+              className="absolute inset-0 -rotate-90"
+              width={ringSize}
+              height={ringSize}
+            >
+              <defs>
+                <linearGradient id="progressGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                  <stop offset="0%" stopColor="#f97316" />
+                  <stop offset="100%" stopColor="#ef4444" />
+                </linearGradient>
+              </defs>
+              <motion.circle
+                cx={ringSize / 2}
+                cy={ringSize / 2}
+                r={radius}
+                fill="none"
+                stroke="url(#progressGradient)"
+                strokeWidth={strokeWidth}
+                strokeLinecap="round"
+                strokeDasharray={circumference}
+                initial={{ strokeDashoffset: circumference }}
+                animate={{ strokeDashoffset: circumference * 0.1 }}
+                transition={{ duration: 12, ease: "easeInOut" }}
+              />
+            </svg>
+
+            {/* Pulsing dots in center */}
+            <div className="absolute inset-0 flex items-center justify-center gap-1.5">
+              {[0, 1, 2].map((i) => (
+                <motion.div
+                  key={i}
+                  className="w-2.5 h-2.5 rounded-full bg-gradient-to-br from-orange-500 to-red-500"
+                  animate={{
+                    scale: [1, 1.3, 1],
+                    opacity: [0.5, 1, 0.5],
+                  }}
+                  transition={{
+                    duration: 1,
+                    repeat: Infinity,
+                    delay: i * 0.2,
+                    ease: "easeInOut",
+                  }}
+                />
+              ))}
+            </div>
+          </div>
+
+          {/* Text content */}
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            className="mt-8 text-center"
+          >
+            <p className="text-lg font-medium text-foreground">
+              Analyzing your responses
+            </p>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Just a moment...
+            </p>
+          </motion.div>
+        </motion.div>
       </div>
     );
   }
@@ -677,7 +926,7 @@ export default function QuizPage(): React.ReactElement {
           {/* Custom colored progress bar */}
           <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
             <motion.div
-              className="h-full bg-gradient-to-r from-teal-500 to-emerald-500 rounded-full"
+              className="h-full bg-gradient-to-r from-orange-500 to-red-500 rounded-full"
               initial={{ width: 0 }}
               animate={{ width: `${progressPercent}%` }}
               transition={{ type: "spring", stiffness: 300, damping: 30 }}
@@ -763,7 +1012,7 @@ export default function QuizPage(): React.ReactElement {
               disabled={!isCurrentStepValid}
               className={cn(
                 "flex-1 h-14 text-base font-semibold rounded-xl shadow-lg transition-all duration-200",
-                "bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700",
+                "bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600",
                 "disabled:from-muted disabled:to-muted disabled:text-muted-foreground disabled:shadow-none"
               )}
             >
