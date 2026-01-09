@@ -52,7 +52,7 @@ export async function POST(req: Request) {
     console.log(`[Quiz] Starting generation for: ${record.id}`);
 
     const result = await generateText({
-      model: anthropic("claude-sonnet-4-20250514"),
+      model: anthropic("claude-opus-4-5-20251101"),
       messages,
       providerOptions: {
         anthropic: {
