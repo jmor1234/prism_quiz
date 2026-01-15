@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { CheckCircle2, FileDown } from "lucide-react";
+import { Calendar, CheckCircle2, FileDown } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 import { Response } from "@/components/ai-elements/response";
@@ -653,8 +653,29 @@ export default function QuizPage(): React.ReactElement {
               <Response variant="report">{result.report}</Response>
             </div>
 
-            {/* Download PDF button */}
-            <div className="text-center">
+            {/* Action buttons */}
+            <div className="flex flex-col items-center gap-3">
+              {/* Primary CTA - Book consultation */}
+              <Button
+                asChild
+                className={cn(
+                  "gap-2 h-12 px-6 text-base font-semibold",
+                  "bg-gradient-to-r from-orange-500 to-red-500",
+                  "hover:from-orange-600 hover:to-red-600",
+                  "text-white shadow-lg hover:shadow-xl transition-all"
+                )}
+              >
+                <a
+                  href={`https://prism.miami/booking?QUIZID=${result.id}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <Calendar className="h-5 w-5" />
+                  Book a Free Consultation
+                </a>
+              </Button>
+
+              {/* Secondary - Download PDF */}
               <Button
                 variant="outline"
                 onClick={downloadPdf}
