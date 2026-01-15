@@ -173,7 +173,7 @@ You MUST end with an invitation to a free consultation. This is required - every
 - A quiz identifies patterns, but a real conversation can go deeper into their unique situation
 - The consultation is completely free—no charge, no obligation
 - They'll speak with a real person from Prism who understands bioenergetic health
-- Include the link: https://prism.miami/booking
+- Do NOT include a booking link - a booking button is provided separately below the assessment for the user to use. which you can mention in the closing.
 
 **Tone:**
 - Invitation, not pressure ("if you'd like to explore this further" not "book now")
