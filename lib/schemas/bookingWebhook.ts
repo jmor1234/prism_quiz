@@ -5,37 +5,80 @@ import { z } from "zod";
 /**
  * Schema for YCBM booking webhook payload
  *
- * Fields are optional/defaulted where YCBM might not send them.
- * Core fields (client email, rep email, booking times) are required.
+ * Updated to match YCBM's actual flat structure where client and rep
+ * fields are inside the booking object.
  */
 export const bookingWebhookSchema = z.object({
   // Quiz ID from our system (may be empty if user didn't take quiz)
   quizId: z.string().optional().default(""),
 
-  // Booking details from YCBM
+  // Booking details from YCBM (includes client and rep info in flat structure)
   booking: z.object({
-    id: z.string().optional(),
     startsAt: z.string(),
     endsAt: z.string(),
-    timezone: z.string().optional().default("America/New_York"),
-  }),
+    timezone: z.string().optional().default("US/Central"),
 
-  // Client info from YCBM booking form
-  client: z.object({
+    // Client info (flat, inside booking)
     firstName: z.string(),
     lastName: z.string(),
-    email: z.string().email("Invalid client email"),
+    bookerEmail: z.string().email("Invalid client email"),
     phone: z.string().optional().default(""),
+
+    // Rep info (flat, inside booking)
+    teamName: z.string(),
+    teamEmail: z.string().email("Invalid rep email"),
   }),
 
-  // Assigned rep from YCBM
-  rep: z.object({
-    name: z.string(),
-    email: z.string().email("Invalid rep email"),
-  }),
-
-  // Appointment type
+  // Appointment type (may be outside booking object)
   appointmentType: z.string().optional().default("Consultation"),
 });
 
 export type BookingWebhookPayload = z.infer<typeof bookingWebhookSchema>;
+
+/**
+ * Normalized structure for internal use
+ */
+export interface NormalizedBookingData {
+  quizId: string;
+  booking: {
+    startsAt: string;
+    endsAt: string;
+    timezone: string;
+  };
+  client: {
+    firstName: string;
+    lastName: string;
+    email: string;
+    phone: string;
+  };
+  rep: {
+    name: string;
+    email: string;
+  };
+  appointmentType: string;
+}
+
+/**
+ * Transform YCBM's flat structure to our normalized internal structure
+ */
+export function normalizeBookingPayload(payload: BookingWebhookPayload): NormalizedBookingData {
+  return {
+    quizId: payload.quizId,
+    booking: {
+      startsAt: payload.booking.startsAt,
+      endsAt: payload.booking.endsAt,
+      timezone: payload.booking.timezone,
+    },
+    client: {
+      firstName: payload.booking.firstName,
+      lastName: payload.booking.lastName,
+      email: payload.booking.bookerEmail,
+      phone: payload.booking.phone,
+    },
+    rep: {
+      name: payload.booking.teamName,
+      email: payload.booking.teamEmail,
+    },
+    appointmentType: payload.appointmentType,
+  };
+}

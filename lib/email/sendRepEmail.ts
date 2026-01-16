@@ -2,7 +2,7 @@
 
 import { Resend } from "resend";
 import type { QuizSubmission } from "@/lib/schemas/quiz";
-import type { BookingWebhookPayload } from "@/lib/schemas/bookingWebhook";
+import type { NormalizedBookingData } from "@/lib/schemas/bookingWebhook";
 
 // Lazy initialization of Resend client
 let resendClient: Resend | null = null;
@@ -103,7 +103,7 @@ function formatQuizAnswers(submission: QuizSubmission): string {
  * Build the email body
  */
 function buildEmailBody(params: {
-  payload: BookingWebhookPayload;
+  payload: NormalizedBookingData;
   submission: QuizSubmission | null;
   assessment: string | null;
 }): string {
@@ -155,7 +155,7 @@ function buildEmailBody(params: {
 }
 
 export interface SendRepEmailParams {
-  payload: BookingWebhookPayload;
+  payload: NormalizedBookingData;
   submission: QuizSubmission | null;
   assessment: string | null;
 }

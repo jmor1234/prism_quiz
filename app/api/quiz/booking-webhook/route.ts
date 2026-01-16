@@ -1,7 +1,7 @@
 // app/api/quiz/booking-webhook/route.ts
 
 import { NextResponse } from "next/server";
-import { bookingWebhookSchema } from "@/lib/schemas/bookingWebhook";
+import { bookingWebhookSchema, normalizeBookingPayload } from "@/lib/schemas/bookingWebhook";
 import { getQuizSubmission } from "@/server/quizSubmissions";
 import { getQuizResult } from "@/server/quizResults";
 import { sendRepEmail } from "@/lib/email/sendRepEmail";
@@ -21,6 +21,9 @@ export async function POST(request: Request) {
     );
   }
 
+  // Log raw payload for debugging
+  console.log("[Booking Webhook] Raw payload:", JSON.stringify(body));
+
   // Validate payload
   const parseResult = bookingWebhookSchema.safeParse(body);
   if (!parseResult.success) {
@@ -34,21 +37,22 @@ export async function POST(request: Request) {
     );
   }
 
-  const payload = parseResult.data;
-  console.log(`[Booking Webhook] Processing booking for ${payload.client.email}, quizId: ${payload.quizId || "(none)"}`);
+  // Normalize the flat YCBM structure to our internal format
+  const normalized = normalizeBookingPayload(parseResult.data);
+  console.log(`[Booking Webhook] Processing booking for ${normalized.client.email}, quizId: ${normalized.quizId || "(none)"}`);
 
   // Fetch quiz data if quizId is present
   let submission = null;
   let assessment = null;
 
-  if (payload.quizId) {
+  if (normalized.quizId) {
     try {
-      const submissionRecord = await getQuizSubmission(payload.quizId);
+      const submissionRecord = await getQuizSubmission(normalized.quizId);
       if (submissionRecord) {
         submission = submissionRecord.submission;
-        console.log(`[Booking Webhook] Found quiz submission for ${payload.quizId}`);
+        console.log(`[Booking Webhook] Found quiz submission for ${normalized.quizId}`);
       } else {
-        console.warn(`[Booking Webhook] No submission found for quizId: ${payload.quizId}`);
+        console.warn(`[Booking Webhook] No submission found for quizId: ${normalized.quizId}`);
       }
     } catch (error) {
       console.error(`[Booking Webhook] Error fetching submission:`, error);
@@ -56,12 +60,12 @@ export async function POST(request: Request) {
     }
 
     try {
-      const resultRecord = await getQuizResult(payload.quizId);
+      const resultRecord = await getQuizResult(normalized.quizId);
       if (resultRecord) {
         assessment = resultRecord.report;
-        console.log(`[Booking Webhook] Found quiz result for ${payload.quizId}`);
+        console.log(`[Booking Webhook] Found quiz result for ${normalized.quizId}`);
       } else {
-        console.warn(`[Booking Webhook] No result found for quizId: ${payload.quizId}`);
+        console.warn(`[Booking Webhook] No result found for quizId: ${normalized.quizId}`);
       }
     } catch (error) {
       console.error(`[Booking Webhook] Error fetching result:`, error);
@@ -72,11 +76,11 @@ export async function POST(request: Request) {
   // Send email to rep
   try {
     await sendRepEmail({
-      payload,
+      payload: normalized,
       submission,
       assessment,
     });
-    console.log(`[Booking Webhook] Email sent to ${payload.rep.email}`);
+    console.log(`[Booking Webhook] Email sent to ${normalized.rep.email}`);
   } catch (error) {
     console.error("[Booking Webhook] Failed to send email:", error);
     return NextResponse.json(
