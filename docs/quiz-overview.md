@@ -95,7 +95,7 @@ Env: QUIZ_UPSTASH_REDIS_REST_URL, QUIZ_UPSTASH_REDIS_REST_TOKEN
 | 9 | Typical eating | Free text |
 | 10 | Health goals | Free text |
 
-**Contact:** Email (required), Name (optional), Phone (optional)
+**Contact:** Name (required)
 
 ---
 
@@ -106,8 +106,7 @@ Env: QUIZ_UPSTASH_REDIS_REST_URL, QUIZ_UPSTASH_REDIS_REST_TOKEN
 **Request:**
 ```json
 {
-  "email": "user@example.com",
-  "name": "Optional Name",
+  "name": "User Name",
   "energyLevel": 4,
   "crashAfterLunch": true,
   "difficultyWaking": true,
@@ -149,9 +148,26 @@ No recommendations. No citations. Brief and engaging.
 ANTHROPIC_API_KEY=
 
 # Required for production storage
-QUIZ_UPSTASH_REDIS_REST_URL=
-QUIZ_UPSTASH_REDIS_REST_TOKEN=
+UPSTASH_REDIS_REST_URL=
+UPSTASH_REDIS_REST_TOKEN=
+
+# Required for admin dashboard access
+ADMIN_PASSWORD=
 ```
+
+---
+
+## Admin Dashboard
+
+View quiz submissions and AI assessments at `/admin/results`.
+
+**Authentication:** Password-protected via `ADMIN_PASSWORD` env var. Password is stored in sessionStorage (clears on browser close).
+
+**Features:**
+- List of all submissions (newest first)
+- Click to expand and view quiz answers + AI assessment
+- Refresh button to reload data
+- Dark mode support
 
 ---
 
