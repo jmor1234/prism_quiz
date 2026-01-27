@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { ChevronDown, ChevronRight, LogOut, RefreshCw, Loader2 } from "lucide-react";
+import { ChevronRight, LogOut, RefreshCw, Loader2 } from "lucide-react";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -46,15 +47,16 @@ const bowelIssueLabels: Record<BowelIssueType, string> = {
 // Helper Functions
 // ============================================================================
 
+const dateFormatter = new Intl.DateTimeFormat("en-US", {
+  month: "short",
+  day: "numeric",
+  year: "numeric",
+  hour: "numeric",
+  minute: "2-digit",
+});
+
 function formatDate(isoString: string): string {
-  const date = new Date(isoString);
-  return date.toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  });
+  return dateFormatter.format(new Date(isoString));
 }
 
 // ============================================================================
@@ -67,7 +69,7 @@ function YesNoBadge({ value }: { value: boolean }) {
       className={cn(
         "inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium",
         value
-          ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"
+          ? "bg-[var(--quiz-gold)]/20 text-[var(--quiz-gold-dark)] dark:bg-[var(--quiz-gold)]/30 dark:text-[var(--quiz-gold)]"
           : "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400"
       )}
     >
@@ -78,19 +80,13 @@ function YesNoBadge({ value }: { value: boolean }) {
 
 function EnergyLevelBar({ level }: { level: number }) {
   const percentage = (level / 10) * 100;
-  const getColor = () => {
-    if (level <= 3) return "bg-red-500";
-    if (level <= 5) return "bg-orange-500";
-    if (level <= 7) return "bg-yellow-500";
-    return "bg-emerald-500";
-  };
 
   return (
     <div className="flex items-center gap-3">
       <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden max-w-[120px]">
         <div
-          className={cn("h-full rounded-full transition-all", getColor())}
-          style={{ width: `${percentage}%` }}
+          className="h-full rounded-full transition-all bg-[var(--quiz-gold)]"
+          style={{ width: `${percentage}%`, opacity: 0.4 + (level / 10) * 0.6 }}
         />
       </div>
       <span className="text-sm font-semibold tabular-nums">{level}/10</span>
@@ -164,7 +160,7 @@ function QuizAnswersDisplay({ submission }: { submission: QuizSubmission }) {
               {submission.bowelIssues.map((issue) => (
                 <span
                   key={issue}
-                  className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
+                  className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-[var(--quiz-gold)]/20 text-[var(--quiz-gold-dark)] dark:bg-[var(--quiz-gold)]/30 dark:text-[var(--quiz-gold)]"
                 >
                   {bowelIssueLabels[issue]}
                 </span>
@@ -199,53 +195,67 @@ function EntryRow({
   entry,
   isExpanded,
   onToggle,
+  shouldReduceMotion,
 }: {
   entry: QuizEntry;
   isExpanded: boolean;
   onToggle: () => void;
+  shouldReduceMotion: boolean | null;
 }) {
   return (
-    <div className="border rounded-lg overflow-hidden">
+    <div className="border rounded-lg overflow-hidden transition-shadow duration-200 hover:shadow-md">
       {/* Row header */}
       <button
         onClick={onToggle}
         className={cn(
-          "w-full px-4 py-3 flex items-center gap-3 text-left transition-colors",
-          "hover:bg-muted/50",
-          isExpanded && "bg-muted/30"
+          "w-full px-4 py-3 flex items-center gap-3 text-left transition-all duration-200",
+          "hover:bg-[var(--quiz-cream)]/30",
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--quiz-gold)] focus-visible:ring-inset",
+          isExpanded && "bg-[var(--quiz-cream)]/20"
         )}
       >
-        {isExpanded ? (
-          <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />
-        ) : (
-          <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
-        )}
+        <motion.div
+          animate={{ rotate: isExpanded ? 90 : 0 }}
+          transition={shouldReduceMotion ? { duration: 0 } : { duration: 0.2 }}
+        >
+          <ChevronRight className="h-4 w-4 text-[var(--quiz-gold-dark)] shrink-0" />
+        </motion.div>
         <span className="font-medium flex-1">{entry.submission.name}</span>
         <span className="text-sm text-muted-foreground">{formatDate(entry.createdAt)}</span>
         <span className="text-xs text-muted-foreground font-mono">{entry.id.slice(0, 8)}</span>
       </button>
 
       {/* Expanded content */}
-      {isExpanded && (
-        <div className="px-4 pb-4 pt-2 border-t space-y-6">
-          <QuizAnswersDisplay submission={entry.submission} />
+      <AnimatePresence>
+        {isExpanded && (
+          <motion.div
+            initial={shouldReduceMotion ? {} : { height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={shouldReduceMotion ? {} : { height: 0, opacity: 0 }}
+            transition={shouldReduceMotion ? { duration: 0 } : { duration: 0.3, ease: "easeInOut" }}
+            className="overflow-hidden"
+          >
+            <div className="px-4 pb-4 pt-2 border-t space-y-6">
+              <QuizAnswersDisplay submission={entry.submission} />
 
-          {entry.report && (
-            <div className="space-y-2">
-              <h4 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">
-                AI Assessment
-              </h4>
-              <div className="bg-card border rounded-lg p-4">
-                <Response variant="report">{entry.report}</Response>
-              </div>
+              {entry.report && (
+                <div className="space-y-2">
+                  <h4 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">
+                    AI Assessment
+                  </h4>
+                  <div className="bg-card border rounded-lg p-4">
+                    <Response variant="report">{entry.report}</Response>
+                  </div>
+                </div>
+              )}
+
+              {!entry.report && (
+                <p className="text-sm text-muted-foreground italic">No assessment generated</p>
+              )}
             </div>
-          )}
-
-          {!entry.report && (
-            <p className="text-sm text-muted-foreground italic">No assessment generated</p>
-          )}
-        </div>
-      )}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
@@ -261,6 +271,7 @@ export default function AdminResultsPage() {
   const [entries, setEntries] = useState<QuizEntry[]>([]);
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const [isLoading, setIsLoading] = useState(false);
+  const shouldReduceMotion = useReducedMotion();
 
   const fetchResults = useCallback(async (key: string) => {
     setIsLoading(true);
@@ -339,8 +350,9 @@ export default function AdminResultsPage() {
   // Loading state while checking session
   if (authState === "checking") {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      <div className="min-h-screen quiz-background flex items-center justify-center" role="status" aria-live="polite">
+        <Loader2 className="h-6 w-6 animate-spin text-[var(--quiz-gold)]" />
+        <span className="sr-only">Checking authentication…</span>
       </div>
     );
   }
@@ -348,7 +360,7 @@ export default function AdminResultsPage() {
   // Login form
   if (authState === "unauthenticated") {
     return (
-      <div className="min-h-screen bg-background flex flex-col">
+      <div className="min-h-screen quiz-background flex flex-col">
         <header className="sticky top-0 z-10 bg-background/80 backdrop-blur-sm border-b">
           <div className="max-w-md mx-auto px-4 py-3 flex justify-end">
             <ModeToggle />
@@ -356,9 +368,14 @@ export default function AdminResultsPage() {
         </header>
 
         <main className="flex-1 flex items-center justify-center px-4">
-          <div className="w-full max-w-sm space-y-6">
+          <motion.div
+            initial={shouldReduceMotion ? {} : { opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={shouldReduceMotion ? { duration: 0 } : { duration: 0.4 }}
+            className="w-full max-w-sm space-y-6"
+          >
             <div className="text-center">
-              <h1 className="text-2xl font-bold">Quiz Results</h1>
+              <h1 className="text-2xl font-bold quiz-question">Quiz Results</h1>
               <p className="text-muted-foreground mt-1">Enter password to continue</p>
             </div>
 
@@ -370,28 +387,35 @@ export default function AdminResultsPage() {
                 placeholder="Password"
                 className="h-12"
                 autoFocus
+                autoComplete="current-password"
               />
 
               {error && (
-                <p className="text-sm text-destructive text-center">{error}</p>
+                <p className="text-sm text-destructive text-center" role="alert">{error}</p>
               )}
 
               <Button
                 type="submit"
                 disabled={!password || isLoading}
-                className="w-full h-12"
+                className={cn(
+                  "w-full h-12 font-semibold transition-all duration-300",
+                  "bg-[var(--quiz-gold)] hover:bg-[var(--quiz-gold-dark)]",
+                  "text-[var(--quiz-text-on-gold)]",
+                  "hover:-translate-y-0.5 hover:shadow-lg",
+                  "disabled:bg-muted disabled:text-muted-foreground disabled:translate-y-0 disabled:shadow-none"
+                )}
               >
                 {isLoading ? (
                   <>
                     <Loader2 className="h-4 w-4 animate-spin" />
-                    Loading...
+                    Loading…
                   </>
                 ) : (
                   "Access Results"
                 )}
               </Button>
             </form>
-          </div>
+          </motion.div>
         </main>
       </div>
     );
@@ -399,21 +423,29 @@ export default function AdminResultsPage() {
 
   // Authenticated view
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="min-h-screen quiz-background flex flex-col">
       <header className="sticky top-0 z-10 bg-background/80 backdrop-blur-sm border-b">
         <div className="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
-          <h1 className="text-lg font-semibold">Quiz Results</h1>
+          <h1 className="text-lg font-semibold quiz-question">Quiz Results</h1>
           <div className="flex items-center gap-2">
             <Button
               variant="ghost"
               size="sm"
               onClick={handleRefresh}
               disabled={isLoading}
+              aria-label="Refresh results"
+              className="hover:bg-[var(--quiz-cream)]/50"
             >
               <RefreshCw className={cn("h-4 w-4", isLoading && "animate-spin")} />
             </Button>
             <ModeToggle />
-            <Button variant="ghost" size="sm" onClick={handleLogout}>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleLogout}
+              aria-label="Log out"
+              className="hover:bg-[var(--quiz-cream)]/50"
+            >
               <LogOut className="h-4 w-4" />
             </Button>
           </div>
@@ -423,30 +455,46 @@ export default function AdminResultsPage() {
       <main className="flex-1 px-4 py-6">
         <div className="max-w-4xl mx-auto space-y-4">
           {error && (
-            <div className="p-3 bg-destructive/10 text-destructive rounded-lg text-sm">
+            <div className="p-3 bg-destructive/10 text-destructive rounded-lg text-sm" role="alert">
               {error}
             </div>
           )}
 
           {entries.length === 0 && !isLoading && (
-            <div className="text-center py-12 text-muted-foreground">
+            <motion.div
+              initial={shouldReduceMotion ? {} : { opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="text-center py-12 text-muted-foreground"
+            >
               No quiz submissions yet
-            </div>
+            </motion.div>
           )}
 
-          {entries.map((entry) => (
-            <EntryRow
+          {entries.map((entry, index) => (
+            <motion.div
               key={entry.id}
-              entry={entry}
-              isExpanded={expandedIds.has(entry.id)}
-              onToggle={() => toggleExpanded(entry.id)}
-            />
+              initial={shouldReduceMotion ? {} : { opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={shouldReduceMotion ? { duration: 0 } : { duration: 0.3, delay: index * 0.05 }}
+            >
+              <EntryRow
+                entry={entry}
+                isExpanded={expandedIds.has(entry.id)}
+                onToggle={() => toggleExpanded(entry.id)}
+                shouldReduceMotion={shouldReduceMotion}
+              />
+            </motion.div>
           ))}
 
           {entries.length > 0 && (
-            <p className="text-center text-sm text-muted-foreground pt-4">
+            <motion.p
+              initial={shouldReduceMotion ? {} : { opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={shouldReduceMotion ? { duration: 0 } : { delay: entries.length * 0.05 + 0.2 }}
+              className="text-center text-sm text-muted-foreground pt-4"
+            >
               Showing {entries.length} result{entries.length === 1 ? "" : "s"}
-            </p>
+            </motion.p>
           )}
         </div>
       </main>
