@@ -57,67 +57,138 @@ function formatDate(isoString: string): string {
   });
 }
 
-function formatBoolean(value: boolean): string {
-  return value ? "Yes" : "No";
-}
-
 // ============================================================================
 // Sub-components
 // ============================================================================
 
-function QuizAnswersDisplay({ submission }: { submission: QuizSubmission }) {
-  const rows: { label: string; value: string }[] = [
-    { label: "Name", value: submission.name },
-    { label: "Energy Level", value: `${submission.energyLevel}/10` },
-    { label: "Crashes after lunch", value: formatBoolean(submission.crashAfterLunch) },
-    { label: "Difficulty waking", value: formatBoolean(submission.difficultyWaking) },
-    {
-      label: "Wakes at night",
-      value: submission.wakeAtNight.wakes
-        ? submission.wakeAtNight.reasons?.length
-          ? `Yes (${submission.wakeAtNight.reasons.map((r) => wakeReasonLabels[r]).join(", ")})`
-          : "Yes"
-        : "No",
-    },
-    { label: "Brain fog", value: formatBoolean(submission.brainFog) },
-    {
-      label: "Bowel issues",
-      value:
-        submission.bowelIssues.length > 0
-          ? submission.bowelIssues.map((i) => bowelIssueLabels[i]).join(", ")
-          : "None",
-    },
-    { label: "Cold extremities", value: formatBoolean(submission.coldExtremities) },
-    { label: "White tongue coating", value: formatBoolean(submission.whiteTongue) },
-  ];
+function YesNoBadge({ value }: { value: boolean }) {
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium",
+        value
+          ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"
+          : "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400"
+      )}
+    >
+      {value ? "Yes" : "No"}
+    </span>
+  );
+}
+
+function EnergyLevelBar({ level }: { level: number }) {
+  const percentage = (level / 10) * 100;
+  const getColor = () => {
+    if (level <= 3) return "bg-red-500";
+    if (level <= 5) return "bg-orange-500";
+    if (level <= 7) return "bg-yellow-500";
+    return "bg-emerald-500";
+  };
 
   return (
-    <div className="space-y-4">
+    <div className="flex items-center gap-3">
+      <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden max-w-[120px]">
+        <div
+          className={cn("h-full rounded-full transition-all", getColor())}
+          style={{ width: `${percentage}%` }}
+        />
+      </div>
+      <span className="text-sm font-semibold tabular-nums">{level}/10</span>
+    </div>
+  );
+}
+
+function QuizAnswersDisplay({ submission }: { submission: QuizSubmission }) {
+  return (
+    <div className="space-y-5">
       <h4 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">
         Quiz Answers
       </h4>
-      <div className="grid gap-2">
-        {rows.map((row) => (
-          <div key={row.label} className="flex gap-2 text-sm">
-            <span className="font-medium min-w-[140px] text-muted-foreground">{row.label}:</span>
-            <span>{row.value}</span>
+
+      {/* Main stats grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {/* Energy Level - full width */}
+        <div className="sm:col-span-2 bg-muted/30 rounded-lg p-4 border">
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-medium text-muted-foreground">Energy Level</span>
+            <EnergyLevelBar level={submission.energyLevel} />
           </div>
-        ))}
+        </div>
+
+        {/* Yes/No questions */}
+        <div className="bg-muted/30 rounded-lg p-4 border space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-sm">Crashes after lunch</span>
+            <YesNoBadge value={submission.crashAfterLunch} />
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-sm">Difficulty waking</span>
+            <YesNoBadge value={submission.difficultyWaking} />
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-sm">Brain fog</span>
+            <YesNoBadge value={submission.brainFog} />
+          </div>
+        </div>
+
+        <div className="bg-muted/30 rounded-lg p-4 border space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-sm">Cold extremities</span>
+            <YesNoBadge value={submission.coldExtremities} />
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-sm">White tongue coating</span>
+            <YesNoBadge value={submission.whiteTongue} />
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-sm">Wakes at night</span>
+            <YesNoBadge value={submission.wakeAtNight.wakes} />
+          </div>
+        </div>
+
+        {/* Conditional: Wake reasons */}
+        {submission.wakeAtNight.wakes && submission.wakeAtNight.reasons?.length ? (
+          <div className="sm:col-span-2 bg-muted/30 rounded-lg p-4 border">
+            <span className="text-sm text-muted-foreground">Wake reasons: </span>
+            <span className="text-sm">
+              {submission.wakeAtNight.reasons.map((r) => wakeReasonLabels[r]).join(", ")}
+            </span>
+          </div>
+        ) : null}
+
+        {/* Bowel issues */}
+        <div className="sm:col-span-2 bg-muted/30 rounded-lg p-4 border">
+          <span className="text-sm text-muted-foreground">Bowel issues: </span>
+          {submission.bowelIssues.length > 0 ? (
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {submission.bowelIssues.map((issue) => (
+                <span
+                  key={issue}
+                  className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
+                >
+                  {bowelIssueLabels[issue]}
+                </span>
+              ))}
+            </div>
+          ) : (
+            <span className="text-sm">None reported</span>
+          )}
+        </div>
       </div>
 
       {/* Free text answers */}
-      <div className="space-y-3 pt-2">
-        <div>
-          <span className="font-medium text-sm text-muted-foreground">Typical eating:</span>
-          <p className="mt-1 text-sm whitespace-pre-wrap bg-muted/50 p-3 rounded-md">
-            {submission.typicalEating}
-          </p>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="bg-muted/30 rounded-lg p-4 border">
+          <span className="text-sm font-medium text-muted-foreground block mb-2">
+            Typical eating
+          </span>
+          <p className="text-sm whitespace-pre-wrap">{submission.typicalEating}</p>
         </div>
-        <div>
-          <span className="font-medium text-sm text-muted-foreground">Health goals:</span>
-          <p className="mt-1 text-sm whitespace-pre-wrap bg-muted/50 p-3 rounded-md">
-            {submission.healthGoals}
-          </p>
+        <div className="bg-muted/30 rounded-lg p-4 border">
+          <span className="text-sm font-medium text-muted-foreground block mb-2">
+            Health goals
+          </span>
+          <p className="text-sm whitespace-pre-wrap">{submission.healthGoals}</p>
         </div>
       </div>
     </div>
