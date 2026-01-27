@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono, Inter } from "next/font/google";
+import { Geist, Geist_Mono, Inter, Libre_Baskerville } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/ui/theme-provider";
 
@@ -19,6 +19,13 @@ const inter = Inter({
   display: 'swap',
 });
 
+const libreBaskerville = Libre_Baskerville({
+  variable: "--font-display",
+  subsets: ["latin"],
+  weight: ["400", "700"],
+  display: 'swap',
+});
+
 export const metadata: Metadata = {
   title: "Prism Assessment Quiz",
   description: "Trace health symptoms to root causes through energy metabolism, gut health, and stress cascades",
@@ -32,7 +39,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} ${inter.variable} antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} ${inter.variable} ${libreBaskerville.variable} antialiased`}
       >
         <ThemeProvider
           attribute="class"

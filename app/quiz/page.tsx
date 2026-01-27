@@ -150,7 +150,7 @@ function YesNoToggle({
   const baseStyles = cn(
     "px-12 h-14 text-base font-medium !rounded-full border-2",
     "transition-all duration-300 ease-out",
-    "hover:scale-105 active:scale-95"
+    "hover:-translate-y-0.5 hover:shadow-md active:translate-y-0 active:shadow-sm"
   );
   const unselectedStyles = cn(
     "border-border bg-background shadow-sm",
@@ -217,7 +217,7 @@ function MultiSelect<T extends string>({
   const baseStyles = cn(
     "px-6 py-3 !rounded-full text-sm font-medium border-2 min-h-[48px]",
     "transition-all duration-300 ease-out",
-    "hover:scale-105 active:scale-95"
+    "hover:-translate-y-0.5 hover:shadow-md active:translate-y-0 active:shadow-sm"
   );
   const unselectedStyles = cn(
     "border-border bg-background shadow-sm",
@@ -404,7 +404,7 @@ export default function QuizPage(): React.ReactElement {
 
   // Step content renderer
   function renderStepContent(): React.ReactElement {
-    const questionClass = "text-xl sm:text-2xl font-semibold text-center leading-relaxed";
+    const questionClass = "text-xl sm:text-2xl font-semibold text-center leading-relaxed quiz-question";
     const hintClass = "text-muted-foreground text-center text-sm";
 
     switch (step) {
@@ -431,8 +431,13 @@ export default function QuizPage(): React.ReactElement {
                 />
                 <span className="text-xs text-muted-foreground w-16 text-right">Energized</span>
               </div>
-              <div className="text-center text-5xl font-bold tabular-nums">
-                {form.energyLevel}
+              <div className="flex justify-center">
+                <div className="relative inline-block">
+                  <span className="text-5xl font-bold tabular-nums text-foreground">
+                    {form.energyLevel}
+                  </span>
+                  <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-12 h-1 rounded-full bg-[var(--quiz-gold)]" />
+                </div>
               </div>
             </div>
           </div>
@@ -622,8 +627,10 @@ export default function QuizPage(): React.ReactElement {
 
   // Result view
   if (result) {
+    const staggerDelay = shouldReduceMotion ? 0 : 0.15;
+
     return (
-      <div className="min-h-screen bg-background flex flex-col">
+      <div className="min-h-screen quiz-background flex flex-col">
         <header className="sticky top-0 z-10 bg-background/80 backdrop-blur-sm border-b">
           <div className="max-w-2xl mx-auto px-4 py-3 flex justify-end">
             <ModeToggle />
@@ -631,31 +638,47 @@ export default function QuizPage(): React.ReactElement {
         </header>
 
         <main className="flex-1 px-4 py-8">
-          <div className="max-w-2xl mx-auto space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            {/* Success banner */}
-            <div className="rounded-lg border border-green-500/50 bg-green-500/10 p-4">
+          <div className="max-w-2xl mx-auto space-y-6">
+            {/* Success banner - staggered entrance */}
+            <motion.div
+              initial={shouldReduceMotion ? {} : { opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, delay: staggerDelay * 0 }}
+              className="rounded-lg border border-[var(--quiz-gold)]/50 bg-[var(--quiz-gold)]/10 p-4"
+            >
               <div className="flex items-center gap-2">
-                <CheckCircle2 className="h-4 w-4 text-green-600" />
-                <p className="text-sm font-medium text-green-600">
-                  Assessment generated successfully
+                <CheckCircle2 className="h-5 w-5 text-[var(--quiz-gold-dark)]" />
+                <p className="text-sm font-medium text-[var(--quiz-gold-dark)]">
+                  Your personalized assessment is ready
                 </p>
               </div>
-            </div>
+            </motion.div>
 
-            {/* Content area */}
-            <div className="rounded-lg border bg-card p-6 shadow-sm">
+            {/* Content area - staggered entrance */}
+            <motion.div
+              initial={shouldReduceMotion ? {} : { opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: staggerDelay * 1 }}
+              className="rounded-lg border bg-card p-6 shadow-sm"
+            >
               <Response variant="report">{result.report}</Response>
-            </div>
+            </motion.div>
 
-            {/* Action buttons */}
-            <div className="flex flex-col items-center gap-3">
+            {/* Action buttons - staggered entrance */}
+            <motion.div
+              initial={shouldReduceMotion ? {} : { opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: staggerDelay * 2 }}
+              className="flex flex-col items-center gap-3"
+            >
               {/* Primary CTA - Book consultation */}
               <Button
                 asChild
                 className={cn(
                   "gap-2 h-12 px-6 text-base font-semibold",
                   "bg-[var(--quiz-gold)] hover:bg-[var(--quiz-gold-dark)]",
-                  "text-[var(--quiz-text-on-gold)] shadow-lg hover:shadow-xl transition-all"
+                  "text-[var(--quiz-text-on-gold)] shadow-lg hover:shadow-xl",
+                  "transition-all duration-300 hover:-translate-y-0.5"
                 )}
               >
                 <a
@@ -673,12 +696,12 @@ export default function QuizPage(): React.ReactElement {
                 variant="outline"
                 onClick={downloadPdf}
                 disabled={isDownloadingPdf}
-                className="gap-2"
+                className="gap-2 transition-all duration-300 hover:-translate-y-0.5"
               >
                 {isDownloadingPdf ? (
                   <>
                     <Loader className="h-4 w-4" />
-                    Generating PDF...
+                    Generating PDF…
                   </>
                 ) : (
                   <>
@@ -687,7 +710,7 @@ export default function QuizPage(): React.ReactElement {
                   </>
                 )}
               </Button>
-            </div>
+            </motion.div>
           </div>
         </main>
       </div>
@@ -796,7 +819,7 @@ export default function QuizPage(): React.ReactElement {
 
   // Wizard view
   return (
-    <div className="min-h-screen bg-gradient-to-b from-background via-background to-muted/30 flex flex-col">
+    <div className="min-h-screen quiz-background flex flex-col">
       {/* Header */}
       <header className="sticky top-0 z-10 bg-background/80 backdrop-blur-sm border-b">
         <div className="max-w-2xl mx-auto px-4 py-3 space-y-2">

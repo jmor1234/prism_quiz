@@ -1,0 +1,21 @@
+{
+  "id": "0dba33e1-c71f-442c-8f71-af15af72ca77",
+  "createdAt": "2026-01-27T18:22:01.692Z",
+  "submission": {
+    "name": "John Test",
+    "energyLevel": 5,
+    "crashAfterLunch": false,
+    "difficultyWaking": true,
+    "wakeAtNight": {
+      "wakes": false
+    },
+    "brainFog": true,
+    "bowelIssues": [
+      "incomplete"
+    ],
+    "coldExtremities": true,
+    "whiteTongue": false,
+    "typicalEating": "normal stuff",
+    "healthGoals": "feel better"
+  }
+}
