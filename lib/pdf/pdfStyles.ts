@@ -449,4 +449,96 @@ export const PDF_STYLES = `
     text-align: center;
     page-break-after: avoid;
   }
+
+  /* =========================================================================
+     Admin PDF Styles - Quiz Assessment Export
+     ========================================================================= */
+
+  /* Admin PDF Header */
+  .admin-header {
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 2px solid #C9A36A;
+  }
+
+  .admin-header h1 {
+    text-align: left;
+    margin-bottom: 0.75rem;
+    font-size: 24pt;
+  }
+
+  .admin-header-meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+  }
+
+  .admin-header-client {
+    font-size: 16pt;
+    font-weight: 600;
+    color: #1a1a1a;
+  }
+
+  .admin-header-details {
+    font-size: 10pt;
+    color: #6b7280;
+  }
+
+  .admin-header-id {
+    margin-left: 1.5rem;
+    font-family: 'Courier New', monospace;
+  }
+
+  /* Answers Table (compact two-column layout) */
+  .answers-table {
+    width: auto;
+    margin: 1rem 0 1.5rem 0;
+    border: none;
+  }
+
+  .answers-table th,
+  .answers-table td {
+    border: none;
+    padding: 0.4rem 0;
+    vertical-align: top;
+  }
+
+  .answers-table th {
+    text-align: left;
+    font-weight: 500;
+    color: #4b5563;
+    padding-right: 2rem;
+    white-space: nowrap;
+  }
+
+  .answers-table td {
+    text-align: left;
+    color: #1a1a1a;
+  }
+
+  .answers-table tr {
+    border-bottom: 1px solid #e5e7eb;
+  }
+
+  .answers-table tr:last-child {
+    border-bottom: none;
+  }
+
+  /* Free text answer boxes */
+  .freetext-answer {
+    white-space: pre-wrap;
+    background-color: #f9fafb;
+    padding: 0.75rem 1rem;
+    border-radius: 0.375rem;
+    border: 1px solid #e5e7eb;
+    margin-top: 0.5rem;
+    font-size: 11pt;
+    line-height: 1.5;
+  }
+
+  /* No assessment placeholder */
+  .no-assessment {
+    color: #6b7280;
+    font-style: italic;
+  }
 `;

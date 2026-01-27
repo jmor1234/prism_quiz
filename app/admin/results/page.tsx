@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { ChevronRight, LogOut, RefreshCw, Loader2 } from "lucide-react";
+import { ChevronRight, LogOut, RefreshCw, Loader2, Download } from "lucide-react";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 
 import { Button } from "@/components/ui/button";
@@ -9,7 +9,8 @@ import { Input } from "@/components/ui/input";
 import { ModeToggle } from "@/components/ui/mode-toggle";
 import { Response } from "@/components/ai-elements/response";
 import { cn } from "@/lib/utils";
-import type { QuizSubmission, WakeReason, BowelIssueType } from "@/lib/schemas/quiz";
+import type { QuizSubmission } from "@/lib/schemas/quiz";
+import { wakeReasonLabels, bowelIssueLabels } from "@/lib/labels/quizLabels";
 
 // ============================================================================
 // Types
@@ -23,25 +24,6 @@ interface QuizEntry {
 }
 
 type AuthState = "checking" | "unauthenticated" | "authenticated";
-
-// ============================================================================
-// Label Mappings
-// ============================================================================
-
-const wakeReasonLabels: Record<WakeReason, string> = {
-  no_reason: "No apparent reason",
-  eat: "To eat",
-  drink: "To drink",
-  pee: "To urinate",
-};
-
-const bowelIssueLabels: Record<BowelIssueType, string> = {
-  straining: "Straining",
-  pain: "Pain",
-  incomplete: "Incomplete emptying",
-  diarrhea: "Diarrhea",
-  smell: "Excessive smell/mess",
-};
 
 // ============================================================================
 // Helper Functions
@@ -188,35 +170,65 @@ function EntryRow({
   entry,
   isExpanded,
   onToggle,
+  onDownload,
+  isDownloading,
   shouldReduceMotion,
 }: {
   entry: QuizEntry;
   isExpanded: boolean;
   onToggle: () => void;
+  onDownload: () => void;
+  isDownloading: boolean;
   shouldReduceMotion: boolean | null;
 }) {
   return (
     <div className="border rounded-lg overflow-hidden transition-shadow duration-200 hover:shadow-md">
       {/* Row header */}
-      <button
-        onClick={onToggle}
+      <div
         className={cn(
-          "w-full px-4 py-3 flex items-center gap-3 text-left transition-all duration-200",
+          "w-full px-4 py-3 flex items-center gap-3 transition-all duration-200",
           "hover:bg-[var(--quiz-cream)]/30",
-          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--quiz-gold)] focus-visible:ring-inset",
           isExpanded && "bg-[var(--quiz-cream)]/20"
         )}
       >
-        <motion.div
-          animate={{ rotate: isExpanded ? 90 : 0 }}
-          transition={shouldReduceMotion ? { duration: 0 } : { duration: 0.2 }}
+        <button
+          onClick={onToggle}
+          className="flex items-center gap-3 flex-1 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--quiz-gold)] focus-visible:ring-inset rounded"
+          aria-expanded={isExpanded}
         >
-          <ChevronRight className="h-4 w-4 text-[var(--quiz-gold-dark)] shrink-0" />
-        </motion.div>
-        <span className="font-medium flex-1">{entry.submission.name}</span>
-        <span className="text-sm text-muted-foreground">{formatDate(entry.createdAt)}</span>
-        <span className="text-xs text-muted-foreground font-mono">{entry.id.slice(0, 8)}</span>
-      </button>
+          <motion.div
+            animate={{ rotate: isExpanded ? 90 : 0 }}
+            transition={shouldReduceMotion ? { duration: 0 } : { duration: 0.2 }}
+          >
+            <ChevronRight className="h-4 w-4 text-[var(--quiz-gold-dark)] shrink-0" />
+          </motion.div>
+          <span className="font-medium flex-1">{entry.submission.name}</span>
+          <span className="text-sm text-muted-foreground">{formatDate(entry.createdAt)}</span>
+          <span className="text-xs text-muted-foreground font-mono">{entry.id.slice(0, 8)}</span>
+        </button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={(e) => {
+            e.stopPropagation();
+            onDownload();
+          }}
+          disabled={isDownloading}
+          className="shrink-0 gap-1.5 border-[var(--quiz-gold)] text-[var(--quiz-gold-dark)] hover:bg-[var(--quiz-gold)]/10 hover:text-[var(--quiz-gold-dark)]"
+        >
+          {isDownloading ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin" />
+              <span>Generating...</span>
+            </>
+          ) : (
+            <>
+              <Download className="h-4 w-4" />
+              <span>PDF</span>
+            </>
+          )}
+        </Button>
+      </div>
 
       {/* Expanded content */}
       <AnimatePresence>
@@ -264,6 +276,7 @@ export default function AdminResultsPage() {
   const [entries, setEntries] = useState<QuizEntry[]>([]);
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const [isLoading, setIsLoading] = useState(false);
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const shouldReduceMotion = useReducedMotion();
 
   const fetchResults = useCallback(async (key: string) => {
@@ -338,6 +351,46 @@ export default function AdminResultsPage() {
       }
       return next;
     });
+  };
+
+  const handleDownloadPdf = async (quizId: string) => {
+    const savedPassword = sessionStorage.getItem("admin_password");
+    if (!savedPassword) return;
+
+    setDownloadingId(quizId);
+    setError(null);
+
+    try {
+      const response = await fetch(
+        `/api/admin/results/pdf?key=${encodeURIComponent(savedPassword)}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ quizId }),
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to generate PDF");
+      }
+
+      // Trigger download
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      // Extract filename from Content-Disposition header or use default
+      const contentDisposition = response.headers.get("Content-Disposition");
+      const filenameMatch = contentDisposition?.match(/filename="(.+)"/);
+      a.download = filenameMatch?.[1] || `quiz-${quizId.slice(0, 8)}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "PDF download failed");
+    } finally {
+      setDownloadingId(null);
+    }
   };
 
   // Loading state while checking session
@@ -474,6 +527,8 @@ export default function AdminResultsPage() {
                 entry={entry}
                 isExpanded={expandedIds.has(entry.id)}
                 onToggle={() => toggleExpanded(entry.id)}
+                onDownload={() => handleDownloadPdf(entry.id)}
+                isDownloading={downloadingId === entry.id}
                 shouldReduceMotion={shouldReduceMotion}
               />
             </motion.div>
