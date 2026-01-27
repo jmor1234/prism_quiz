@@ -26,7 +26,6 @@ import {
 // ============================================================================
 
 type FormState = {
-  email: string;
   name: string;
   energyLevel: number;
   crashAfterLunch: boolean | null;
@@ -53,7 +52,6 @@ type Direction = "forward" | "back";
 const TOTAL_STEPS = 11;
 
 const initialFormState: FormState = {
-  email: "",
   name: "",
   energyLevel: 5,
   crashAfterLunch: null,
@@ -113,7 +111,6 @@ function generateTestData(): FormState {
   const wakes = randomBool();
 
   return {
-    email: "test@example.com",
     name: "Test User",
     energyLevel: Math.floor(Math.random() * 10) + 1,
     crashAfterLunch: randomBool(),
@@ -344,7 +341,7 @@ export default function QuizPage(): React.ReactElement {
       case 7: return form.whiteTongue !== null;
       case 8: return form.typicalEating.trim().length > 0;
       case 9: return form.healthGoals.trim().length > 0;
-      case 10: return form.email.includes("@") && form.email.includes(".") && form.name.trim().length > 0;
+      case 10: return form.name.trim().length > 0;
       default: return false;
     }
   }
@@ -359,7 +356,6 @@ export default function QuizPage(): React.ReactElement {
     setError(null);
 
     const submission: QuizSubmission = {
-      email: form.email,
       name: form.name,
       energyLevel: form.energyLevel,
       crashAfterLunch: form.crashAfterLunch!,
@@ -590,21 +586,12 @@ export default function QuizPage(): React.ReactElement {
         return (
           <div className="space-y-6">
             <h2 className={questionClass}>
-              Where should we send your results?
+              What&apos;s your name?
             </h2>
+            <p className={hintClass}>
+              We&apos;ll personalize your assessment with your name
+            </p>
             <div className="space-y-4">
-              <div className="space-y-2">
-                <label className="block text-sm font-medium">
-                  Email <span className="text-destructive">*</span>
-                </label>
-                <Input
-                  type="email"
-                  value={form.email}
-                  onChange={(e) => updateForm("email", e.target.value)}
-                  placeholder="you@example.com"
-                  className="h-12 text-base"
-                />
-              </div>
               <div className="space-y-2">
                 <label className="block text-sm font-medium">
                   Name <span className="text-destructive">*</span>

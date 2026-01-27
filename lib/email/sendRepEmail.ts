@@ -46,7 +46,6 @@ function formatQuizAnswers(submission: QuizSubmission): string {
   const lines: string[] = [];
 
   lines.push(`Name: ${submission.name}`);
-  lines.push(`Email: ${submission.email}`);
   lines.push("");
   lines.push(`Energy Level: ${submission.energyLevel}/10`);
   lines.push(`Crashes after lunch: ${submission.crashAfterLunch ? "Yes" : "No"}`);
