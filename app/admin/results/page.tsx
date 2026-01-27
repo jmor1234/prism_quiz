@@ -63,128 +63,121 @@ function formatDate(isoString: string): string {
 // Sub-components
 // ============================================================================
 
-function YesNoBadge({ value }: { value: boolean }) {
+function YesNoIndicator({ value, label }: { value: boolean; label: string }) {
   return (
-    <span
-      className={cn(
-        "inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium",
-        value
-          ? "bg-[var(--quiz-gold)]/20 text-[var(--quiz-gold-dark)] dark:bg-[var(--quiz-gold)]/30 dark:text-[var(--quiz-gold)]"
-          : "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400"
-      )}
-    >
-      {value ? "Yes" : "No"}
-    </span>
+    <div className="flex items-center justify-between py-1.5 border-b border-border/40 last:border-0">
+      <span className="text-[13px] text-foreground/80">{label}</span>
+      <span
+        className={cn(
+          "text-[13px] font-semibold tracking-tight",
+          value
+            ? "text-emerald-600 dark:text-emerald-400"
+            : "text-red-500 dark:text-red-400"
+        )}
+      >
+        {value ? "Yes" : "No"}
+      </span>
+    </div>
   );
 }
 
-function EnergyLevelBar({ level }: { level: number }) {
-  const percentage = (level / 10) * 100;
+function EnergyLevel({ level }: { level: number }) {
+  // Color coding: 1-3 low (amber), 4-6 medium (yellow), 7-10 good (emerald)
+  const getColor = (l: number) => {
+    if (l <= 3) return "text-amber-600 dark:text-amber-400";
+    if (l <= 6) return "text-yellow-600 dark:text-yellow-400";
+    return "text-emerald-600 dark:text-emerald-400";
+  };
 
   return (
-    <div className="flex items-center gap-3">
-      <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden max-w-[120px]">
-        <div
-          className="h-full rounded-full transition-all bg-[var(--quiz-gold)]"
-          style={{ width: `${percentage}%`, opacity: 0.4 + (level / 10) * 0.6 }}
-        />
-      </div>
-      <span className="text-sm font-semibold tabular-nums">{level}/10</span>
+    <div className="flex items-baseline gap-1">
+      <span className={cn("text-2xl font-bold tabular-nums tracking-tight", getColor(level))}>
+        {level}
+      </span>
+      <span className="text-sm text-foreground/40 font-medium">/10</span>
     </div>
   );
 }
 
 function QuizAnswersDisplay({ submission }: { submission: QuizSubmission }) {
+  const hasWakeReasons = submission.wakeAtNight.wakes && submission.wakeAtNight.reasons?.length;
+  const hasBowelIssues = submission.bowelIssues.length > 0;
+
   return (
-    <div className="space-y-5">
-      <h4 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">
-        Quiz Answers
-      </h4>
+    <div className="space-y-6">
+      {/* Section header */}
+      <div className="flex items-center gap-3">
+        <h4 className="text-[11px] font-semibold text-foreground/50 uppercase tracking-[0.1em]">
+          Quiz Answers
+        </h4>
+        <div className="flex-1 h-px bg-border/60" />
+      </div>
 
-      {/* Main stats grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {/* Energy Level - full width */}
-        <div className="sm:col-span-2 bg-muted/30 rounded-lg p-4 border">
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-medium text-muted-foreground">Energy Level</span>
-            <EnergyLevelBar level={submission.energyLevel} />
-          </div>
+      {/* Main content: 3-column layout */}
+      <div className="grid grid-cols-1 md:grid-cols-[140px_1fr_1fr] gap-6">
+
+        {/* Energy Level - prominent display */}
+        <div className="flex flex-col justify-center">
+          <span className="text-[11px] font-medium text-foreground/50 uppercase tracking-wide mb-1">
+            Energy
+          </span>
+          <EnergyLevel level={submission.energyLevel} />
         </div>
 
-        {/* Yes/No questions */}
-        <div className="bg-muted/30 rounded-lg p-4 border space-y-3">
-          <div className="flex items-center justify-between">
-            <span className="text-sm">Crashes after lunch</span>
-            <YesNoBadge value={submission.crashAfterLunch} />
-          </div>
-          <div className="flex items-center justify-between">
-            <span className="text-sm">Difficulty waking</span>
-            <YesNoBadge value={submission.difficultyWaking} />
-          </div>
-          <div className="flex items-center justify-between">
-            <span className="text-sm">Brain fog</span>
-            <YesNoBadge value={submission.brainFog} />
-          </div>
+        {/* Symptoms Column 1 */}
+        <div className="bg-card/50 dark:bg-card/30 rounded-md px-3 py-0.5 border border-border/40">
+          <YesNoIndicator label="Crashes after lunch" value={submission.crashAfterLunch} />
+          <YesNoIndicator label="Difficulty waking" value={submission.difficultyWaking} />
+          <YesNoIndicator label="Brain fog" value={submission.brainFog} />
         </div>
 
-        <div className="bg-muted/30 rounded-lg p-4 border space-y-3">
-          <div className="flex items-center justify-between">
-            <span className="text-sm">Cold extremities</span>
-            <YesNoBadge value={submission.coldExtremities} />
-          </div>
-          <div className="flex items-center justify-between">
-            <span className="text-sm">White tongue coating</span>
-            <YesNoBadge value={submission.whiteTongue} />
-          </div>
-          <div className="flex items-center justify-between">
-            <span className="text-sm">Wakes at night</span>
-            <YesNoBadge value={submission.wakeAtNight.wakes} />
-          </div>
-        </div>
-
-        {/* Conditional: Wake reasons */}
-        {submission.wakeAtNight.wakes && submission.wakeAtNight.reasons?.length ? (
-          <div className="sm:col-span-2 bg-muted/30 rounded-lg p-4 border">
-            <span className="text-sm text-muted-foreground">Wake reasons: </span>
-            <span className="text-sm">
-              {submission.wakeAtNight.reasons.map((r) => wakeReasonLabels[r]).join(", ")}
-            </span>
-          </div>
-        ) : null}
-
-        {/* Bowel issues */}
-        <div className="sm:col-span-2 bg-muted/30 rounded-lg p-4 border">
-          <span className="text-sm text-muted-foreground">Bowel issues: </span>
-          {submission.bowelIssues.length > 0 ? (
-            <div className="mt-2 flex flex-wrap gap-1.5">
-              {submission.bowelIssues.map((issue) => (
-                <span
-                  key={issue}
-                  className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-[var(--quiz-gold)]/20 text-[var(--quiz-gold-dark)] dark:bg-[var(--quiz-gold)]/30 dark:text-[var(--quiz-gold)]"
-                >
-                  {bowelIssueLabels[issue]}
-                </span>
-              ))}
-            </div>
-          ) : (
-            <span className="text-sm">None reported</span>
-          )}
+        {/* Symptoms Column 2 */}
+        <div className="bg-card/50 dark:bg-card/30 rounded-md px-3 py-0.5 border border-border/40">
+          <YesNoIndicator label="Cold extremities" value={submission.coldExtremities} />
+          <YesNoIndicator label="White tongue" value={submission.whiteTongue} />
+          <YesNoIndicator label="Wakes at night" value={submission.wakeAtNight.wakes} />
         </div>
       </div>
 
-      {/* Free text answers */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div className="bg-muted/30 rounded-lg p-4 border">
-          <span className="text-sm font-medium text-muted-foreground block mb-2">
-            Typical eating
-          </span>
-          <p className="text-sm whitespace-pre-wrap">{submission.typicalEating}</p>
+      {/* Additional details row */}
+      {(hasWakeReasons || hasBowelIssues) && (
+        <div className="flex flex-wrap gap-x-10 gap-y-2">
+          {hasWakeReasons && (
+            <div className="flex items-baseline gap-2">
+              <span className="text-sm text-foreground/60 font-medium">Wake reasons:</span>
+              <span className="text-sm text-foreground font-medium">
+                {submission.wakeAtNight.reasons!.map((r) => wakeReasonLabels[r]).join(", ")}
+              </span>
+            </div>
+          )}
+          {hasBowelIssues && (
+            <div className="flex items-baseline gap-2">
+              <span className="text-sm text-foreground/60 font-medium">Bowel issues:</span>
+              <span className="text-sm text-foreground font-medium">
+                {submission.bowelIssues.map((issue) => bowelIssueLabels[issue]).join(", ")}
+              </span>
+            </div>
+          )}
         </div>
-        <div className="bg-muted/30 rounded-lg p-4 border">
-          <span className="text-sm font-medium text-muted-foreground block mb-2">
-            Health goals
+      )}
+
+      {/* Free text answers */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pt-1">
+        <div>
+          <span className="text-xs font-semibold text-foreground/50 uppercase tracking-wider block mb-1.5">
+            Typical Eating
           </span>
-          <p className="text-sm whitespace-pre-wrap">{submission.healthGoals}</p>
+          <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">
+            {submission.typicalEating}
+          </p>
+        </div>
+        <div>
+          <span className="text-xs font-semibold text-foreground/50 uppercase tracking-wider block mb-1.5">
+            Health Goals
+          </span>
+          <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">
+            {submission.healthGoals}
+          </p>
         </div>
       </div>
     </div>
