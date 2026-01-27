@@ -87,6 +87,12 @@
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
+
+  /* Quiz brand colors */
+  --quiz-gold: #C9A36A;
+  --quiz-gold-dark: #B8935D;
+  --quiz-cream: #EEDEC5;
+  --quiz-text-on-gold: #3D3225;
 }
 
 .dark {
@@ -127,6 +133,12 @@
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.556 0 0);
+
+  /* Quiz brand colors - dark mode adjustments */
+  --quiz-gold: #C9A36A;
+  --quiz-gold-dark: #DAB87A;
+  --quiz-cream: #3A3530;
+  --quiz-text-on-gold: #1a1815;
 }
 
 @layer base {
@@ -245,7 +257,7 @@
 
 /* Report markdown styling - Prism brand colors */
 .report-markdown [data-streamdown="heading-1"] {
-  color: #FF0C01;  /* Red */
+  color: var(--quiz-gold);  /* Red */
   text-align: center;
 }
 
@@ -255,7 +267,7 @@
 }
 
 .report-markdown [data-streamdown="heading-3"] {
-  color: #FF0C01;  /* Red */
+  color: var(--quiz-gold);  /* Red */
 }
 
 .report-markdown [data-streamdown="heading-4"],
@@ -265,21 +277,21 @@
 }
 
 .report-markdown [data-streamdown="table"] {
-  border: 2px solid #F37521;
+  border: 2px solid var(--quiz-gold);
 }
 
 .report-markdown [data-streamdown="table-header-cell"],
 .report-markdown [data-streamdown="table-cell"] {
-  border: 1px solid #F37521;
+  border: 1px solid var(--quiz-gold);
 }
 
 .report-markdown [data-streamdown="table-row"] {
-  border-color: #F37521;
+  border-color: var(--quiz-gold);
 }
 
 /* Ensure dark mode doesn't override report colors */
 .dark .report-markdown [data-streamdown="heading-1"] {
-  color: #FF0C01;  /* Red */
+  color: var(--quiz-gold);  /* Red */
   text-align: center;
 }
 
@@ -289,7 +301,7 @@
 }
 
 .dark .report-markdown [data-streamdown="heading-3"] {
-  color: #FF0C01;  /* Red */
+  color: var(--quiz-gold);  /* Red */
 }
 
 .dark .report-markdown [data-streamdown="heading-4"],
@@ -299,14 +311,14 @@
 }
 
 .dark .report-markdown [data-streamdown="table"] {
-  border-color: #F37521;
+  border-color: var(--quiz-gold);
 }
 
 .dark .report-markdown [data-streamdown="table-header-cell"],
 .dark .report-markdown [data-streamdown="table-cell"] {
-  border-color: #F37521;
+  border-color: var(--quiz-gold);
 }
 
 .dark .report-markdown [data-streamdown="table-row"] {
-  border-color: #F37521;
+  border-color: var(--quiz-gold);
 }

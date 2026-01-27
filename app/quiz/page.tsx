@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from "react";
 import { Calendar, CheckCircle2, FileDown } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 
 import { Response } from "@/components/ai-elements/response";
 import { Loader } from "@/components/ai-elements/loader";
@@ -132,12 +132,12 @@ function generateTestData(): FormState {
 // Sub-components
 // ============================================================================
 
-// Accent color for the quiz (Prism brand: orange/red)
+// Accent color for the quiz (Prism brand: gold/cream)
 const ACCENT = {
-  base: "bg-orange-500 hover:bg-orange-600 border-orange-500",
-  light: "bg-orange-400 hover:bg-orange-500 border-orange-400",
-  text: "text-white",
-  ring: "ring-orange-500/20",
+  base: "bg-[var(--quiz-gold)] hover:bg-[var(--quiz-gold-dark)] border-[var(--quiz-gold)]",
+  light: "bg-[var(--quiz-gold)]/80 hover:bg-[var(--quiz-gold)] border-[var(--quiz-gold)]/80",
+  text: "text-[var(--quiz-text-on-gold)]",
+  ring: "ring-[var(--quiz-gold)]/20",
 };
 
 function YesNoToggle({
@@ -154,13 +154,14 @@ function YesNoToggle({
   );
   const unselectedStyles = cn(
     "border-border bg-background shadow-sm",
-    "hover:shadow-md hover:border-orange-300 hover:bg-orange-50/50",
-    "dark:hover:bg-orange-950/30 dark:hover:border-orange-700"
+    "hover:shadow-md hover:border-[var(--quiz-gold)]/50 hover:bg-[var(--quiz-cream)]/50",
+    "dark:hover:bg-[var(--quiz-cream)] dark:hover:border-[var(--quiz-gold)]/60",
+    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--quiz-gold)] focus-visible:ring-offset-2"
   );
   const selectedStyles = cn(
     ACCENT.base, ACCENT.text,
-    "shadow-lg shadow-orange-500/25",
-    "hover:shadow-xl hover:shadow-orange-500/30"
+    "shadow-lg shadow-[var(--quiz-gold)]/25",
+    "hover:shadow-xl hover:shadow-[var(--quiz-gold)]/30"
   );
 
   return (
@@ -220,13 +221,14 @@ function MultiSelect<T extends string>({
   );
   const unselectedStyles = cn(
     "border-border bg-background shadow-sm",
-    "hover:shadow-md hover:border-orange-300 hover:bg-orange-50/50",
-    "dark:hover:bg-orange-950/30 dark:hover:border-orange-700"
+    "hover:shadow-md hover:border-[var(--quiz-gold)]/50 hover:bg-[var(--quiz-cream)]/50",
+    "dark:hover:bg-[var(--quiz-cream)] dark:hover:border-[var(--quiz-gold)]/60",
+    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--quiz-gold)] focus-visible:ring-offset-2"
   );
   const selectedStyles = cn(
     ACCENT.base, ACCENT.text,
-    "shadow-lg shadow-orange-500/25",
-    "hover:shadow-xl hover:shadow-orange-500/30"
+    "shadow-lg shadow-[var(--quiz-gold)]/25",
+    "hover:shadow-xl hover:shadow-[var(--quiz-gold)]/30"
   );
 
   return (
@@ -268,6 +270,9 @@ export default function QuizPage(): React.ReactElement {
 
   // Download state
   const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
+
+  // Accessibility: respect reduced motion preference
+  const shouldReduceMotion = useReducedMotion();
 
   // Form update helper
   function updateForm<K extends keyof FormState>(key: K, value: FormState[K]): void {
@@ -422,6 +427,7 @@ export default function QuizPage(): React.ReactElement {
                   max={10}
                   step={1}
                   className="flex-1"
+                  aria-label="Energy level"
                 />
                 <span className="text-xs text-muted-foreground w-16 text-right">Energized</span>
               </div>
@@ -602,6 +608,7 @@ export default function QuizPage(): React.ReactElement {
                   onChange={(e) => updateForm("name", e.target.value)}
                   placeholder="Your name"
                   className="h-12 text-base"
+                  autoComplete="name"
                 />
               </div>
             </div>
@@ -647,9 +654,8 @@ export default function QuizPage(): React.ReactElement {
                 asChild
                 className={cn(
                   "gap-2 h-12 px-6 text-base font-semibold",
-                  "bg-gradient-to-r from-orange-500 to-red-500",
-                  "hover:from-orange-600 hover:to-red-600",
-                  "text-white shadow-lg hover:shadow-xl transition-all"
+                  "bg-[var(--quiz-gold)] hover:bg-[var(--quiz-gold-dark)]",
+                  "text-[var(--quiz-text-on-gold)] shadow-lg hover:shadow-xl transition-all"
                 )}
               >
                 <a
@@ -696,7 +702,7 @@ export default function QuizPage(): React.ReactElement {
     const circumference = 2 * Math.PI * radius;
 
     return (
-      <div className="min-h-screen bg-background flex flex-col items-center justify-center px-4">
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center px-4" role="status" aria-live="polite">
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
@@ -729,8 +735,8 @@ export default function QuizPage(): React.ReactElement {
             >
               <defs>
                 <linearGradient id="progressGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                  <stop offset="0%" stopColor="#f97316" />
-                  <stop offset="100%" stopColor="#ef4444" />
+                  <stop offset="0%" stopColor="#C9A36A" />
+                  <stop offset="100%" stopColor="#B8935D" />
                 </linearGradient>
               </defs>
               <motion.circle
@@ -753,7 +759,7 @@ export default function QuizPage(): React.ReactElement {
               {[0, 1, 2].map((i) => (
                 <motion.div
                   key={i}
-                  className="w-2.5 h-2.5 rounded-full bg-gradient-to-br from-orange-500 to-red-500"
+                  className="w-2.5 h-2.5 rounded-full bg-[var(--quiz-gold)]"
                   animate={{
                     scale: [1, 1.3, 1],
                     opacity: [0.5, 1, 0.5],
@@ -780,7 +786,7 @@ export default function QuizPage(): React.ReactElement {
               Analyzing your responses
             </p>
             <p className="mt-2 text-sm text-muted-foreground">
-              Just a moment...
+              Just a moment…
             </p>
           </motion.div>
         </motion.div>
@@ -797,10 +803,10 @@ export default function QuizPage(): React.ReactElement {
           {/* Custom colored progress bar */}
           <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
             <motion.div
-              className="h-full bg-gradient-to-r from-orange-500 to-red-500 rounded-full"
+              className="h-full bg-[var(--quiz-gold)] rounded-full shadow-[0_0_8px_var(--quiz-gold)]/50"
               initial={{ width: 0 }}
               animate={{ width: `${progressPercent}%` }}
-              transition={{ type: "spring", stiffness: 300, damping: 30 }}
+              transition={shouldReduceMotion ? { duration: 0 } : { type: "spring", stiffness: 300, damping: 30 }}
             />
           </div>
           <div className="flex justify-between items-center">
@@ -847,12 +853,10 @@ export default function QuizPage(): React.ReactElement {
               x: direction === "forward" ? -80 : 80,
               scale: 0.95
             }}
-            transition={{
-              type: "spring",
-              stiffness: 300,
-              damping: 30,
-              opacity: { duration: 0.2 }
-            }}
+            transition={shouldReduceMotion
+              ? { duration: 0 }
+              : { type: "spring", stiffness: 300, damping: 30, opacity: { duration: 0.2 } }
+            }
             className="w-full max-w-md"
           >
             {renderStepContent()}
@@ -883,8 +887,9 @@ export default function QuizPage(): React.ReactElement {
               disabled={!isCurrentStepValid}
               className={cn(
                 "flex-1 h-14 text-base font-semibold rounded-xl shadow-lg transition-all duration-200",
-                "bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600",
-                "disabled:from-muted disabled:to-muted disabled:text-muted-foreground disabled:shadow-none"
+                "bg-[var(--quiz-gold)] hover:bg-[var(--quiz-gold-dark)]",
+                "text-[var(--quiz-text-on-gold)]",
+                "disabled:bg-muted disabled:text-muted-foreground disabled:shadow-none"
               )}
             >
               {isLastStep ? "Get Your Assessment" : "Next"}

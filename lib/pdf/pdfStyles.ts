@@ -4,7 +4,7 @@
  * PDF-optimized styles adapted from globals.css Streamdown typography
  *
  * Key principles:
- * - Prism brand colors: red headings (#FF0C01), orange accents (#F37521)
+ * - Prism brand colors: gold headings (#C9A36A), gold accents
  * - Static colors (no CSS variables - limited PDF support)
  * - Professional serif typography for readability
  * - Smart page breaks (sections start new page, keep items together)
@@ -45,7 +45,7 @@ export const PDF_STYLES = `
   .divider-page {
     page: cover-divider;
     height: 11in;
-    background: linear-gradient(to bottom, #FFF5EE 0%, #F37521 50%, #EF0D23 100%);
+    background: linear-gradient(to bottom, #EEDEC5 0%, #C9A36A 50%, #B8935D 100%);
     page-break-before: always;
     page-break-after: always;
     text-align: center;
@@ -83,7 +83,7 @@ export const PDF_STYLES = `
   .cover-page {
     page: cover-divider;
     height: 11in;
-    background: linear-gradient(to bottom, #FFF5EE 0%, #F37521 50%, #EF0D23 100%);
+    background: linear-gradient(to bottom, #EEDEC5 0%, #C9A36A 50%, #B8935D 100%);
     page-break-after: always;
     text-align: center;
     padding-top: 2in;
@@ -149,18 +149,18 @@ export const PDF_STYLES = `
 
   /* Content sections - White background with orange top border */
   .content-section {
-    border-top: 3px solid #F37521;
+    border-top: 3px solid #C9A36A;
     padding-top: 1rem;
     background: white;
   }
 
-  /* Title (H1) - Report title - RED */
+  /* Title (H1) - Report title - GOLD */
   h1 {
     margin-top: 0;
     margin-bottom: 0.25rem;
     font-size: 22pt;
     font-weight: 600;
-    color: #FF0C01;
+    color: #C9A36A;
     text-align: center;
     page-break-after: avoid;
   }
@@ -181,13 +181,13 @@ export const PDF_STYLES = `
     margin-top: 0.5rem;
   }
 
-  /* Subsections (H3) - RED */
+  /* Subsections (H3) - GOLD */
   h3 {
     margin-top: 1.5rem;
     margin-bottom: 0.5rem;
     font-size: 16pt;
     font-weight: 600;
-    color: #FF0C01;
+    color: #C9A36A;
     page-break-after: avoid;
   }
 
@@ -327,12 +327,12 @@ export const PDF_STYLES = `
     line-height: 1.5;
   }
 
-  /* Tables - Keep together on page - ORANGE BORDERS */
+  /* Tables - Keep together on page - GOLD BORDERS */
   table {
     width: 100%;
     margin: 1rem 0;
     border-collapse: collapse;
-    border: 2px solid #F37521;
+    border: 2px solid #C9A36A;
     page-break-inside: avoid;
   }
 
@@ -341,14 +341,14 @@ export const PDF_STYLES = `
     background-color: #f3f4f6;
   }
 
-  /* Table header cells - ORANGE BORDERS */
+  /* Table header cells - GOLD BORDERS */
   th {
     padding: 0.5rem 0.75rem;
     text-align: left;
     font-weight: 600;
     font-size: 10pt;
     color: #1a1a1a;
-    border: 1px solid #F37521;
+    border: 1px solid #C9A36A;
     white-space: nowrap;
   }
 
@@ -357,16 +357,16 @@ export const PDF_STYLES = `
     background-color: #fafafa;
   }
 
-  /* Table rows - ORANGE BORDERS */
+  /* Table rows - GOLD BORDERS */
   tr {
-    border-bottom: 1px solid #F37521;
+    border-bottom: 1px solid #C9A36A;
   }
 
-  /* Table cells - ORANGE BORDERS */
+  /* Table cells - GOLD BORDERS */
   td {
     padding: 0.5rem 0.75rem;
     font-size: 10pt;
-    border: 1px solid #F37521;
+    border: 1px solid #C9A36A;
     vertical-align: top;
   }
 
