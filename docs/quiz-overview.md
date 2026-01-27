@@ -41,12 +41,18 @@ Knowledge Foundation (knowledge.md, questionaire.md, diet_lifestyle_standardized
 ### Backend
 
 ```
-app/api/quiz/
-├── route.ts              # POST endpoint: validate → save → generate → return
-└── systemPrompt.ts       # Builds prompt with knowledge + formatted answers
+app/api/
+├── quiz/
+│   ├── route.ts          # POST endpoint: validate → save → generate → return
+│   ├── systemPrompt.ts   # Builds prompt with knowledge + formatted answers
+│   ├── pdf/              # PDF export endpoint
+│   └── result/           # Result retrieval endpoint
+└── admin/
+    └── results/
+        └── route.ts      # GET endpoint: list submissions (password protected)
 
 server/
-├── quizSubmissions.ts    # Submission storage (dev: filesystem, prod: Upstash)
+├── quizSubmissions.ts    # Submission storage + listing (dev: filesystem, prod: Upstash)
 └── quizResults.ts        # Results storage (dev: filesystem, prod: Upstash)
 
 lib/
@@ -61,8 +67,12 @@ lib/
 ### Frontend
 
 ```
-app/quiz/
-└── page.tsx              # Quiz form + inline result display
+app/
+├── quiz/
+│   └── page.tsx          # Quiz form + inline result display
+└── admin/
+    └── results/
+        └── page.tsx      # Admin dashboard for viewing submissions
 ```
 
 ### Storage (Dev vs Prod)
@@ -74,8 +84,8 @@ storage/
 └── quiz-results/<id>.json
 
 Prod (Upstash Redis):
-Keys: quiz-submissions:<id>, quiz-results:<id>
-Env: QUIZ_UPSTASH_REDIS_REST_URL, QUIZ_UPSTASH_REDIS_REST_TOKEN
+Keys: quiz-submissions:<id>, quiz-results:<id>, quiz-index (sorted set)
+Env: UPSTASH_REDIS_REST_URL, UPSTASH_REDIS_REST_TOKEN
 ```
 
 ---
@@ -128,6 +138,28 @@ Env: QUIZ_UPSTASH_REDIS_REST_URL, QUIZ_UPSTASH_REDIS_REST_TOKEN
 }
 ```
 
+### GET /api/admin/results
+
+Returns list of quiz submissions with AI assessments. Requires password authentication.
+
+**Query params:**
+- `key` (required): Admin password
+- `limit` (optional): Max entries to return (default 100, max 500)
+
+**Response:**
+```json
+{
+  "entries": [
+    {
+      "id": "uuid",
+      "createdAt": "2026-01-27T10:42:00.000Z",
+      "submission": { /* quiz answers */ },
+      "report": "## Your Health Assessment\n\n..."
+    }
+  ]
+}
+```
+
 ---
 
 ## Output Format
@@ -135,7 +167,7 @@ Env: QUIZ_UPSTASH_REDIS_REST_URL, QUIZ_UPSTASH_REDIS_REST_TOKEN
 Markdown with:
 - Personalized opening
 - 3 pattern sections (title + 2-3 sentence explanation)
-- Booking CTA linking to https://prism.miami/booking
+- Booking CTA (button links to https://go.prism.miami/formconsultation)
 
 No recommendations. No citations. Brief and engaging.
 
@@ -166,8 +198,11 @@ View quiz submissions and AI assessments at `/admin/results`.
 **Features:**
 - List of all submissions (newest first)
 - Click to expand and view quiz answers + AI assessment
+- Visual indicators: energy level bar, yes/no badges, issue tags
 - Refresh button to reload data
 - Dark mode support
+
+**Note:** Only submissions created after the indexing feature was deployed will appear. Older submissions in Redis are not retroactively indexed.
 
 ---
 
