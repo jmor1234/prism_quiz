@@ -653,7 +653,7 @@ export default function QuizPage(): React.ReactElement {
                 )}
               >
                 <a
-                  href={`https://prism.miami/booking?QUIZID=${result.id}`}
+                  href="https://go.prism.miami/formconsultation"
                   target="_blank"
                   rel="noopener noreferrer"
                 >
