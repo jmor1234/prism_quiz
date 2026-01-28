@@ -54,11 +54,6 @@ export async function POST(req: Request) {
     const result = await generateText({
       model: anthropic("claude-opus-4-5-20251101"),
       messages,
-      providerOptions: {
-        anthropic: {
-          thinking: { type: "enabled", budgetTokens: 5000 },
-        },
-      },
     });
 
     console.log(`[Quiz] Generation complete for: ${record.id}`);
