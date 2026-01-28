@@ -1,7 +1,12 @@
 "use client";
 
-import { useState, useCallback } from "react";
-import { Calendar, CheckCircle2, FileDown } from "lucide-react";
+import { useState, useCallback, useEffect } from "react";
+import { Calendar, CheckCircle2, FileDown, RefreshCw } from "lucide-react";
+import {
+  getQuizStorage,
+  setQuizStorage,
+  clearQuizStorage,
+} from "@/lib/quizStorage";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 
 import { Response } from "@/components/ai-elements/response";
@@ -264,9 +269,34 @@ export default function QuizPage(): React.ReactElement {
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<{ id: string; report: string } | null>(null);
 
+  // Pending submission ID for retry (submission saved, but generation failed)
+  const [pendingSubmissionId, setPendingSubmissionId] = useState<string | null>(null);
+
+  // Hydration state - prevents flash of wrong content
+  const [isHydrated, setIsHydrated] = useState(false);
+
   // Wizard state
   const [step, setStep] = useState(0);
   const [direction, setDirection] = useState<Direction>("forward");
+
+  // Restore state from localStorage on mount
+  useEffect(() => {
+    const stored = getQuizStorage();
+    if (stored) {
+      if (stored.report) {
+        // Completed quiz - show result
+        setResult({ id: stored.id, report: stored.report });
+        setStatus("success");
+      } else {
+        // Pending submission (generation failed) - allow retry
+        setPendingSubmissionId(stored.id);
+        setStep(TOTAL_STEPS - 1); // Go to last step for retry
+        setStatus("error");
+        setError("Your previous submission encountered an error. You can retry below.");
+      }
+    }
+    setIsHydrated(true);
+  }, []);
 
   // Download state
   const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
@@ -360,7 +390,7 @@ export default function QuizPage(): React.ReactElement {
     setStatus("submitting");
     setError(null);
 
-    const submission: QuizSubmission = {
+    const submission: QuizSubmission & { submissionId?: string } = {
       name: form.name,
       energyLevel: form.energyLevel,
       crashAfterLunch: form.crashAfterLunch!,
@@ -380,6 +410,11 @@ export default function QuizPage(): React.ReactElement {
       healthGoals: form.healthGoals,
     };
 
+    // Include existing submission ID for retry (prevents duplicate)
+    if (pendingSubmissionId) {
+      submission.submissionId = pendingSubmissionId;
+    }
+
     try {
       const res = await fetch("/api/quiz", {
         method: "POST",
@@ -387,12 +422,28 @@ export default function QuizPage(): React.ReactElement {
         body: JSON.stringify(submission),
       });
 
+      const data = await res.json();
+
       if (!res.ok) {
-        const data = await res.json();
+        // 404 = stale localStorage, clear and let user start fresh
+        if (res.status === 404) {
+          clearQuizStorage();
+          setPendingSubmissionId(null);
+          setStep(0);
+          throw new Error("Please submit the quiz again.");
+        }
+
+        // Store submission ID for retry if provided
+        if (data.submissionId) {
+          setPendingSubmissionId(data.submissionId);
+          setQuizStorage({ id: data.submissionId, report: null });
+        }
         throw new Error(data.error || "Failed to submit quiz");
       }
 
-      const data = await res.json();
+      // Success - store result and clear pending
+      setQuizStorage({ id: data.id, report: data.report });
+      setPendingSubmissionId(null);
       setResult(data);
       setStatus("success");
     } catch (err) {
@@ -623,6 +674,11 @@ export default function QuizPage(): React.ReactElement {
       default:
         return <div />;
     }
+  }
+
+  // Hydration: show nothing until localStorage is checked (prevents flicker)
+  if (!isHydrated) {
+    return <div className="min-h-screen quiz-background" />;
   }
 
   // Result view
@@ -892,11 +948,16 @@ export default function QuizPage(): React.ReactElement {
         <div className="max-w-md mx-auto">
           {error && (
             <div className="mb-3 p-3 bg-destructive/10 text-destructive rounded-xl text-sm text-center">
-              {error}
+              <p>{error}</p>
+              {pendingSubmissionId && (
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Your answers are saved. Click retry to generate your assessment.
+                </p>
+              )}
             </div>
           )}
           <div className="flex gap-3">
-            {step > 0 && (
+            {step > 0 && !pendingSubmissionId && (
               <Button
                 variant="outline"
                 onClick={goBack}
@@ -915,7 +976,16 @@ export default function QuizPage(): React.ReactElement {
                 "disabled:bg-muted disabled:text-muted-foreground disabled:shadow-none"
               )}
             >
-              {isLastStep ? "Get Your Assessment" : "Next"}
+              {pendingSubmissionId ? (
+                <>
+                  <RefreshCw className="h-5 w-5 mr-2" />
+                  Retry
+                </>
+              ) : isLastStep ? (
+                "Get Your Assessment"
+              ) : (
+                "Next"
+              )}
             </Button>
           </div>
         </div>
