@@ -58,6 +58,7 @@ server/
 lib/
 ├── schemas/
 │   └── quiz.ts           # Zod schema for quiz submission
+├── quizStorage.ts        # Client-side localStorage persistence (result + retry state)
 └── knowledge/
     ├── knowledge.md              # Bioenergetic foundation (3 pillars)
     ├── questionaire.md           # Symptom → implication interpretation
@@ -86,7 +87,30 @@ storage/
 Prod (Upstash Redis):
 Keys: quiz-submissions:<id>, quiz-results:<id>, quiz-index (sorted set)
 Env: UPSTASH_REDIS_REST_URL, UPSTASH_REDIS_REST_TOKEN
+
+Client (localStorage):
+Key: prism-quiz
+Value: { v: 1, id: "uuid", report: "..." | null }
 ```
+
+### Error Handling & Retry
+
+Handles transient LLM API failures without creating duplicate submissions:
+
+```
+Submit → Save submission → [LLM fails] → Return submissionId in error
+                                              ↓
+                                    Client stores in localStorage
+                                              ↓
+                          Page refresh → Restore retry UI from localStorage
+                                              ↓
+                              Retry → POST with submissionId → Uses stored submission
+```
+
+- **Submission saved before LLM call** — no data loss on failure
+- **submissionId returned on error** — enables retry without duplicate
+- **Existing result check** — if result exists, returns immediately (no re-generation)
+- **localStorage persistence** — survives page refresh, shows result or retry UI
 
 ---
 
@@ -113,7 +137,7 @@ Env: UPSTASH_REDIS_REST_URL, UPSTASH_REDIS_REST_TOKEN
 
 ### POST /api/quiz
 
-**Request:**
+**Request (new submission):**
 ```json
 {
   "name": "User Name",
@@ -130,13 +154,32 @@ Env: UPSTASH_REDIS_REST_URL, UPSTASH_REDIS_REST_TOKEN
 }
 ```
 
-**Response:**
+**Request (retry after error):**
+```json
+{
+  "submissionId": "uuid"
+}
+```
+
+When `submissionId` is provided, the endpoint uses the stored submission data (no duplicate created). If a result already exists, it returns immediately without re-generation.
+
+**Response (success):**
 ```json
 {
   "id": "uuid",
   "report": "## Your Health Assessment\n\n..."
 }
 ```
+
+**Response (error):**
+```json
+{
+  "error": "Error message",
+  "submissionId": "uuid"
+}
+```
+
+The `submissionId` is returned on error so the client can retry without creating duplicates.
 
 ### GET /api/admin/results
 
