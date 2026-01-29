@@ -37,9 +37,12 @@ export async function GET(request: NextRequest) {
     const limitParam = searchParams.get("limit");
     const limit = limitParam ? Math.min(parseInt(limitParam, 10), 500) : 100;
 
-    const entries = await listQuizEntries(limit);
+    // Get cursor from query params (ISO timestamp for pagination)
+    const cursor = searchParams.get("cursor") ?? undefined;
 
-    return NextResponse.json({ entries });
+    const { entries, nextCursor } = await listQuizEntries(limit, cursor);
+
+    return NextResponse.json({ entries, nextCursor });
   } catch (error) {
     console.error("[Admin API] Error fetching results:", error);
     return NextResponse.json(

@@ -276,15 +276,28 @@ export default function AdminResultsPage() {
   const [entries, setEntries] = useState<QuizEntry[]>([]);
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const shouldReduceMotion = useReducedMotion();
 
-  const fetchResults = useCallback(async (key: string) => {
-    setIsLoading(true);
+  const fetchResults = useCallback(async (key: string, cursor?: string) => {
+    const isLoadMore = !!cursor;
+    if (isLoadMore) {
+      setIsLoadingMore(true);
+    } else {
+      setIsLoading(true);
+    }
     setError(null);
 
     try {
-      const res = await fetch(`/api/admin/results?key=${encodeURIComponent(key)}`);
+      const url = new URL("/api/admin/results", window.location.origin);
+      url.searchParams.set("key", key);
+      if (cursor) {
+        url.searchParams.set("cursor", cursor);
+      }
+
+      const res = await fetch(url.toString());
 
       if (res.status === 401) {
         sessionStorage.removeItem("admin_password");
@@ -300,13 +313,20 @@ export default function AdminResultsPage() {
       }
 
       const data = await res.json();
-      setEntries(data.entries);
+
+      if (isLoadMore) {
+        setEntries((prev) => [...prev, ...data.entries]);
+      } else {
+        setEntries(data.entries);
+      }
+      setNextCursor(data.nextCursor);
       sessionStorage.setItem("admin_password", key);
       setAuthState("authenticated");
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred");
     } finally {
       setIsLoading(false);
+      setIsLoadingMore(false);
     }
   }, []);
 
@@ -337,7 +357,15 @@ export default function AdminResultsPage() {
   const handleRefresh = () => {
     const savedPassword = sessionStorage.getItem("admin_password");
     if (savedPassword) {
+      setNextCursor(null);
       fetchResults(savedPassword);
+    }
+  };
+
+  const handleLoadMore = () => {
+    const savedPassword = sessionStorage.getItem("admin_password");
+    if (savedPassword && nextCursor) {
+      fetchResults(savedPassword, nextCursor);
     }
   };
 
@@ -535,14 +563,36 @@ export default function AdminResultsPage() {
           ))}
 
           {entries.length > 0 && (
-            <motion.p
-              initial={shouldReduceMotion ? {} : { opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={shouldReduceMotion ? { duration: 0 } : { delay: entries.length * 0.05 + 0.2 }}
-              className="text-center text-sm text-muted-foreground pt-4"
-            >
-              Showing {entries.length} result{entries.length === 1 ? "" : "s"}
-            </motion.p>
+            <div className="pt-4 space-y-3">
+              {nextCursor && (
+                <div className="flex justify-center">
+                  <Button
+                    variant="outline"
+                    onClick={handleLoadMore}
+                    disabled={isLoadingMore}
+                    className="gap-2 border-[var(--quiz-gold)] text-[var(--quiz-gold-dark)] hover:bg-[var(--quiz-gold)]/10"
+                  >
+                    {isLoadingMore ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Loading…
+                      </>
+                    ) : (
+                      "Load More"
+                    )}
+                  </Button>
+                </div>
+              )}
+              <motion.p
+                initial={shouldReduceMotion ? {} : { opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={shouldReduceMotion ? { duration: 0 } : { delay: 0.2 }}
+                className="text-center text-sm text-muted-foreground"
+              >
+                Showing {entries.length} result{entries.length === 1 ? "" : "s"}
+                {!nextCursor && entries.length > 0 && " (all loaded)"}
+              </motion.p>
+            </div>
           )}
         </div>
       </main>

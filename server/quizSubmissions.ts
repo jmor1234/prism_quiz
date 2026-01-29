@@ -144,18 +144,35 @@ export interface QuizEntry {
   report: string | null;
 }
 
+export interface ListQuizEntriesResult {
+  entries: QuizEntry[];
+  nextCursor: string | null;
+}
+
 /**
  * List quiz entries (submission + result) sorted by newest first
+ * @param limit - Max entries to return
+ * @param cursor - ISO timestamp cursor; returns entries older than this
  */
-export async function listQuizEntries(limit: number = 100): Promise<QuizEntry[]> {
+export async function listQuizEntries(
+  limit: number = 100,
+  cursor?: string
+): Promise<ListQuizEntriesResult> {
   const redis = getRedisClient();
 
   if (redis) {
     // Use Redis: get IDs from sorted set index (newest first)
-    const ids = await redis.zrange(INDEX_KEY, 0, limit - 1, { rev: true });
+    // Cursor is timestamp in ms; get entries with score < cursor (older)
+    const maxScore = cursor ? new Date(cursor).getTime() - 1 : "+inf";
+    const ids = await redis.zrange(INDEX_KEY, "-inf", maxScore, {
+      rev: true,
+      byScore: true,
+      offset: 0,
+      count: limit,
+    });
 
     if (!ids || ids.length === 0) {
-      return [];
+      return { entries: [], nextCursor: null };
     }
 
     // Fetch all submissions and results in parallel
@@ -181,7 +198,15 @@ export async function listQuizEntries(limit: number = 100): Promise<QuizEntry[]>
     );
 
     // Filter out nulls (entries where submission wasn't found)
-    return entries.filter((e): e is QuizEntry => e !== null);
+    const validEntries = entries.filter((e): e is QuizEntry => e !== null);
+
+    // nextCursor is the createdAt of the last entry (if we got a full page)
+    const nextCursor =
+      validEntries.length === limit
+        ? validEntries[validEntries.length - 1].createdAt
+        : null;
+
+    return { entries: validEntries, nextCursor };
   } else {
     // Use filesystem: read directory and sort by modification time
     try {
@@ -198,9 +223,13 @@ export async function listQuizEntries(limit: number = 100): Promise<QuizEntry[]>
         })
       );
 
+      // Filter by cursor if provided (entries older than cursor)
+      const cursorTime = cursor ? new Date(cursor).getTime() : Infinity;
+      const filtered = filesWithStats.filter((f) => f.mtime < cursorTime);
+
       // Sort by modification time (newest first) and limit
-      filesWithStats.sort((a, b) => b.mtime - a.mtime);
-      const limitedFiles = filesWithStats.slice(0, limit);
+      filtered.sort((a, b) => b.mtime - a.mtime);
+      const limitedFiles = filtered.slice(0, limit);
 
       // Fetch submissions and results
       const entries = await Promise.all(
@@ -224,10 +253,18 @@ export async function listQuizEntries(limit: number = 100): Promise<QuizEntry[]>
         })
       );
 
-      return entries.filter((e): e is QuizEntry => e !== null);
+      const validEntries = entries.filter((e): e is QuizEntry => e !== null);
+
+      // nextCursor is the createdAt of the last entry (if we got a full page)
+      const nextCursor =
+        validEntries.length === limit
+          ? validEntries[validEntries.length - 1].createdAt
+          : null;
+
+      return { entries: validEntries, nextCursor };
     } catch (error) {
       if (isNotFoundError(error)) {
-        return [];
+        return { entries: [], nextCursor: null };
       }
       throw error;
     }
