@@ -1,7 +1,7 @@
 // app/api/admin/results/route.ts
 
 import { NextRequest, NextResponse } from "next/server";
-import { listQuizEntries } from "@/server/quizSubmissions";
+import { listQuizEntries, searchQuizEntriesByName } from "@/server/quizSubmissions";
 
 /**
  * GET /api/admin/results
@@ -37,9 +37,17 @@ export async function GET(request: NextRequest) {
     const limitParam = searchParams.get("limit");
     const limit = limitParam ? Math.min(parseInt(limitParam, 10), 500) : 100;
 
-    // Get cursor from query params (ISO timestamp for pagination)
-    const cursor = searchParams.get("cursor") ?? undefined;
+    // Get search term from query params
+    const search = searchParams.get("search")?.trim();
 
+    // If search is provided, search across all entries (no pagination)
+    if (search) {
+      const entries = await searchQuizEntriesByName(search, limit);
+      return NextResponse.json({ entries, nextCursor: null });
+    }
+
+    // Otherwise, use cursor-based pagination
+    const cursor = searchParams.get("cursor") ?? undefined;
     const { entries, nextCursor } = await listQuizEntries(limit, cursor);
 
     return NextResponse.json({ entries, nextCursor });

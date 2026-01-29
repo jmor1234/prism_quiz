@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { ChevronRight, LogOut, RefreshCw, Loader2, Download } from "lucide-react";
+import { ChevronRight, LogOut, RefreshCw, Loader2, Download, Search, X } from "lucide-react";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 
 import { Button } from "@/components/ui/button";
@@ -279,11 +279,27 @@ export default function AdminResultsPage() {
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [isSearching, setIsSearching] = useState(false);
   const shouldReduceMotion = useReducedMotion();
 
-  const fetchResults = useCallback(async (key: string, cursor?: string) => {
+  // Debounce search input
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchQuery);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  const fetchResults = useCallback(async (key: string, options?: { cursor?: string; search?: string }) => {
+    const { cursor, search } = options ?? {};
     const isLoadMore = !!cursor;
-    if (isLoadMore) {
+    const isSearch = !!search;
+
+    if (isSearch) {
+      setIsSearching(true);
+    } else if (isLoadMore) {
       setIsLoadingMore(true);
     } else {
       setIsLoading(true);
@@ -293,7 +309,9 @@ export default function AdminResultsPage() {
     try {
       const url = new URL("/api/admin/results", window.location.origin);
       url.searchParams.set("key", key);
-      if (cursor) {
+      if (search) {
+        url.searchParams.set("search", search);
+      } else if (cursor) {
         url.searchParams.set("cursor", cursor);
       }
 
@@ -327,6 +345,7 @@ export default function AdminResultsPage() {
     } finally {
       setIsLoading(false);
       setIsLoadingMore(false);
+      setIsSearching(false);
     }
   }, []);
 
@@ -340,6 +359,20 @@ export default function AdminResultsPage() {
       setAuthState("unauthenticated");
     }
   }, [fetchResults]);
+
+  // Trigger search when debounced search changes
+  useEffect(() => {
+    if (authState !== "authenticated") return;
+    const savedPassword = sessionStorage.getItem("admin_password");
+    if (!savedPassword) return;
+
+    if (debouncedSearch) {
+      fetchResults(savedPassword, { search: debouncedSearch });
+    } else {
+      // Clear search, fetch normal paginated results
+      fetchResults(savedPassword);
+    }
+  }, [debouncedSearch, authState, fetchResults]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -358,14 +391,23 @@ export default function AdminResultsPage() {
     const savedPassword = sessionStorage.getItem("admin_password");
     if (savedPassword) {
       setNextCursor(null);
-      fetchResults(savedPassword);
+      if (debouncedSearch) {
+        fetchResults(savedPassword, { search: debouncedSearch });
+      } else {
+        fetchResults(savedPassword);
+      }
     }
+  };
+
+  const handleClearSearch = () => {
+    setSearchQuery("");
+    setDebouncedSearch("");
   };
 
   const handleLoadMore = () => {
     const savedPassword = sessionStorage.getItem("admin_password");
     if (savedPassword && nextCursor) {
-      fetchResults(savedPassword, nextCursor);
+      fetchResults(savedPassword, { cursor: nextCursor });
     }
   };
 
@@ -499,18 +541,44 @@ export default function AdminResultsPage() {
   return (
     <div className="min-h-screen quiz-background flex flex-col">
       <header className="sticky top-0 z-10 bg-background/80 backdrop-blur-sm border-b">
-        <div className="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
-          <h1 className="text-lg font-semibold quiz-question">Quiz Results</h1>
+        <div className="max-w-4xl mx-auto px-4 py-3 flex items-center gap-4">
+          <h1 className="text-lg font-semibold quiz-question shrink-0">Quiz Results</h1>
+
+          {/* Search input */}
+          <div className="relative flex-1 max-w-xs">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+            <Input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search by name…"
+              aria-label="Search submissions by name"
+              className="pl-9 pr-8 h-9 focus-visible:ring-[var(--quiz-gold)]"
+            />
+            {searchQuery && (
+              <button
+                onClick={handleClearSearch}
+                className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--quiz-gold)]"
+                aria-label="Clear search"
+              >
+                <X className="h-3.5 w-3.5 text-muted-foreground" />
+              </button>
+            )}
+            {isSearching && (
+              <Loader2 className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-[var(--quiz-gold)]" />
+            )}
+          </div>
+
           <div className="flex items-center gap-2">
             <Button
               variant="ghost"
               size="sm"
               onClick={handleRefresh}
-              disabled={isLoading}
+              disabled={isLoading || isSearching}
               aria-label="Refresh results"
               className="hover:bg-[var(--quiz-cream)]/50"
             >
-              <RefreshCw className={cn("h-4 w-4", isLoading && "animate-spin")} />
+              <RefreshCw className={cn("h-4 w-4", (isLoading || isSearching) && "animate-spin")} />
             </Button>
             <ModeToggle />
             <Button
@@ -534,13 +602,15 @@ export default function AdminResultsPage() {
             </div>
           )}
 
-          {entries.length === 0 && !isLoading && (
+          {entries.length === 0 && !isLoading && !isSearching && (
             <motion.div
               initial={shouldReduceMotion ? {} : { opacity: 0 }}
               animate={{ opacity: 1 }}
               className="text-center py-12 text-muted-foreground"
             >
-              No quiz submissions yet
+              {debouncedSearch
+                ? `No submissions found for "${debouncedSearch}"`
+                : "No quiz submissions yet"}
             </motion.div>
           )}
 
@@ -564,7 +634,8 @@ export default function AdminResultsPage() {
 
           {entries.length > 0 && (
             <div className="pt-4 space-y-3">
-              {nextCursor && (
+              {/* Only show Load More when not searching and there are more results */}
+              {nextCursor && !debouncedSearch && (
                 <div className="flex justify-center">
                   <Button
                     variant="outline"
@@ -589,8 +660,9 @@ export default function AdminResultsPage() {
                 transition={shouldReduceMotion ? { duration: 0 } : { delay: 0.2 }}
                 className="text-center text-sm text-muted-foreground"
               >
-                Showing {entries.length} result{entries.length === 1 ? "" : "s"}
-                {!nextCursor && entries.length > 0 && " (all loaded)"}
+                {debouncedSearch
+                  ? `Found ${entries.length} result${entries.length === 1 ? "" : "s"} for "${debouncedSearch}"`
+                  : `Showing ${entries.length} result${entries.length === 1 ? "" : "s"}${!nextCursor ? " (all loaded)" : ""}`}
               </motion.p>
             </div>
           )}

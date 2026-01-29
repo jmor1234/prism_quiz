@@ -270,3 +270,117 @@ export async function listQuizEntries(
     }
   }
 }
+
+/**
+ * Search quiz entries by name (case-insensitive substring match)
+ * Searches ALL entries, no pagination
+ * @param searchTerm - The name to search for
+ * @param limit - Max entries to return (default 100)
+ */
+export async function searchQuizEntriesByName(
+  searchTerm: string,
+  limit: number = 100
+): Promise<QuizEntry[]> {
+  const searchLower = searchTerm.toLowerCase();
+  const redis = getRedisClient();
+
+  if (redis) {
+    // Get all IDs from sorted set (newest first)
+    const ids = await redis.zrange(INDEX_KEY, "+inf", 0, {
+      rev: true,
+      byScore: true,
+    });
+
+    if (!ids || ids.length === 0) {
+      return [];
+    }
+
+    // Fetch and filter in batches to avoid memory issues
+    const BATCH_SIZE = 50;
+    const results: QuizEntry[] = [];
+
+    for (let i = 0; i < ids.length && results.length < limit; i += BATCH_SIZE) {
+      const batchIds = ids.slice(i, i + BATCH_SIZE);
+
+      const batchEntries = await Promise.all(
+        batchIds.map(async (id) => {
+          const idStr = String(id);
+          const submission = await getQuizSubmission(idStr);
+
+          if (!submission) return null;
+
+          // Check if name matches
+          if (!submission.submission.name.toLowerCase().includes(searchLower)) {
+            return null;
+          }
+
+          const result = await getQuizResult(idStr);
+
+          return {
+            id: submission.id,
+            createdAt: submission.createdAt,
+            submission: submission.submission,
+            report: result?.report ?? null,
+          };
+        })
+      );
+
+      // Add matching entries to results
+      for (const entry of batchEntries) {
+        if (entry && results.length < limit) {
+          results.push(entry);
+        }
+      }
+    }
+
+    return results;
+  } else {
+    // Filesystem: read all submissions and filter
+    try {
+      await fs.mkdir(STORAGE_ROOT, { recursive: true });
+      const files = await fs.readdir(STORAGE_ROOT);
+      const jsonFiles = files.filter((f) => f.endsWith(".json"));
+
+      // Fetch all submissions
+      const allSubmissions = await Promise.all(
+        jsonFiles.map(async (file) => {
+          const id = file.replace(".json", "");
+          const submission = await getQuizSubmission(id);
+          return submission;
+        })
+      );
+
+      // Filter by name match and sort by createdAt descending
+      const matching = allSubmissions
+        .filter(
+          (s): s is QuizSubmissionRecord =>
+            s !== null && s.submission.name.toLowerCase().includes(searchLower)
+        )
+        .sort(
+          (a, b) =>
+            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        )
+        .slice(0, limit);
+
+      // Fetch results for matching submissions
+      const entries = await Promise.all(
+        matching.map(async (submission) => {
+          const result = await getQuizResult(submission.id);
+          return {
+            id: submission.id,
+            createdAt: submission.createdAt,
+            submission: submission.submission,
+            report: result?.report ?? null,
+          };
+        })
+      );
+
+      return entries;
+    } catch (error) {
+      if (isNotFoundError(error)) {
+        return [];
+      }
+      throw error;
+    }
+  }
+}
