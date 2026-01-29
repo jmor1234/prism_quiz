@@ -162,9 +162,9 @@ export async function listQuizEntries(
 
   if (redis) {
     // Use Redis: get IDs from sorted set index (newest first)
-    // Cursor is timestamp in ms; get entries with score < cursor (older)
+    // With rev + byScore, args are (max, min) - we want scores from maxScore down to 0
     const maxScore = cursor ? new Date(cursor).getTime() - 1 : "+inf";
-    const ids = await redis.zrange(INDEX_KEY, "-inf", maxScore, {
+    const ids = await redis.zrange(INDEX_KEY, maxScore, 0, {
       rev: true,
       byScore: true,
       offset: 0,
