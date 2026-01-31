@@ -7,6 +7,7 @@ import {
   setQuizStorage,
   clearQuizStorage,
 } from "@/lib/quizStorage";
+import { captureUTMParams, buildBookingUrl } from "@/lib/utmStorage";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 
 import { Response } from "@/components/ai-elements/response";
@@ -281,6 +282,9 @@ export default function QuizPage(): React.ReactElement {
 
   // Restore state from localStorage on mount
   useEffect(() => {
+    // Capture UTM/click ID params (first-touch, won't overwrite)
+    captureUTMParams();
+
     const stored = getQuizStorage();
     if (stored) {
       if (stored.report) {
@@ -741,6 +745,13 @@ export default function QuizPage(): React.ReactElement {
                   href="https://go.prism.miami/formconsultation"
                   target="_blank"
                   rel="noopener noreferrer"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    const url = buildBookingUrl(
+                      "https://go.prism.miami/formconsultation"
+                    );
+                    window.open(url, "_blank", "noopener,noreferrer");
+                  }}
                 >
                   <Calendar className="h-5 w-5" />
                   Book a Free Consultation

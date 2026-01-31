@@ -1,0 +1,22 @@
+{
+  "id": "9b502021-5953-4a83-8f17-d4f45488338e",
+  "createdAt": "2026-01-31T20:11:02.592Z",
+  "submission": {
+    "name": "Test User",
+    "energyLevel": 2,
+    "crashAfterLunch": true,
+    "difficultyWaking": false,
+    "wakeAtNight": {
+      "wakes": false
+    },
+    "brainFog": true,
+    "bowelIssues": [
+      "straining",
+      "diarrhea"
+    ],
+    "coldExtremities": true,
+    "whiteTongue": false,
+    "typicalEating": "Cereal or nothing for breakfast. Work through lunch, maybe a protein bar. Large dinner, often late. Snacks throughout the evening.",
+    "healthGoals": "Sleep through the night without waking up. Feel sharper at work. Less brain fog."
+  }
+}

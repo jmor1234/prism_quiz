@@ -1,0 +1,27 @@
+{
+  "id": "13acba39-7069-4bd4-98f7-37f62e5109c5",
+  "createdAt": "2026-01-31T20:02:15.446Z",
+  "submission": {
+    "name": "Jack John",
+    "energyLevel": 2,
+    "crashAfterLunch": false,
+    "difficultyWaking": true,
+    "wakeAtNight": {
+      "wakes": true,
+      "reasons": [
+        "no_reason"
+      ]
+    },
+    "brainFog": true,
+    "bowelIssues": [
+      "pain",
+      "incomplete",
+      "diarrhea",
+      "smell"
+    ],
+    "coldExtremities": false,
+    "whiteTongue": true,
+    "typicalEating": "Smoothie for breakfast. Soup or sandwich for lunch. Home-cooked dinner with meat and vegetables. Lots of water, some wine at night.",
+    "healthGoals": "More consistent energy throughout the day, better sleep quality, improved digestion and mental clarity."
+  }
+}

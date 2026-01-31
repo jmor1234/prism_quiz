@@ -59,6 +59,7 @@ lib/
 ├── schemas/
 │   └── quiz.ts           # Zod schema for quiz submission
 ├── quizStorage.ts        # Client-side localStorage persistence (result + retry state)
+├── utmStorage.ts         # UTM/click ID capture for ad attribution
 └── knowledge/
     ├── knowledge.md              # Bioenergetic foundation (3 pillars)
     ├── questionaire.md           # Symptom → implication interpretation
@@ -91,6 +92,9 @@ Env: UPSTASH_REDIS_REST_URL, UPSTASH_REDIS_REST_TOKEN
 Client (localStorage):
 Key: prism-quiz
 Value: { v: 1, id: "uuid", report: "..." | null }
+
+Key: prism-utm
+Value: { v: 1, params: { fbclid?, utm_source?, ... }, capturedAt: timestamp }
 ```
 
 ### Error Handling & Retry
@@ -111,6 +115,28 @@ Submit → Save submission → [LLM fails] → Return submissionId in error
 - **submissionId returned on error** — enables retry without duplicate
 - **Existing result check** — if result exists, returns immediately (no re-generation)
 - **localStorage persistence** — survives page refresh, shows result or retry UI
+
+### UTM & Ad Attribution
+
+Preserves tracking parameters from ads through the quiz flow to the booking page:
+
+```
+Ad click → /quiz?fbclid=xxx&utm_source=facebook
+                     ↓
+           Params captured on page load (first-touch)
+                     ↓
+           Stored in localStorage (prism-utm)
+                     ↓
+           User completes quiz
+                     ↓
+           Click "Book Consultation" → Params appended to booking URL
+```
+
+**Captured parameters:** `fbclid`, `gclid`, `msclkid`, `utm_source`, `utm_medium`, `utm_campaign`, `utm_content`, `utm_term`
+
+**First-touch semantics:** Only captures on initial landing. Subsequent visits with different params won't overwrite.
+
+**No params = no change:** Social media users (no UTM params) see the same booking URL as before.
 
 ---
 
