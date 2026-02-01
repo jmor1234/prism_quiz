@@ -742,13 +742,13 @@ export default function QuizPage(): React.ReactElement {
                 )}
               >
                 <a
-                  href="https://go.prism.miami/formconsultation"
+                  href="https://prism.miami/consultation"
                   target="_blank"
                   rel="noopener noreferrer"
                   onClick={(e) => {
                     e.preventDefault();
                     const url = buildBookingUrl(
-                      "https://go.prism.miami/formconsultation"
+                      "https://prism.miami/consultation"
                     );
                     window.open(url, "_blank", "noopener,noreferrer");
                   }}

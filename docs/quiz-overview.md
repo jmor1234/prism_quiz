@@ -236,7 +236,7 @@ Returns list of quiz submissions with AI assessments. Requires password authenti
 Markdown with:
 - Personalized opening
 - 3 pattern sections (title + 2-3 sentence explanation)
-- Booking CTA (button links to https://go.prism.miami/formconsultation)
+- Booking CTA (button links to https://prism.miami/consultation)
 
 No recommendations. No citations. Brief and engaging.
 
