@@ -1,6 +1,7 @@
 // app/api/quiz/systemPrompt.ts
 
-import type { QuizSubmission } from "@/lib/schemas/quiz";
+import type { VariantConfig, QuizAnswers } from "@/lib/quiz/types";
+import { formatAnswers } from "@/lib/quiz/formatAnswers";
 import { promises as fs } from "node:fs";
 import path from "node:path";
 
@@ -29,95 +30,15 @@ async function loadKnowledge() {
   return { knowledgeBase, questionnaireGuide, dietLifestyleGuide };
 }
 
-/**
- * Format quiz answers for the prompt
- */
-function formatAnswers(submission: QuizSubmission): string {
-  const lines: string[] = [];
-
-  lines.push(`**Name:** ${submission.name}`);
-
-  lines.push(
-    `**Energy Level:** ${submission.energyLevel}/10${submission.energyLevel <= 4 ? " (low)" : submission.energyLevel <= 6 ? " (moderate)" : " (good)"}`
-  );
-
-  lines.push(
-    `**Crash after lunch:** ${submission.crashAfterLunch ? "Yes" : "No"}`
-  );
-
-  lines.push(
-    `**Difficulty waking in the morning:** ${submission.difficultyWaking ? "Yes" : "No"}`
-  );
-
-  if (submission.wakeAtNight.wakes) {
-    const reasons =
-      submission.wakeAtNight.reasons && submission.wakeAtNight.reasons.length > 0
-        ? submission.wakeAtNight.reasons
-            .map((r) => {
-              switch (r) {
-                case "eat":
-                  return "to eat";
-                case "drink":
-                  return "to drink";
-                case "pee":
-                  return "to urinate";
-                case "no_reason":
-                  return "for no apparent reason";
-              }
-            })
-            .join(", ")
-        : "reasons not specified";
-    lines.push(`**Wakes in the middle of the night:** Yes (${reasons})`);
-  } else {
-    lines.push(`**Wakes in the middle of the night:** No`);
-  }
-
-  lines.push(
-    `**Brain fog / impaired cognition:** ${submission.brainFog ? "Yes" : "No"}`
-  );
-
-  if (submission.bowelIssues.length > 0) {
-    const issues = submission.bowelIssues
-      .map((i) => {
-        switch (i) {
-          case "straining":
-            return "straining";
-          case "pain":
-            return "pain";
-          case "incomplete":
-            return "incomplete emptying";
-          case "diarrhea":
-            return "diarrhea";
-          case "smell":
-            return "excessive smell/messiness";
-        }
-      })
-      .join(", ");
-    lines.push(`**Bowel issues:** ${issues}`);
-  } else {
-    lines.push(`**Bowel issues:** None reported`);
-  }
-
-  lines.push(
-    `**Frequently cold (extremities):** ${submission.coldExtremities ? "Yes" : "No"}`
-  );
-
-  lines.push(
-    `**White tongue coating:** ${submission.whiteTongue ? "Yes" : "No"}`
-  );
-
-  lines.push(`**Typical eating pattern:**\n${submission.typicalEating}`);
-
-  lines.push(`**Health goals:**\n${submission.healthGoals}`);
-
-  return lines.join("\n\n");
-}
-
-export async function buildQuizSystemPrompt(submission: QuizSubmission) {
+export async function buildQuizPrompt(
+  variant: VariantConfig,
+  name: string,
+  answers: QuizAnswers
+) {
   const { knowledgeBase, questionnaireGuide, dietLifestyleGuide } =
     await loadKnowledge();
 
-  const formattedAnswers = formatAnswers(submission);
+  const formattedAnswers = formatAnswers(variant, name, answers);
 
   const prompt = `
 # Context
@@ -138,7 +59,7 @@ ${questionnaireGuide}
 ${dietLifestyleGuide}
 </diet_lifestyle_context>
 
-# Client's Quiz Answers
+${variant.promptOverlay ? `# Condition-Specific Guidance\n\n${variant.promptOverlay}\n` : ""}# Client's Quiz Answers
 
 ${formattedAnswers}
 

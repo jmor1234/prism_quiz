@@ -1,8 +1,9 @@
 // lib/quizStorage.ts
-// localStorage persistence for quiz state (per client-localstorage-schema pattern)
+// localStorage persistence for quiz state, scoped per variant
 
-const STORAGE_KEY = "prism-quiz";
-const SCHEMA_VERSION = 1;
+const STORAGE_KEY_PREFIX = "prism-quiz";
+const LEGACY_KEY = "prism-quiz"; // v1 key (pre-variant)
+const SCHEMA_VERSION = 2;
 
 export type QuizStorageData = {
   v: typeof SCHEMA_VERSION;
@@ -10,49 +11,89 @@ export type QuizStorageData = {
   report: string | null; // null = submission exists but generation failed
 };
 
-// Cached value to avoid repeated localStorage reads (per client-cache-storage pattern)
-let cached: QuizStorageData | null | undefined = undefined;
+// Cached values per variant
+const cache = new Map<string, QuizStorageData | null>();
 
-export function getQuizStorage(): QuizStorageData | null {
-  if (typeof window === "undefined") return null;
+function storageKey(variant: string): string {
+  return `${STORAGE_KEY_PREFIX}:${variant}`;
+}
 
-  if (cached !== undefined) return cached;
+/**
+ * Migrate v1 (pre-variant) storage to v2 variant-scoped key.
+ * Only applicable for root-cause since that was the only variant in v1.
+ */
+function migrateV1(variant: string): QuizStorageData | null {
+  if (typeof window === "undefined" || variant !== "root-cause") return null;
 
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) {
-      cached = null;
-      return null;
-    }
+    const raw = localStorage.getItem(LEGACY_KEY);
+    if (!raw) return null;
 
-    const parsed = JSON.parse(raw) as QuizStorageData;
+    const parsed = JSON.parse(raw);
+    if (parsed.v !== 1) return null;
 
-    // Version check - clear if outdated
-    if (parsed.v !== SCHEMA_VERSION) {
-      localStorage.removeItem(STORAGE_KEY);
-      cached = null;
-      return null;
-    }
-
-    cached = parsed;
-    return parsed;
+    // Migrate: write to v2 key, delete v1 key
+    const migrated: QuizStorageData = {
+      v: SCHEMA_VERSION,
+      id: parsed.id,
+      report: parsed.report ?? null,
+    };
+    localStorage.setItem(storageKey(variant), JSON.stringify(migrated));
+    localStorage.removeItem(LEGACY_KEY);
+    return migrated;
   } catch {
-    cached = null;
     return null;
   }
 }
 
-export function setQuizStorage(data: Omit<QuizStorageData, "v">): void {
+export function getQuizStorage(variant: string): QuizStorageData | null {
+  if (typeof window === "undefined") return null;
+
+  const cached = cache.get(variant);
+  if (cached !== undefined) return cached;
+
+  try {
+    // Try v2 key first
+    const raw = localStorage.getItem(storageKey(variant));
+    if (raw) {
+      const parsed = JSON.parse(raw) as QuizStorageData;
+      if (parsed.v === SCHEMA_VERSION) {
+        cache.set(variant, parsed);
+        return parsed;
+      }
+      // Wrong version — clear it
+      localStorage.removeItem(storageKey(variant));
+    }
+
+    // Try v1 migration for root-cause
+    const migrated = migrateV1(variant);
+    if (migrated) {
+      cache.set(variant, migrated);
+      return migrated;
+    }
+
+    cache.set(variant, null);
+    return null;
+  } catch {
+    cache.set(variant, null);
+    return null;
+  }
+}
+
+export function setQuizStorage(
+  variant: string,
+  data: Omit<QuizStorageData, "v">
+): void {
   if (typeof window === "undefined") return;
 
   const toStore: QuizStorageData = { v: SCHEMA_VERSION, ...data };
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(toStore));
-  cached = toStore;
+  localStorage.setItem(storageKey(variant), JSON.stringify(toStore));
+  cache.set(variant, toStore);
 }
 
-export function clearQuizStorage(): void {
+export function clearQuizStorage(variant: string): void {
   if (typeof window === "undefined") return;
 
-  localStorage.removeItem(STORAGE_KEY);
-  cached = null;
+  localStorage.removeItem(storageKey(variant));
+  cache.set(variant, null);
 }

@@ -1,12 +1,13 @@
 // app/api/admin/results/pdf/lib/adminPdfTemplate.ts
 
-import type { QuizSubmission } from "@/lib/schemas/quiz";
 import { wakeReasonLabels, bowelIssueLabels } from "@/lib/labels/quizLabels";
+import type { YesNoWithFollowUp } from "@/lib/quiz/types";
 
 interface AdminPdfData {
   quizId: string;
   createdAt: string;
-  submission: QuizSubmission;
+  name: string;
+  answers: Record<string, unknown>;
   reportHtml: string;
 }
 
@@ -20,10 +21,10 @@ interface AdminPdfData {
  * 4. AI Assessment (markdown converted to HTML)
  */
 export function buildAdminPdfHtml(data: AdminPdfData): string {
-  const { quizId, createdAt, submission, reportHtml } = data;
+  const { quizId, createdAt, name, answers, reportHtml } = data;
 
-  const header = buildHeader(submission.name, createdAt, quizId);
-  const answersSection = buildAnswersSection(submission);
+  const header = buildHeader(name, createdAt, quizId);
+  const answersSection = buildAnswersSection(answers);
   const assessmentSection = buildAssessmentSection(reportHtml);
 
   return `
@@ -56,7 +57,9 @@ function buildHeader(name: string, createdAt: string, quizId: string): string {
   `;
 }
 
-function buildAnswersSection(submission: QuizSubmission): string {
+function buildAnswersSection(answers: Record<string, unknown>): string {
+  const wakeAtNight = answers.wakeAtNight as YesNoWithFollowUp | undefined;
+
   return `
     <h2>Quiz Responses</h2>
 
@@ -64,44 +67,44 @@ function buildAnswersSection(submission: QuizSubmission): string {
       <tbody>
         <tr>
           <th>Energy Level</th>
-          <td><strong>${submission.energyLevel}</strong> / 10</td>
+          <td><strong>${answers.energyLevel}</strong> / 10</td>
         </tr>
         <tr>
           <th>Crashes after lunch</th>
-          <td>${formatYesNo(submission.crashAfterLunch)}</td>
+          <td>${formatYesNo(answers.crashAfterLunch as boolean)}</td>
         </tr>
         <tr>
           <th>Difficulty waking</th>
-          <td>${formatYesNo(submission.difficultyWaking)}</td>
+          <td>${formatYesNo(answers.difficultyWaking as boolean)}</td>
         </tr>
         <tr>
           <th>Brain fog</th>
-          <td>${formatYesNo(submission.brainFog)}</td>
+          <td>${formatYesNo(answers.brainFog as boolean)}</td>
         </tr>
         <tr>
           <th>Cold extremities</th>
-          <td>${formatYesNo(submission.coldExtremities)}</td>
+          <td>${formatYesNo(answers.coldExtremities as boolean)}</td>
         </tr>
         <tr>
           <th>White tongue</th>
-          <td>${formatYesNo(submission.whiteTongue)}</td>
+          <td>${formatYesNo(answers.whiteTongue as boolean)}</td>
         </tr>
         <tr>
           <th>Wakes at night</th>
-          <td>${formatWakeAtNight(submission.wakeAtNight)}</td>
+          <td>${formatWakeAtNight(wakeAtNight)}</td>
         </tr>
         <tr>
           <th>Bowel issues</th>
-          <td>${formatBowelIssues(submission.bowelIssues)}</td>
+          <td>${formatBowelIssues((answers.bowelIssues ?? []) as string[])}</td>
         </tr>
       </tbody>
     </table>
 
     <h3>Typical Eating</h3>
-    <div class="freetext-answer">${escapeHtml(submission.typicalEating)}</div>
+    <div class="freetext-answer">${escapeHtml(answers.typicalEating as string)}</div>
 
     <h3>Health Goals</h3>
-    <div class="freetext-answer">${escapeHtml(submission.healthGoals)}</div>
+    <div class="freetext-answer">${escapeHtml(answers.healthGoals as string)}</div>
   `;
 }
 
@@ -123,16 +126,20 @@ function formatYesNo(value: boolean): string {
   return value ? "Yes" : "No";
 }
 
-function formatWakeAtNight(wake: QuizSubmission["wakeAtNight"]): string {
-  if (!wake.wakes) return "No";
-  if (!wake.reasons?.length) return "Yes";
-  const reasons = wake.reasons.map((r) => wakeReasonLabels[r]).join(", ");
+function formatWakeAtNight(wake: YesNoWithFollowUp | undefined): string {
+  if (!wake || wake.answer !== true) return "No";
+  if (!wake.followUp?.length) return "Yes";
+  const reasons = wake.followUp
+    .map((r) => wakeReasonLabels[r as keyof typeof wakeReasonLabels] ?? r)
+    .join(", ");
   return `Yes (${reasons})`;
 }
 
-function formatBowelIssues(issues: QuizSubmission["bowelIssues"]): string {
+function formatBowelIssues(issues: string[]): string {
   if (issues.length === 0) return "None";
-  return issues.map((i) => bowelIssueLabels[i]).join(", ");
+  return issues
+    .map((i) => bowelIssueLabels[i as keyof typeof bowelIssueLabels] ?? i)
+    .join(", ");
 }
 
 function escapeHtml(str: string): string {

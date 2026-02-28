@@ -1,0 +1,26 @@
+{
+  "id": "adcc5cb0-c329-4a98-a7c5-b794f160c28a",
+  "createdAt": "2026-02-28T20:51:00.856Z",
+  "variant": "root-cause",
+  "name": "Test User",
+  "answers": {
+    "energyLevel": 1,
+    "crashAfterLunch": true,
+    "difficultyWaking": true,
+    "wakeAtNight": {
+      "answer": true,
+      "followUp": [
+        "eat"
+      ]
+    },
+    "brainFog": true,
+    "bowelIssues": [
+      "pain",
+      "smell"
+    ],
+    "coldExtremities": true,
+    "whiteTongue": false,
+    "typicalEating": "Oatmeal with fruit for breakfast. Sandwich and chips for lunch. Pasta with vegetables for dinner. Coffee throughout the day.",
+    "healthGoals": "Better overall health. Preparing for pregnancy and want to optimize my body first."
+  }
+}

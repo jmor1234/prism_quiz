@@ -56,7 +56,7 @@ export async function POST(request: NextRequest) {
       return Response.json({ error: "Quiz not found" }, { status: 404 });
     }
 
-    console.log(`[Admin PDF] Data loaded for: ${submission.submission.name}`);
+    console.log(`[Admin PDF] Data loaded for: ${submission.name}`);
 
     // 4. Convert markdown to HTML (if report exists)
     const reportHtml = result?.report
@@ -68,7 +68,8 @@ export async function POST(request: NextRequest) {
     const fullHtml = buildAdminPdfHtml({
       quizId,
       createdAt: submission.createdAt,
-      submission: submission.submission,
+      name: submission.name,
+      answers: submission.answers,
       reportHtml,
     });
 
@@ -77,7 +78,7 @@ export async function POST(request: NextRequest) {
     const pdfBuffer = await generatePdf(fullHtml);
 
     // 7. Build filename (sanitize client name)
-    const sanitizedName = submission.submission.name
+    const sanitizedName = submission.name
       .replace(/[^a-zA-Z0-9\s-]/g, "")
       .replace(/\s+/g, "-")
       .slice(0, 50);

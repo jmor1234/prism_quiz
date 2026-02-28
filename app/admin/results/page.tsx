@@ -9,8 +9,8 @@ import { Input } from "@/components/ui/input";
 import { ModeToggle } from "@/components/ui/mode-toggle";
 import { Response } from "@/components/ai-elements/response";
 import { cn } from "@/lib/utils";
-import type { QuizSubmission } from "@/lib/schemas/quiz";
 import { wakeReasonLabels, bowelIssueLabels } from "@/lib/labels/quizLabels";
+import type { YesNoWithFollowUp } from "@/lib/quiz/types";
 
 // ============================================================================
 // Types
@@ -19,7 +19,9 @@ import { wakeReasonLabels, bowelIssueLabels } from "@/lib/labels/quizLabels";
 interface QuizEntry {
   id: string;
   createdAt: string;
-  submission: QuizSubmission;
+  variant: string;
+  name: string;
+  answers: Record<string, unknown>;
   report: string | null;
 }
 
@@ -81,9 +83,14 @@ function EnergyLevel({ level }: { level: number }) {
   );
 }
 
-function QuizAnswersDisplay({ submission }: { submission: QuizSubmission }) {
-  const hasWakeReasons = submission.wakeAtNight.wakes && submission.wakeAtNight.reasons?.length;
-  const hasBowelIssues = submission.bowelIssues.length > 0;
+function QuizAnswersDisplay({ answers }: { answers: Record<string, unknown> }) {
+  const wakeAtNight = answers.wakeAtNight as YesNoWithFollowUp | undefined;
+  const bowelIssues = (answers.bowelIssues ?? []) as string[];
+
+  const wakesAtNight = wakeAtNight?.answer === true;
+  const wakeFollowUp = wakeAtNight?.followUp ?? [];
+  const hasWakeReasons = wakesAtNight && wakeFollowUp.length > 0;
+  const hasBowelIssues = bowelIssues.length > 0;
 
   return (
     <div className="space-y-6">
@@ -103,21 +110,21 @@ function QuizAnswersDisplay({ submission }: { submission: QuizSubmission }) {
           <span className="text-[11px] font-medium text-foreground/50 uppercase tracking-wide mb-1">
             Energy
           </span>
-          <EnergyLevel level={submission.energyLevel} />
+          <EnergyLevel level={answers.energyLevel as number} />
         </div>
 
         {/* Symptoms Column 1 */}
         <div className="bg-card/50 dark:bg-card/30 rounded-md px-3 py-0.5 border border-border/40">
-          <YesNoIndicator label="Crashes after lunch" value={submission.crashAfterLunch} />
-          <YesNoIndicator label="Difficulty waking" value={submission.difficultyWaking} />
-          <YesNoIndicator label="Brain fog" value={submission.brainFog} />
+          <YesNoIndicator label="Crashes after lunch" value={answers.crashAfterLunch as boolean} />
+          <YesNoIndicator label="Difficulty waking" value={answers.difficultyWaking as boolean} />
+          <YesNoIndicator label="Brain fog" value={answers.brainFog as boolean} />
         </div>
 
         {/* Symptoms Column 2 */}
         <div className="bg-card/50 dark:bg-card/30 rounded-md px-3 py-0.5 border border-border/40">
-          <YesNoIndicator label="Cold extremities" value={submission.coldExtremities} />
-          <YesNoIndicator label="White tongue" value={submission.whiteTongue} />
-          <YesNoIndicator label="Wakes at night" value={submission.wakeAtNight.wakes} />
+          <YesNoIndicator label="Cold extremities" value={answers.coldExtremities as boolean} />
+          <YesNoIndicator label="White tongue" value={answers.whiteTongue as boolean} />
+          <YesNoIndicator label="Wakes at night" value={wakesAtNight} />
         </div>
       </div>
 
@@ -128,7 +135,7 @@ function QuizAnswersDisplay({ submission }: { submission: QuizSubmission }) {
             <div className="flex items-baseline gap-2">
               <span className="text-sm text-foreground/60 font-medium">Wake reasons:</span>
               <span className="text-sm text-foreground font-medium">
-                {submission.wakeAtNight.reasons!.map((r) => wakeReasonLabels[r]).join(", ")}
+                {wakeFollowUp.map((r) => wakeReasonLabels[r as keyof typeof wakeReasonLabels] ?? r).join(", ")}
               </span>
             </div>
           )}
@@ -136,7 +143,7 @@ function QuizAnswersDisplay({ submission }: { submission: QuizSubmission }) {
             <div className="flex items-baseline gap-2">
               <span className="text-sm text-foreground/60 font-medium">Bowel issues:</span>
               <span className="text-sm text-foreground font-medium">
-                {submission.bowelIssues.map((issue) => bowelIssueLabels[issue]).join(", ")}
+                {bowelIssues.map((issue) => bowelIssueLabels[issue as keyof typeof bowelIssueLabels] ?? issue).join(", ")}
               </span>
             </div>
           )}
@@ -150,7 +157,7 @@ function QuizAnswersDisplay({ submission }: { submission: QuizSubmission }) {
             Typical Eating
           </span>
           <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">
-            {submission.typicalEating}
+            {answers.typicalEating as string}
           </p>
         </div>
         <div>
@@ -158,7 +165,7 @@ function QuizAnswersDisplay({ submission }: { submission: QuizSubmission }) {
             Health Goals
           </span>
           <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">
-            {submission.healthGoals}
+            {answers.healthGoals as string}
           </p>
         </div>
       </div>
@@ -202,7 +209,7 @@ function EntryRow({
           >
             <ChevronRight className="h-4 w-4 text-[var(--quiz-gold-dark)] shrink-0" />
           </motion.div>
-          <span className="font-medium flex-1">{entry.submission.name}</span>
+          <span className="font-medium flex-1">{entry.name}</span>
           <span className="text-sm text-muted-foreground">{formatDate(entry.createdAt)}</span>
           <span className="text-xs text-muted-foreground font-mono">{entry.id.slice(0, 8)}</span>
         </button>
@@ -241,7 +248,7 @@ function EntryRow({
             className="overflow-hidden"
           >
             <div className="px-4 pb-4 pt-2 border-t space-y-6">
-              <QuizAnswersDisplay submission={entry.submission} />
+              <QuizAnswersDisplay answers={entry.answers} />
 
               {entry.report && (
                 <div className="space-y-2">

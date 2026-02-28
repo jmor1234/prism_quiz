@@ -3,16 +3,16 @@
 import { anthropic } from "@ai-sdk/anthropic";
 import { generateText } from "ai";
 
-import { quizSubmissionSchema, type QuizSubmission } from "@/lib/schemas/quiz";
+import { getVariant } from "@/lib/quiz/variants";
+import { buildSubmissionSchema } from "@/lib/quiz/schema";
 import { upsertQuizSubmission, getQuizSubmission } from "@/server/quizSubmissions";
 import { saveQuizResult, getQuizResult } from "@/server/quizResults";
-import { buildQuizSystemPrompt } from "./systemPrompt";
+import { buildQuizPrompt } from "./systemPrompt";
 
 // 60 seconds max - quiz should be fast
 export const maxDuration = 60;
 
 export async function POST(req: Request) {
-  let submission: QuizSubmission;
   let recordId: string | undefined;
 
   // Parse request body
@@ -31,6 +31,10 @@ export async function POST(req: Request) {
     typeof body.submissionId === "string" ? body.submissionId : undefined;
 
   try {
+    let variant: string;
+    let name: string;
+    let answers: Record<string, unknown>;
+
     if (existingSubmissionId) {
       // Retry case: use stored submission data
       const existing = await getQuizSubmission(existingSubmissionId);
@@ -44,7 +48,9 @@ export async function POST(req: Request) {
       // Check if result already exists (avoid re-generation)
       const existingResult = await getQuizResult(existingSubmissionId);
       if (existingResult) {
-        console.log(`[Quiz] Returning existing result for: ${existingSubmissionId}`);
+        console.log(
+          `[Quiz] Returning existing result for: ${existingSubmissionId}`
+        );
         return new Response(
           JSON.stringify({
             id: existingSubmissionId,
@@ -55,12 +61,35 @@ export async function POST(req: Request) {
       }
 
       // Use stored submission data for generation
-      submission = existing.submission;
+      variant = existing.variant;
+      name = existing.name;
+      answers = existing.answers;
       recordId = existingSubmissionId;
-      console.log(`[Quiz] Retrying generation for existing submission: ${recordId}`);
+      console.log(
+        `[Quiz] Retrying generation for existing submission: ${recordId}`
+      );
     } else {
-      // New submission: validate request body
-      const parsed = quizSubmissionSchema.safeParse(body);
+      // New submission: resolve variant
+      const variantSlug =
+        typeof body.variant === "string" ? body.variant : undefined;
+      if (!variantSlug) {
+        return new Response(
+          JSON.stringify({ error: "Missing variant field" }),
+          { status: 400, headers: { "Content-Type": "application/json" } }
+        );
+      }
+
+      const variantConfig = getVariant(variantSlug);
+      if (!variantConfig) {
+        return new Response(
+          JSON.stringify({ error: `Unknown quiz variant: ${variantSlug}` }),
+          { status: 400, headers: { "Content-Type": "application/json" } }
+        );
+      }
+
+      // Validate against variant-specific schema
+      const schema = buildSubmissionSchema(variantConfig);
+      const parsed = schema.safeParse(body);
 
       if (!parsed.success) {
         return new Response(
@@ -68,25 +97,30 @@ export async function POST(req: Request) {
             error: "Invalid submission",
             details: parsed.error.flatten(),
           }),
-          {
-            status: 400,
-            headers: { "Content-Type": "application/json" },
-          }
+          { status: 400, headers: { "Content-Type": "application/json" } }
         );
       }
 
-      submission = parsed.data;
+      variant = parsed.data.variant;
+      name = parsed.data.name;
+      answers = parsed.data.answers;
 
       // Save new submission
-      const record = await upsertQuizSubmission({ submission });
+      const record = await upsertQuizSubmission({ variant, name, answers });
       recordId = record.id;
       console.log(`[Quiz] New submission saved: ${recordId}`);
     }
 
-    // 2. Build system prompt with knowledge + answers
-    const messages = await buildQuizSystemPrompt(submission);
+    // Resolve variant config for prompt building
+    const variantConfig = getVariant(variant);
+    if (!variantConfig) {
+      throw new Error(`Variant config not found for: ${variant}`);
+    }
 
-    // 3. Generate report
+    // Build system prompt with knowledge + answers
+    const messages = await buildQuizPrompt(variantConfig, name, answers);
+
+    // Generate report
     console.log(`[Quiz] Starting generation for: ${recordId}`);
 
     const result = await generateText({
@@ -96,15 +130,15 @@ export async function POST(req: Request) {
 
     console.log(`[Quiz] Generation complete for: ${recordId}`);
 
-    // 4. Save result
+    // Save result
     await saveQuizResult({
-      id: recordId,
+      id: recordId!,
       report: result.text,
     });
 
     console.log(`[Quiz] Result saved for: ${recordId}`);
 
-    // 5. Return response
+    // Return response
     return new Response(
       JSON.stringify({
         id: recordId,
@@ -118,7 +152,6 @@ export async function POST(req: Request) {
   } catch (error) {
     console.error("[Quiz] Generation failed:", error);
 
-    // Return submission ID if available (for retry)
     const returnId = recordId ?? existingSubmissionId;
 
     return new Response(
