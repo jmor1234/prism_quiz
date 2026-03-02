@@ -9,8 +9,8 @@ import { Input } from "@/components/ui/input";
 import { ModeToggle } from "@/components/ui/mode-toggle";
 import { Response } from "@/components/ai-elements/response";
 import { cn } from "@/lib/utils";
-import { wakeReasonLabels, bowelIssueLabels } from "@/lib/labels/quizLabels";
-import type { YesNoWithFollowUp } from "@/lib/quiz/types";
+import { getVariant, getAllVariants } from "@/lib/quiz/variants";
+import type { QuestionConfig, YesNoWithFollowUp } from "@/lib/quiz/types";
 
 // ============================================================================
 // Types
@@ -65,110 +65,191 @@ function YesNoIndicator({ value, label }: { value: boolean; label: string }) {
   );
 }
 
-function EnergyLevel({ level }: { level: number }) {
-  // Color coding: 1-3 low (amber), 4-6 medium (yellow), 7-10 good (emerald)
+function SliderValue({ level, max = 10 }: { level: number; max?: number }) {
+  const safeLevel = level ?? 0;
   const getColor = (l: number) => {
-    if (l <= 3) return "text-amber-600 dark:text-amber-400";
-    if (l <= 6) return "text-yellow-600 dark:text-yellow-400";
+    const ratio = l / max;
+    if (ratio <= 0.3) return "text-amber-600 dark:text-amber-400";
+    if (ratio <= 0.6) return "text-yellow-600 dark:text-yellow-400";
     return "text-emerald-600 dark:text-emerald-400";
   };
 
   return (
     <div className="flex items-baseline gap-1">
-      <span className={cn("text-2xl font-bold tabular-nums tracking-tight", getColor(level))}>
-        {level}
+      <span className={cn("text-2xl font-bold tabular-nums tracking-tight", getColor(safeLevel))}>
+        {safeLevel}
       </span>
-      <span className="text-sm text-foreground/40 font-medium">/10</span>
+      <span className="text-sm text-foreground/40 font-medium">/{max}</span>
     </div>
   );
 }
 
-function QuizAnswersDisplay({ answers }: { answers: Record<string, unknown> }) {
-  const wakeAtNight = answers.wakeAtNight as YesNoWithFollowUp | undefined;
-  const bowelIssues = (answers.bowelIssues ?? []) as string[];
+function AnswerField({ question, value }: { question: QuestionConfig; value: unknown }) {
+  const label = question.promptLabel ?? question.question;
 
-  const wakesAtNight = wakeAtNight?.answer === true;
-  const wakeFollowUp = wakeAtNight?.followUp ?? [];
-  const hasWakeReasons = wakesAtNight && wakeFollowUp.length > 0;
-  const hasBowelIssues = bowelIssues.length > 0;
+  switch (question.type) {
+    case "slider":
+      return (
+        <div className="flex flex-col justify-center">
+          <span className="text-[11px] font-medium text-foreground/50 uppercase tracking-wide mb-1">
+            {label}
+          </span>
+          <SliderValue level={value as number} max={question.max} />
+        </div>
+      );
+
+    case "yes_no": {
+      if (question.conditionalFollowUp) {
+        // Handle both compound { answer, followUp } and plain boolean (legacy edge case)
+        const compound = typeof value === "boolean"
+          ? { answer: value, followUp: [] }
+          : (value as YesNoWithFollowUp | undefined);
+        const answered = compound?.answer === true;
+        const followUp = compound?.followUp ?? [];
+        return (
+          <div>
+            <YesNoIndicator label={label} value={answered} />
+            {answered && followUp.length > 0 && (
+              <div className="flex items-baseline gap-2 pl-2 pb-1">
+                <span className="text-xs text-foreground/50">→</span>
+                <span className="text-xs text-foreground/70">
+                  {followUp.map((v) => {
+                    const opt = question.conditionalFollowUp!.options.find((o) => o.value === v);
+                    return opt ? opt.label : v;
+                  }).join(", ")}
+                </span>
+              </div>
+            )}
+          </div>
+        );
+      }
+      return <YesNoIndicator label={label} value={value as boolean} />;
+    }
+
+    case "multi_select": {
+      const selected = (value ?? []) as string[];
+      return (
+        <div className="flex items-baseline gap-2 py-1.5 border-b border-border/40 last:border-0">
+          <span className="text-[13px] text-foreground/80 shrink-0">{label}</span>
+          <span className="text-[13px] font-medium text-foreground">
+            {selected.length > 0
+              ? selected.map((v) => {
+                  const opt = question.options.find((o) => o.value === v);
+                  return opt ? opt.label : v;
+                }).join(", ")
+              : "None"}
+          </span>
+        </div>
+      );
+    }
+
+    case "single_select": {
+      const opt = question.options.find((o) => o.value === value);
+      return (
+        <div className="flex items-baseline gap-2 py-1.5 border-b border-border/40 last:border-0">
+          <span className="text-[13px] text-foreground/80 shrink-0">{label}</span>
+          <span className="text-[13px] font-medium text-foreground">
+            {opt ? opt.label : String(value ?? "")}
+          </span>
+        </div>
+      );
+    }
+
+    case "free_text":
+      return (
+        <div>
+          <span className="text-xs font-semibold text-foreground/50 uppercase tracking-wider block mb-1.5">
+            {label}
+          </span>
+          <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">
+            {String(value ?? "")}
+          </p>
+        </div>
+      );
+  }
+}
+
+function QuizAnswersDisplay({ variant, answers }: { variant: string; answers: Record<string, unknown> }) {
+  const config = getVariant(variant);
+
+  // Fallback for unknown/removed variants
+  if (!config) {
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center gap-3">
+          <h4 className="text-[11px] font-semibold text-foreground/50 uppercase tracking-[0.1em]">Quiz Answers</h4>
+          <div className="flex-1 h-px bg-border/60" />
+        </div>
+        <p className="text-xs text-muted-foreground italic">Unknown variant &ldquo;{variant}&rdquo; — showing raw answers</p>
+        {Object.entries(answers).map(([key, val]) => (
+          <div key={key} className="flex gap-2 text-sm">
+            <span className="font-medium text-foreground/60">{key}:</span>
+            <span className="text-foreground">{typeof val === "object" ? JSON.stringify(val) : String(val)}</span>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  const sliders = config.questions.filter((q) => q.type === "slider");
+  const yesNos = config.questions.filter((q) => q.type === "yes_no");
+  const selects = config.questions.filter((q) => q.type === "multi_select" || q.type === "single_select");
+  const freeTexts = config.questions.filter((q) => q.type === "free_text");
+
+  // Split yes/no into two columns
+  const midpoint = Math.ceil(yesNos.length / 2);
+  const yesNoCol1 = yesNos.slice(0, midpoint);
+  const yesNoCol2 = yesNos.slice(midpoint);
 
   return (
     <div className="space-y-6">
       {/* Section header */}
       <div className="flex items-center gap-3">
-        <h4 className="text-[11px] font-semibold text-foreground/50 uppercase tracking-[0.1em]">
-          Quiz Answers
-        </h4>
+        <h4 className="text-[11px] font-semibold text-foreground/50 uppercase tracking-[0.1em]">Quiz Answers</h4>
         <div className="flex-1 h-px bg-border/60" />
       </div>
 
-      {/* Main content: 3-column layout */}
-      <div className="grid grid-cols-1 md:grid-cols-[140px_1fr_1fr] gap-6">
-
-        {/* Energy Level - prominent display */}
-        <div className="flex flex-col justify-center">
-          <span className="text-[11px] font-medium text-foreground/50 uppercase tracking-wide mb-1">
-            Energy
-          </span>
-          <EnergyLevel level={answers.energyLevel as number} />
-        </div>
-
-        {/* Symptoms Column 1 */}
-        <div className="bg-card/50 dark:bg-card/30 rounded-md px-3 py-0.5 border border-border/40">
-          <YesNoIndicator label="Crashes after lunch" value={answers.crashAfterLunch as boolean} />
-          <YesNoIndicator label="Difficulty waking" value={answers.difficultyWaking as boolean} />
-          <YesNoIndicator label="Brain fog" value={answers.brainFog as boolean} />
-        </div>
-
-        {/* Symptoms Column 2 */}
-        <div className="bg-card/50 dark:bg-card/30 rounded-md px-3 py-0.5 border border-border/40">
-          <YesNoIndicator label="Cold extremities" value={answers.coldExtremities as boolean} />
-          <YesNoIndicator label="White tongue" value={answers.whiteTongue as boolean} />
-          <YesNoIndicator label="Wakes at night" value={wakesAtNight} />
-        </div>
+      {/* Sliders + Yes/No grid */}
+      <div className={cn(
+        "grid grid-cols-1 gap-6",
+        sliders.length > 0 ? "md:grid-cols-[140px_1fr_1fr]" : "md:grid-cols-2"
+      )}>
+        {sliders.map((q) => (
+          <AnswerField key={q.id} question={q} value={answers[q.id]} />
+        ))}
+        {yesNoCol1.length > 0 && (
+          <div className="bg-card/50 dark:bg-card/30 rounded-md px-3 py-0.5 border border-border/40">
+            {yesNoCol1.map((q) => (
+              <AnswerField key={q.id} question={q} value={answers[q.id]} />
+            ))}
+          </div>
+        )}
+        {yesNoCol2.length > 0 && (
+          <div className="bg-card/50 dark:bg-card/30 rounded-md px-3 py-0.5 border border-border/40">
+            {yesNoCol2.map((q) => (
+              <AnswerField key={q.id} question={q} value={answers[q.id]} />
+            ))}
+          </div>
+        )}
       </div>
 
-      {/* Additional details row */}
-      {(hasWakeReasons || hasBowelIssues) && (
-        <div className="flex flex-wrap gap-x-10 gap-y-2">
-          {hasWakeReasons && (
-            <div className="flex items-baseline gap-2">
-              <span className="text-sm text-foreground/60 font-medium">Wake reasons:</span>
-              <span className="text-sm text-foreground font-medium">
-                {wakeFollowUp.map((r) => wakeReasonLabels[r as keyof typeof wakeReasonLabels] ?? r).join(", ")}
-              </span>
-            </div>
-          )}
-          {hasBowelIssues && (
-            <div className="flex items-baseline gap-2">
-              <span className="text-sm text-foreground/60 font-medium">Bowel issues:</span>
-              <span className="text-sm text-foreground font-medium">
-                {bowelIssues.map((issue) => bowelIssueLabels[issue as keyof typeof bowelIssueLabels] ?? issue).join(", ")}
-              </span>
-            </div>
-          )}
+      {/* Select questions */}
+      {selects.length > 0 && (
+        <div className="bg-card/50 dark:bg-card/30 rounded-md px-3 py-0.5 border border-border/40">
+          {selects.map((q) => (
+            <AnswerField key={q.id} question={q} value={answers[q.id]} />
+          ))}
         </div>
       )}
 
       {/* Free text answers */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pt-1">
-        <div>
-          <span className="text-xs font-semibold text-foreground/50 uppercase tracking-wider block mb-1.5">
-            Typical Eating
-          </span>
-          <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">
-            {answers.typicalEating as string}
-          </p>
+      {freeTexts.length > 0 && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pt-1">
+          {freeTexts.map((q) => (
+            <AnswerField key={q.id} question={q} value={answers[q.id]} />
+          ))}
         </div>
-        <div>
-          <span className="text-xs font-semibold text-foreground/50 uppercase tracking-wider block mb-1.5">
-            Health Goals
-          </span>
-          <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">
-            {answers.healthGoals as string}
-          </p>
-        </div>
-      </div>
+      )}
     </div>
   );
 }
@@ -209,7 +290,12 @@ function EntryRow({
           >
             <ChevronRight className="h-4 w-4 text-[var(--quiz-gold-dark)] shrink-0" />
           </motion.div>
-          <span className="font-medium flex-1">{entry.name}</span>
+          <span className="font-medium flex-1">
+            {entry.name}
+            <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-muted text-muted-foreground">
+              {getVariant(entry.variant)?.name ?? entry.variant}
+            </span>
+          </span>
           <span className="text-sm text-muted-foreground">{formatDate(entry.createdAt)}</span>
           <span className="text-xs text-muted-foreground font-mono">{entry.id.slice(0, 8)}</span>
         </button>
@@ -248,7 +334,7 @@ function EntryRow({
             className="overflow-hidden"
           >
             <div className="px-4 pb-4 pt-2 border-t space-y-6">
-              <QuizAnswersDisplay answers={entry.answers} />
+              <QuizAnswersDisplay variant={entry.variant} answers={entry.answers} />
 
               {entry.report && (
                 <div className="space-y-2">
@@ -289,6 +375,7 @@ export default function AdminResultsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [isSearching, setIsSearching] = useState(false);
+  const [selectedVariant, setSelectedVariant] = useState("");
   const shouldReduceMotion = useReducedMotion();
 
   // Debounce search input
@@ -299,8 +386,8 @@ export default function AdminResultsPage() {
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
-  const fetchResults = useCallback(async (key: string, options?: { cursor?: string; search?: string }) => {
-    const { cursor, search } = options ?? {};
+  const fetchResults = useCallback(async (key: string, options?: { cursor?: string; search?: string; variant?: string }) => {
+    const { cursor, search, variant } = options ?? {};
     const isLoadMore = !!cursor;
     const isSearch = !!search;
 
@@ -316,6 +403,9 @@ export default function AdminResultsPage() {
     try {
       const url = new URL("/api/admin/results", window.location.origin);
       url.searchParams.set("key", key);
+      if (variant) {
+        url.searchParams.set("variant", variant);
+      }
       if (search) {
         url.searchParams.set("search", search);
       } else if (cursor) {
@@ -361,25 +451,27 @@ export default function AdminResultsPage() {
     const savedPassword = sessionStorage.getItem("admin_password");
     if (savedPassword) {
       setPassword(savedPassword);
-      fetchResults(savedPassword);
+      // Don't fetch here — the search/filter effect handles it once authState changes
+      setAuthState("authenticated");
     } else {
       setAuthState("unauthenticated");
     }
-  }, [fetchResults]);
+  }, []);
 
-  // Trigger search when debounced search changes
+  // Trigger search/filter when debounced search or variant changes
   useEffect(() => {
     if (authState !== "authenticated") return;
     const savedPassword = sessionStorage.getItem("admin_password");
     if (!savedPassword) return;
 
+    const variant = selectedVariant || undefined;
+
     if (debouncedSearch) {
-      fetchResults(savedPassword, { search: debouncedSearch });
+      fetchResults(savedPassword, { search: debouncedSearch, variant });
     } else {
-      // Clear search, fetch normal paginated results
-      fetchResults(savedPassword);
+      fetchResults(savedPassword, { variant });
     }
-  }, [debouncedSearch, authState, fetchResults]);
+  }, [debouncedSearch, selectedVariant, authState, fetchResults]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -398,10 +490,11 @@ export default function AdminResultsPage() {
     const savedPassword = sessionStorage.getItem("admin_password");
     if (savedPassword) {
       setNextCursor(null);
+      const variant = selectedVariant || undefined;
       if (debouncedSearch) {
-        fetchResults(savedPassword, { search: debouncedSearch });
+        fetchResults(savedPassword, { search: debouncedSearch, variant });
       } else {
-        fetchResults(savedPassword);
+        fetchResults(savedPassword, { variant });
       }
     }
   };
@@ -414,7 +507,7 @@ export default function AdminResultsPage() {
   const handleLoadMore = () => {
     const savedPassword = sessionStorage.getItem("admin_password");
     if (savedPassword && nextCursor) {
-      fetchResults(savedPassword, { cursor: nextCursor });
+      fetchResults(savedPassword, { cursor: nextCursor, variant: selectedVariant || undefined });
     }
   };
 
@@ -575,6 +668,19 @@ export default function AdminResultsPage() {
               <Loader2 className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-[var(--quiz-gold)]" />
             )}
           </div>
+
+          {/* Variant filter */}
+          <select
+            value={selectedVariant}
+            onChange={(e) => setSelectedVariant(e.target.value)}
+            className="h-9 px-3 rounded-md border text-sm bg-background shrink-0"
+            aria-label="Filter by variant"
+          >
+            <option value="">All Variants</option>
+            {getAllVariants().map((v) => (
+              <option key={v.slug} value={v.slug}>{v.name}</option>
+            ))}
+          </select>
 
           <div className="flex items-center gap-2">
             <Button

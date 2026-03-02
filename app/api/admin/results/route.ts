@@ -37,18 +37,19 @@ export async function GET(request: NextRequest) {
     const limitParam = searchParams.get("limit");
     const limit = limitParam ? Math.min(parseInt(limitParam, 10), 500) : 100;
 
-    // Get search term from query params
+    // Get search term and variant filter from query params
     const search = searchParams.get("search")?.trim();
+    const variant = searchParams.get("variant") ?? undefined;
 
-    // If search is provided, search across all entries (no pagination)
+    // If search is provided, search across entries (no pagination)
     if (search) {
-      const entries = await searchQuizEntriesByName(search, limit);
+      const entries = await searchQuizEntriesByName(search, limit, variant);
       return NextResponse.json({ entries, nextCursor: null });
     }
 
     // Otherwise, use cursor-based pagination
     const cursor = searchParams.get("cursor") ?? undefined;
-    const { entries, nextCursor } = await listQuizEntries(limit, cursor);
+    const { entries, nextCursor } = await listQuizEntries(limit, cursor, variant);
 
     return NextResponse.json({ entries, nextCursor });
   } catch (error) {

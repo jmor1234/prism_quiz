@@ -98,8 +98,8 @@ POST /api/quiz                    Quiz submission + LLM generation
 GET  /api/quiz/result?quizId=     Fetch stored result
 POST /api/quiz/pdf                Generate user-facing PDF
 
-GET  /api/admin/results           Paginated submissions (password-protected)
-POST /api/admin/results/pdf       Generate admin PDF export
+GET  /api/admin/results           Paginated submissions (password-protected, ?variant= filter)
+POST /api/admin/results/pdf       Generate admin PDF export (config-driven)
 ```
 
 ### Prompt Architecture
@@ -127,10 +127,13 @@ The three knowledge files are shared across all variants. The `promptOverlay` st
 ```
 Submissions:  quiz-submissions:{uuid}     → { id, createdAt, variant, name, answers }
 Results:      quiz-results:{uuid}         → { quizId, report, createdAt }
-Index:        quiz-index                  → sorted set (timestamp → uuid)
+Index:        quiz-index                  → sorted set (timestamp → uuid) — global
+              quiz-index:{variant}        → sorted set (timestamp → uuid) — per-variant
 ```
 
-**Backward compatibility:** `normalizeRecord()` on every read converts pre-variant submissions to the new shape. No data migration needed.
+On save, submissions are dual-indexed to both the global and per-variant sorted sets. Listing with a variant filter uses the per-variant index (Redis) or filters in-memory (filesystem).
+
+**Backward compatibility:** `normalizeRecord()` on every read converts pre-variant submissions to the new shape. No data migration needed. Old entries only exist in the global index.
 
 **Client storage:** variant-scoped localStorage keys (`prism-quiz:{variant}`). V1→V2 migration for root-cause.
 
@@ -139,7 +142,7 @@ Index:        quiz-index                  → sorted set (timestamp → uuid)
 Two PDF pipelines, both using Puppeteer with serverless-aware Chromium (`@sparticuz/chromium` on Vercel):
 
 - **User PDF:** markdown report → HTML (remark/rehype) → cover template → PDF
-- **Admin PDF:** submission answers + report → admin template → PDF
+- **Admin PDF:** variant config → config-driven answer rendering + report → admin template → PDF
 
 ---
 
@@ -174,15 +177,17 @@ VariantConfig
 
 ```
 VariantConfig
-  ├─► schema.ts          buildSubmissionSchema()    → Zod validator
-  ├─► formatAnswers.ts   formatAnswers()            → markdown for LLM prompt
-  ├─► systemPrompt.ts    promptOverlay injection    → condition-specific guidance
-  ├─► quiz-wizard.tsx    buildInitialAnswers()       → React state
-  │                      isQuestionValid()           → step validation
-  │                      generateTestData()          → dev test data
-  ├─► question-step.tsx  type dispatcher             → correct UI component
-  ├─► [variant]/page.tsx generateMetadata()          → SEO tags
-  └─► quiz-result.tsx    resultBanner, ctaText       → result display
+  ├─► schema.ts             buildSubmissionSchema()    → Zod validator
+  ├─► formatAnswers.ts      formatAnswers()            → markdown for LLM prompt
+  ├─► systemPrompt.ts       promptOverlay injection    → condition-specific guidance
+  ├─► quiz-wizard.tsx       buildInitialAnswers()      → React state
+  │                         isQuestionValid()          → step validation
+  │                         generateTestData()         → dev test data
+  ├─► question-step.tsx     type dispatcher            → correct UI component
+  ├─► [variant]/page.tsx    generateMetadata()         → SEO tags
+  ├─► quiz-result.tsx       resultBanner, ctaText      → result display
+  ├─► admin/results         AnswerField by type        → config-driven admin display
+  └─► adminPdfTemplate.ts   formatAnswerValue by type  → config-driven PDF
 ```
 
 ### Variant Registry
@@ -212,7 +217,7 @@ app/
 │       └── page.tsx                    Server component (metadata + static params)
 ├── admin/
 │   └── results/
-│       └── page.tsx                    Admin dashboard (client component)
+│       └── page.tsx                    Config-driven admin dashboard (client component)
 └── api/
     ├── quiz/
     │   ├── route.ts                    Submission + LLM generation
@@ -223,10 +228,10 @@ app/
     │       └── lib/quizTemplateBuilder.ts
     └── admin/
         └── results/
-            ├── route.ts                Admin results listing
+            ├── route.ts                Admin results listing (variant filter)
             └── pdf/
                 ├── route.ts            Admin PDF export
-                └── lib/adminPdfTemplate.ts
+                └── lib/adminPdfTemplate.ts  Config-driven answer rendering
 
 components/
 ├── quiz/
@@ -284,13 +289,11 @@ lib/
 │   ├── knowledge.md                    Bioenergetic health model
 │   ├── questionaire.md                 Symptom interpretation guide
 │   └── diet_lifestyle_standardized.md  Diet/lifestyle framework
-├── schemas/quiz.ts                     Legacy Zod schemas (admin use)
-├── labels/quizLabels.ts                Legacy label maps (admin use)
 ├── quizStorage.ts                      Variant-scoped localStorage
 ├── utmStorage.ts                       UTM parameter capture
 └── utils.ts                            cn() helper
 
 server/
-├── quizSubmissions.ts                  Submission storage (Redis + filesystem)
+├── quizSubmissions.ts                  Submission storage (Redis + filesystem, per-variant indexes)
 └── quizResults.ts                      Result storage (Redis + filesystem)
 ```

@@ -16,6 +16,10 @@ import { getQuizResult } from "./quizResults";
 const STORAGE_ROOT = path.join(process.cwd(), "storage", "quiz-submissions");
 const INDEX_KEY = "quiz-index";
 
+function getVariantIndexKey(variant: string): string {
+  return `quiz-index:${variant}`;
+}
+
 // Redis client instance (lazy initialization)
 let redisClient: Redis | null = null;
 
@@ -122,6 +126,7 @@ export async function upsertQuizSubmission({
     const key = getSubmissionKey(id);
     await redis.set(key, JSON.stringify(record));
     await redis.zadd(INDEX_KEY, { score: Date.now(), member: id });
+    await redis.zadd(getVariantIndexKey(variant), { score: Date.now(), member: id });
   } else {
     await fs.mkdir(STORAGE_ROOT, { recursive: true });
     await fs.writeFile(
@@ -191,13 +196,15 @@ function toQuizEntry(
 
 export async function listQuizEntries(
   limit: number = 100,
-  cursor?: string
+  cursor?: string,
+  variant?: string
 ): Promise<ListQuizEntriesResult> {
   const redis = getRedisClient();
 
   if (redis) {
+    const indexKey = variant ? getVariantIndexKey(variant) : INDEX_KEY;
     const maxScore = cursor ? new Date(cursor).getTime() - 1 : "+inf";
-    const ids = await redis.zrange(INDEX_KEY, maxScore, 0, {
+    const ids = await redis.zrange(indexKey, maxScore, 0, {
       rev: true,
       byScore: true,
       offset: 0,
@@ -242,12 +249,12 @@ export async function listQuizEntries(
       );
 
       const cursorTime = cursor ? new Date(cursor).getTime() : Infinity;
-      const filtered = filesWithStats.filter((f) => f.mtime < cursorTime);
-      filtered.sort((a, b) => b.mtime - a.mtime);
-      const limitedFiles = filtered.slice(0, limit);
+      const cursorFiltered = filesWithStats.filter((f) => f.mtime < cursorTime);
+      cursorFiltered.sort((a, b) => b.mtime - a.mtime);
 
-      const entries = await Promise.all(
-        limitedFiles.map(async ({ file }) => {
+      // Load all entries within cursor window, filter by variant, then slice
+      const allEntries = await Promise.all(
+        cursorFiltered.map(async ({ file }) => {
           const id = file.replace(".json", "");
           const [submission, result] = await Promise.all([
             getQuizSubmission(id),
@@ -258,13 +265,17 @@ export async function listQuizEntries(
         })
       );
 
-      const validEntries = entries.filter((e): e is QuizEntry => e !== null);
+      const validEntries = allEntries.filter((e): e is QuizEntry => e !== null);
+      const variantFiltered = variant
+        ? validEntries.filter((e) => e.variant === variant)
+        : validEntries;
+      const limited = variantFiltered.slice(0, limit);
       const nextCursor =
-        validEntries.length === limit
-          ? validEntries[validEntries.length - 1].createdAt
+        limited.length === limit && variantFiltered.length > limit
+          ? limited[limited.length - 1].createdAt
           : null;
 
-      return { entries: validEntries, nextCursor };
+      return { entries: limited, nextCursor };
     } catch (error) {
       if (isNotFoundError(error)) {
         return { entries: [], nextCursor: null };
@@ -276,13 +287,15 @@ export async function listQuizEntries(
 
 export async function searchQuizEntriesByName(
   searchTerm: string,
-  limit: number = 100
+  limit: number = 100,
+  variant?: string
 ): Promise<QuizEntry[]> {
   const searchLower = searchTerm.toLowerCase();
   const redis = getRedisClient();
 
   if (redis) {
-    const ids = await redis.zrange(INDEX_KEY, "+inf", 0, {
+    const indexKey = variant ? getVariantIndexKey(variant) : INDEX_KEY;
+    const ids = await redis.zrange(indexKey, "+inf", 0, {
       rev: true,
       byScore: true,
     });
@@ -305,7 +318,6 @@ export async function searchQuizEntriesByName(
           const submission = await getQuizSubmission(idStr);
           if (!submission) return null;
 
-          // Name is now top-level on the normalized record
           if (!submission.name.toLowerCase().includes(searchLower)) {
             return null;
           }
@@ -339,7 +351,9 @@ export async function searchQuizEntriesByName(
       const matching = allSubmissions
         .filter(
           (s): s is QuizSubmissionRecord =>
-            s !== null && s.name.toLowerCase().includes(searchLower)
+            s !== null &&
+            s.name.toLowerCase().includes(searchLower) &&
+            (!variant || s.variant === variant)
         )
         .sort(
           (a, b) =>

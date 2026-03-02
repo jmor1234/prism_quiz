@@ -111,11 +111,11 @@ The original monolithic `app/quiz/page.tsx` (1007 lines) was decomposed into:
 **Admin dashboard** (`app/admin/results/page.tsx`)
 - Updated to new record shape: `entry.name`, `entry.answers.*`
 - Old submissions display correctly through normalization
-- Still root-cause-specific display (hardcoded field rendering)
+- Config-driven answer display for all variants (Phase 3)
 
 **Admin PDF** (`app/api/admin/results/pdf/`)
-- Template updated for new record shape
-- Route passes `name` and `answers` separately
+- Config-driven answer rendering for all variants (Phase 3)
+- Route passes `variant`, `name`, and `answers` to template
 
 ### Verified Working
 
@@ -198,22 +198,52 @@ Cross-system questions are the key differentiator. They reveal *why* the primary
 
 ---
 
-## What Remains (Phase 3 and Beyond)
+## Phase 3 -- COMPLETE
 
-### Phase 3: Infrastructure Polish
+Phase 3 made the admin system fully config-driven and added variant filtering. Legacy hardcoded files were deleted.
 
-- [ ] Per-variant Redis indexes (`quiz-index:{variant}`) for filtered admin queries
-- [ ] Admin variant filter dropdown
-- [ ] Fully config-driven admin display (replace hardcoded `QuizAnswersDisplay` with generic renderer)
-- [ ] Fully config-driven admin PDF template
-- [ ] Per-variant OG images
-- [ ] Analytics: conversion tracking per variant
+### What Was Built
 
-### Open Design Questions
+**Config-driven admin answer display** (`app/admin/results/page.tsx`)
+- `QuizAnswersDisplay` resolves `VariantConfig` via `getVariant(entry.variant)`
+- `AnswerField` component renders each answer based on question type from config
+- Option labels resolved from `question.options` and `question.conditionalFollowUp.options` -- no hardcoded label maps
+- Fallback for unknown variants: renders raw key-value pairs
+- `SliderValue` component uses actual `max` from config (not hardcoded `/10`)
 
-1. **Variant landing/index page?** A page at `/quiz` showing all available quizzes? Or each quiz always reached via direct ad link?
-2. **Name step position?** First (early personalization) or last (less friction)? Could be per-variant.
-3. **Email capture?** Optional email field for follow-up sequences. Per-variant toggle.
+**Variant filtering**
+- Storage layer: dual-write to per-variant Redis index (`quiz-index:{variant}`) on save
+- `listQuizEntries` and `searchQuizEntriesByName` accept optional `variant` parameter
+- Admin API accepts `?variant=slug` query parameter
+- Admin dashboard: variant filter dropdown populated from `getAllVariants()`
+- All fetch paths (initial, search, refresh, load more) pass the selected variant
+
+**Variant badge on entry rows**
+- Each entry row shows the variant name badge next to the person's name
+
+**Config-driven admin PDF** (`app/api/admin/results/pdf/lib/adminPdfTemplate.ts`)
+- `buildAnswersSection` iterates variant questions, formats by type
+- Table questions (slider, yes_no, multi_select, single_select) in HTML table
+- Free-text questions rendered as separate sections below the table
+- Variant name shown in PDF header
+- Fallback for unknown variants: raw key-value table
+
+**Legacy cleanup**
+- Deleted `lib/schemas/quiz.ts` (old Zod schema, replaced by dynamic `buildSubmissionSchema`)
+- Deleted `lib/labels/quizLabels.ts` (old label maps, replaced by config lookups)
+- Zero remaining references to either file
+
+---
+
+## What Remains (Future)
+
+### Possible Enhancements
+
+- [ ] Per-variant OG images (infrastructure supports it -- just needs design assets + `ogImage` field set in each config)
+- [ ] Analytics: conversion tracking per variant (external configuration)
+- [ ] Variant landing/index page at `/quiz` showing all available quizzes
+- [ ] Email capture with per-variant toggle
+- [ ] Name step position configurable per-variant (first vs last)
 
 ---
 
@@ -226,17 +256,17 @@ lib/quiz/
   formatAnswers.ts                  # Generic answer formatter for prompts
   variants/
     index.ts                        # Variant registry (11 variants)
-    root-cause.ts                   # Root cause config (Phase 1)
-    gut.ts                          # Gut health (Phase 2)
-    fatigue.ts                      # Energy & fatigue (Phase 2)
-    hormones-women.ts               # Women's hormonal (Phase 2)
-    testosterone.ts                 # Men's hormone (Phase 2)
-    sleep.ts                        # Sleep (Phase 2)
-    thyroid.ts                      # Thyroid & metabolism (Phase 2)
-    brain-fog.ts                    # Brain fog & cognitive (Phase 2)
-    weight.ts                       # Weight & body composition (Phase 2)
-    skin.ts                         # Skin health (Phase 2)
-    anxiety.ts                      # Anxiety & mood (Phase 2)
+    root-cause.ts                   # Root cause config
+    gut.ts                          # Gut health
+    fatigue.ts                      # Energy & fatigue
+    hormones-women.ts               # Women's hormonal
+    testosterone.ts                 # Men's hormone
+    sleep.ts                        # Sleep
+    thyroid.ts                      # Thyroid & metabolism
+    brain-fog.ts                    # Brain fog & cognitive
+    weight.ts                       # Weight & body composition
+    skin.ts                         # Skin health
+    anxiety.ts                      # Anxiety & mood
 
 components/quiz/
   quiz-wizard.tsx                   # Config-driven wizard engine
@@ -261,14 +291,23 @@ app/api/quiz/
   route.ts                          # Variant-aware submission endpoint
   systemPrompt.ts                   # Prompt builder with overlay support
 
+app/admin/results/
+  page.tsx                          # Config-driven admin dashboard
+
+app/api/admin/results/
+  route.ts                          # Admin API with variant filtering
+  pdf/
+    route.ts                        # Admin PDF export
+    lib/adminPdfTemplate.ts         # Config-driven PDF template
+
 server/
-  quizSubmissions.ts                # Storage with backward-compatible normalization
-  quizResults.ts                    # Result storage (unchanged)
+  quizSubmissions.ts                # Storage with normalization + per-variant indexes
+  quizResults.ts                    # Result storage
 
 lib/
   quizStorage.ts                    # Variant-scoped localStorage (v2)
-  utmStorage.ts                     # UTM tracking (unchanged)
-  knowledge/                        # Shared knowledge files (unchanged)
+  utmStorage.ts                     # UTM tracking
+  knowledge/                        # Shared knowledge files
     knowledge.md
     questionaire.md
     diet_lifestyle_standardized.md

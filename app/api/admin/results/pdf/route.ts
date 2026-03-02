@@ -68,6 +68,7 @@ export async function POST(request: NextRequest) {
     const fullHtml = buildAdminPdfHtml({
       quizId,
       createdAt: submission.createdAt,
+      variant: submission.variant,
       name: submission.name,
       answers: submission.answers,
       reportHtml,
