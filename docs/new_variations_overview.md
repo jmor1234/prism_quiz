@@ -1,5 +1,7 @@
 # Multi-Variant Quiz Architecture
 
+> **Note:** This was the original design document. The actual implementation diverges in some details (type shapes, field names, defaults). For current project status and accurate file/type references, see **[project-status.md](./project-status.md)**. Phases 1 and 2 are now complete -- all 11 variants are built and the engine is live.
+
 ## Design for extending the Prism root cause quiz into 11 condition-specific quiz variants within a single codebase.
 
 ---

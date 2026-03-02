@@ -124,11 +124,17 @@ function generateTestData(config: VariantConfig): {
         }
         break;
       }
-      case "multi_select":
-        answers[q.id] = q.options
+      case "multi_select": {
+        const selected = q.options
           .filter(() => Math.random() > 0.5)
           .map((o) => o.value);
+        // Guarantee at least one selection for required multi_selects
+        if (selected.length === 0 && q.required !== false) {
+          selected.push(randomFrom(q.options).value);
+        }
+        answers[q.id] = selected;
         break;
+      }
       case "single_select":
         answers[q.id] =
           q.options[Math.floor(Math.random() * q.options.length)].value;
