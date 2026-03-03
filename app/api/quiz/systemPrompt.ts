@@ -9,9 +9,11 @@ import path from "node:path";
 let knowledgeBase: string | null = null;
 let questionnaireGuide: string | null = null;
 let dietLifestyleGuide: string | null = null;
+let metabolismDeepDive: string | null = null;
+let gutDeepDive: string | null = null;
 
 async function loadKnowledge() {
-  if (!knowledgeBase || !questionnaireGuide || !dietLifestyleGuide) {
+  if (!knowledgeBase || !questionnaireGuide || !dietLifestyleGuide || !metabolismDeepDive || !gutDeepDive) {
     const knowledgeDir = path.join(process.cwd(), "lib", "knowledge");
 
     knowledgeBase = await fs.readFile(
@@ -26,8 +28,16 @@ async function loadKnowledge() {
       path.join(knowledgeDir, "diet_lifestyle_standardized.md"),
       "utf-8"
     );
+    metabolismDeepDive = await fs.readFile(
+      path.join(knowledgeDir, "metabolism_deep_dive.md"),
+      "utf-8"
+    );
+    gutDeepDive = await fs.readFile(
+      path.join(knowledgeDir, "gut_deep_dive.md"),
+      "utf-8"
+    );
   }
-  return { knowledgeBase, questionnaireGuide, dietLifestyleGuide };
+  return { knowledgeBase, questionnaireGuide, dietLifestyleGuide, metabolismDeepDive, gutDeepDive };
 }
 
 export async function buildQuizPrompt(
@@ -35,7 +45,7 @@ export async function buildQuizPrompt(
   name: string,
   answers: QuizAnswers
 ) {
-  const { knowledgeBase, questionnaireGuide, dietLifestyleGuide } =
+  const { knowledgeBase, questionnaireGuide, dietLifestyleGuide, metabolismDeepDive, gutDeepDive } =
     await loadKnowledge();
 
   const formattedAnswers = formatAnswers(variant, name, answers);
@@ -58,6 +68,18 @@ ${questionnaireGuide}
 <diet_lifestyle_context>
 ${dietLifestyleGuide}
 </diet_lifestyle_context>
+
+## Deep Mechanistic Framework
+
+The following provides the biochemical depth behind the bioenergetic model. This is your reasoning foundation: the mechanisms, cascades, and interconnections that explain WHY symptoms cluster together. Internalize these principles to reason dynamically about each person's unique patterns. Do NOT reproduce, cite, or directly reference this material in your output (unless its literally directly relevant) use it to think, not to quote.
+
+<energy_metabolism_framework>
+${metabolismDeepDive}
+</energy_metabolism_framework>
+
+<gut_health_framework>
+${gutDeepDive}
+</gut_health_framework>
 
 ${variant.promptOverlay ? `# Condition-Specific Guidance\n\n${variant.promptOverlay}\n` : ""}# Client's Quiz Answers
 
