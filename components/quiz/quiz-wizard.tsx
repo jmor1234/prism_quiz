@@ -177,6 +177,7 @@ export function QuizWizard({ config }: { config: VariantConfig }) {
   const [isHydrated, setIsHydrated] = useState(false);
 
   // Wizard state
+  const [started, setStarted] = useState(false);
   const [step, setStep] = useState(0);
   const [direction, setDirection] = useState<Direction>("forward");
 
@@ -189,6 +190,7 @@ export function QuizWizard({ config }: { config: VariantConfig }) {
 
     const stored = getQuizStorage(config.slug);
     if (stored) {
+      setStarted(true);
       if (stored.report) {
         setResult({ id: stored.id, report: stored.report });
         setStatus("success");
@@ -216,6 +218,8 @@ export function QuizWizard({ config }: { config: VariantConfig }) {
     if (step > 0) {
       setDirection("back");
       setStep((s) => s - 1);
+    } else {
+      setStarted(false);
     }
   }
 
@@ -298,6 +302,36 @@ export function QuizWizard({ config }: { config: VariantConfig }) {
   // Hydration guard
   if (!isHydrated) {
     return <div className="min-h-screen quiz-background" />;
+  }
+
+  // Intro screen
+  if (!started) {
+    return (
+      <div className="min-h-screen quiz-background flex flex-col items-center justify-center px-4 relative">
+        <div className="max-w-md w-full text-center space-y-6">
+          <h1 className="text-3xl font-bold tracking-tight">
+            {config.headline}
+          </h1>
+          {config.subtitle && (
+            <p className="text-lg text-muted-foreground">{config.subtitle}</p>
+          )}
+          <Button
+            onClick={() => setStarted(true)}
+            size="lg"
+            className={cn(
+              "h-14 px-8 text-base font-semibold rounded-xl shadow-lg",
+              "bg-[var(--quiz-gold)] hover:bg-[var(--quiz-gold-dark)]",
+              "text-[var(--quiz-text-on-gold)]"
+            )}
+          >
+            Start Assessment
+          </Button>
+        </div>
+        <div className="absolute top-4 right-4">
+          <ModeToggle />
+        </div>
+      </div>
+    );
   }
 
   // Result view
@@ -423,7 +457,7 @@ export function QuizWizard({ config }: { config: VariantConfig }) {
             </div>
           )}
           <div className="flex gap-3">
-            {step > 0 && !pendingSubmissionId && (
+            {!pendingSubmissionId && (
               <Button
                 variant="outline"
                 onClick={goBack}
