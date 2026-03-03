@@ -2,9 +2,9 @@
 
 ## The Goal
 
-Transform the Prism quiz from a single hardcoded health assessment into a config-driven engine that supports 11 condition-specific quiz variants. Each variant is defined by a single config object -- its own questions, prompt guidance, UI copy, and metadata. The infrastructure (wizard UI, storage, retry, admin, PDF, UTM tracking, LLM generation) is shared. Adding a new variant requires zero code changes.
+Transform the Prism quiz from a single hardcoded health assessment into a config-driven engine that supports 12 condition-specific quiz variants. Each variant is defined by a single config object -- its own questions, prompt guidance, UI copy, and metadata. The infrastructure (wizard UI, storage, retry, admin, PDF, UTM tracking, LLM generation) is shared. Adding a new variant requires zero code changes.
 
-**The 11 variants:**
+**The 12 variants:**
 
 | Slug | Name | Status |
 |------|------|--------|
@@ -19,8 +19,9 @@ Transform the Prism quiz from a single hardcoded health assessment into a config
 | `weight` | Weight & Body Composition Assessment | Live |
 | `skin` | Skin Health Assessment | Live |
 | `anxiety` | Anxiety & Mood Assessment | Live |
+| `allergies` | Allergy & Immune Assessment | Live |
 
-All 11 variants build clean, generate static pages, and are accessible at `/quiz/{slug}`.
+All 12 variants build clean, generate static pages, and are accessible at `/quiz/{slug}`.
 
 ---
 
@@ -171,16 +172,17 @@ Cross-system questions are the key differentiator. They reveal *why* the primary
 | `weight` | 11 | single_select (4), multi_select, yes_no, slider, free_text | energy, cold extremities, digestive issues, stress/sleep |
 | `skin` | 11 | multi_select (4), single_select, yes_no, slider, free_text | digestive issues, white tongue, energy |
 | `anxiety` | 11 | multi_select (2), single_select (2), yes_no, slider, free_text | digestive issues, energy, cold extremities, blood sugar |
+| `allergies` | 12 | multi_select (4), single_select, yes_no (4), slider, free_text | digestive issues, white tongue, energy, cold extremities, stress |
 
 ### Shared Question IDs Across Variants
 
 | ID | Present In | Purpose |
 |----|-----------|---------|
-| `energyLevel` | All 10 | Universal metabolic signal (slider 1-10) |
-| `coldExtremities` | 8 of 10 (not thyroid, not skin) | Thyroid/metabolic rate indicator |
-| `typicalEating` | All 10 | Diet evaluation (free text) |
-| `healthGoals` | All 10 | Personalization anchor (free text, variant-specific question) |
-| `digestiveIssues` | 7 of 10 (not gut) | Cross-system gut signal (varies: yes_no or multi_select) |
+| `energyLevel` | All 11 | Universal metabolic signal (slider 1-10) |
+| `coldExtremities` | 9 of 11 (not thyroid, not skin) | Thyroid/metabolic rate indicator |
+| `typicalEating` | All 11 | Diet evaluation (free text) |
+| `healthGoals` | All 11 | Personalization anchor (free text, variant-specific question) |
+| `digestiveIssues` | 8 of 11 (not gut) | Cross-system gut signal (varies: yes_no or multi_select) |
 
 ### Design Decisions
 
@@ -192,8 +194,8 @@ Cross-system questions are the key differentiator. They reveal *why* the primary
 ### Verified Working
 
 - TypeScript compiles clean
-- Next.js builds 23 static pages (was 13 before Phase 2)
-- All 11 variant routes pre-rendered via `generateStaticParams`
+- Next.js builds 25 static pages (was 13 before Phase 2)
+- All 12 variant routes pre-rendered via `generateStaticParams`
 - Post-implementation review: zero blocking issues across all configs
 
 ---
@@ -243,7 +245,7 @@ Each variant now has an intro screen before question 1. Displays `headline` and 
 
 ### Landing Page at `/quiz`
 
-`/quiz` is now a landing page (server component) showing all 11 variants as a card grid. Each card shows variant name + subtitle and links to `/quiz/{slug}`. Replaced the old redirect to `/quiz/root-cause`. Route flow: `/` → `/quiz` (landing) → click card → `/quiz/{slug}` (intro → quiz).
+`/quiz` is now a landing page (server component) showing all 12 variants as a card grid. Each card shows variant name + subtitle and links to `/quiz/{slug}`. Replaced the old redirect to `/quiz/root-cause`. Route flow: `/` → `/quiz` (landing) → click card → `/quiz/{slug}` (intro → quiz).
 
 ### Deep Dive Knowledge Files
 
@@ -286,7 +288,7 @@ lib/quiz/
   schema.ts                         # Dynamic Zod schema builder
   formatAnswers.ts                  # Generic answer formatter for prompts
   variants/
-    index.ts                        # Variant registry (11 variants)
+    index.ts                        # Variant registry (12 variants)
     root-cause.ts                   # Root cause config
     gut.ts                          # Gut health
     fatigue.ts                      # Energy & fatigue
@@ -298,6 +300,7 @@ lib/quiz/
     weight.ts                       # Weight & body composition
     skin.ts                         # Skin health
     anxiety.ts                      # Anxiety & mood
+    allergies.ts                    # Allergies & immune
 
 components/quiz/
   quiz-wizard.tsx                   # Config-driven wizard engine

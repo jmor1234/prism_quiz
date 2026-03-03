@@ -12,6 +12,7 @@ import { brainFogConfig } from "./brain-fog";
 import { weightConfig } from "./weight";
 import { skinConfig } from "./skin";
 import { anxietyConfig } from "./anxiety";
+import { allergiesConfig } from "./allergies";
 
 const variants: Record<string, VariantConfig> = {
   "root-cause": rootCauseConfig,
@@ -25,6 +26,7 @@ const variants: Record<string, VariantConfig> = {
   "weight": weightConfig,
   "skin": skinConfig,
   "anxiety": anxietyConfig,
+  "allergies": allergiesConfig,
 };
 
 export function getVariant(slug: string): VariantConfig | undefined {

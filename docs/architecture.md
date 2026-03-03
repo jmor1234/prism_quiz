@@ -56,7 +56,7 @@ app/quiz/page.tsx                    Server component — landing page
 
 app/quiz/[variant]/page.tsx          Server component
   └─ generateMetadata()              Per-variant SEO (title, description, OG)
-  └─ generateStaticParams()          Pre-renders all 11 variant routes
+  └─ generateStaticParams()          Pre-renders all 12 variant routes
   └─ Strips server-only fields       promptOverlay, description, ogImage
   └─ QuizClient                      "use client" boundary
        └─ QuizWizard                 Core engine — takes VariantConfig
@@ -210,7 +210,7 @@ getAllVariants()          → VariantConfig[]
 getAllVariantSlugs()      → string[]
 ```
 
-11 variants registered: `root-cause`, `gut`, `fatigue`, `hormones-women`, `testosterone`, `sleep`, `thyroid`, `brain-fog`, `weight`, `skin`, `anxiety`.
+12 variants registered: `root-cause`, `gut`, `fatigue`, `hormones-women`, `testosterone`, `sleep`, `thyroid`, `brain-fog`, `weight`, `skin`, `anxiety`, `allergies`.
 
 ---
 
@@ -279,7 +279,7 @@ lib/
 │   ├── schema.ts                       Dynamic Zod schema builder
 │   ├── formatAnswers.ts                Answer formatter for prompts
 │   └── variants/
-│       ├── index.ts                    Registry (11 variants)
+│       ├── index.ts                    Registry (12 variants)
 │       ├── root-cause.ts
 │       ├── gut.ts
 │       ├── fatigue.ts
@@ -290,7 +290,8 @@ lib/
 │       ├── brain-fog.ts
 │       ├── weight.ts
 │       ├── skin.ts
-│       └── anxiety.ts
+│       ├── anxiety.ts
+│       └── allergies.ts
 ├── pdf/
 │   ├── generatePdf.ts                  Puppeteer PDF generation
 │   ├── markdownToHtml.ts              Remark/rehype pipeline
