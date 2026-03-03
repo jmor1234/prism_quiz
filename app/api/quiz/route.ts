@@ -36,8 +36,12 @@ export async function POST(req: Request) {
     let answers: Record<string, unknown>;
 
     if (existingSubmissionId) {
-      // Retry case: use stored submission data
-      const existing = await getQuizSubmission(existingSubmissionId);
+      // Retry case: fetch submission and result in parallel
+      const [existing, existingResult] = await Promise.all([
+        getQuizSubmission(existingSubmissionId),
+        getQuizResult(existingSubmissionId),
+      ]);
+
       if (!existing) {
         return new Response(
           JSON.stringify({ error: "Submission not found" }),
@@ -46,7 +50,6 @@ export async function POST(req: Request) {
       }
 
       // Check if result already exists (avoid re-generation)
-      const existingResult = await getQuizResult(existingSubmissionId);
       if (existingResult) {
         console.log(
           `[Quiz] Returning existing result for: ${existingSubmissionId}`

@@ -16,26 +16,19 @@ async function loadKnowledge() {
   if (!knowledgeBase || !questionnaireGuide || !dietLifestyleGuide || !metabolismDeepDive || !gutDeepDive) {
     const knowledgeDir = path.join(process.cwd(), "lib", "knowledge");
 
-    knowledgeBase = await fs.readFile(
-      path.join(knowledgeDir, "knowledge.md"),
-      "utf-8"
-    );
-    questionnaireGuide = await fs.readFile(
-      path.join(knowledgeDir, "questionaire.md"),
-      "utf-8"
-    );
-    dietLifestyleGuide = await fs.readFile(
-      path.join(knowledgeDir, "diet_lifestyle_standardized.md"),
-      "utf-8"
-    );
-    metabolismDeepDive = await fs.readFile(
-      path.join(knowledgeDir, "metabolism_deep_dive.md"),
-      "utf-8"
-    );
-    gutDeepDive = await fs.readFile(
-      path.join(knowledgeDir, "gut_deep_dive.md"),
-      "utf-8"
-    );
+    const [kb, qg, dl, md, gd] = await Promise.all([
+      fs.readFile(path.join(knowledgeDir, "knowledge.md"), "utf-8"),
+      fs.readFile(path.join(knowledgeDir, "questionaire.md"), "utf-8"),
+      fs.readFile(path.join(knowledgeDir, "diet_lifestyle_standardized.md"), "utf-8"),
+      fs.readFile(path.join(knowledgeDir, "metabolism_deep_dive.md"), "utf-8"),
+      fs.readFile(path.join(knowledgeDir, "gut_deep_dive.md"), "utf-8"),
+    ]);
+
+    knowledgeBase = kb;
+    questionnaireGuide = qg;
+    dietLifestyleGuide = dl;
+    metabolismDeepDive = md;
+    gutDeepDive = gd;
   }
   return { knowledgeBase, questionnaireGuide, dietLifestyleGuide, metabolismDeepDive, gutDeepDive };
 }

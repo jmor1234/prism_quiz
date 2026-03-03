@@ -8,17 +8,17 @@ Transform the Prism quiz from a single hardcoded health assessment into a config
 
 | Slug | Name | Status |
 |------|------|--------|
-| `root-cause` | Root Cause Assessment | Live (migrated from original) |
-| `gut` | Gut Health Assessment | Built -- ready to test |
-| `fatigue` | Energy & Fatigue Assessment | Built -- ready to test |
-| `hormones-women` | Women's Hormonal Assessment | Built -- ready to test |
-| `testosterone` | Men's Hormone & Performance Assessment | Built -- ready to test |
-| `sleep` | Sleep Assessment | Built -- ready to test |
-| `thyroid` | Thyroid & Metabolism Assessment | Built -- ready to test |
-| `brain-fog` | Brain Fog & Cognitive Assessment | Built -- ready to test |
-| `weight` | Weight & Body Composition Assessment | Built -- ready to test |
-| `skin` | Skin Health Assessment | Built -- ready to test |
-| `anxiety` | Anxiety & Mood Assessment | Built -- ready to test |
+| `root-cause` | Root Cause Assessment | Live |
+| `gut` | Gut Health Assessment | Live |
+| `fatigue` | Energy & Fatigue Assessment | Live |
+| `hormones-women` | Women's Hormonal Assessment | Live |
+| `testosterone` | Men's Hormone & Performance Assessment | Live |
+| `sleep` | Sleep Assessment | Live |
+| `thyroid` | Thyroid & Metabolism Assessment | Live |
+| `brain-fog` | Brain Fog & Cognitive Assessment | Live |
+| `weight` | Weight & Body Composition Assessment | Live |
+| `skin` | Skin Health Assessment | Live |
+| `anxiety` | Anxiety & Mood Assessment | Live |
 
 All 11 variants build clean, generate static pages, and are accessible at `/quiz/{slug}`.
 
@@ -235,13 +235,44 @@ Phase 3 made the admin system fully config-driven and added variant filtering. L
 
 ---
 
+## Post-Phase Work -- COMPLETE
+
+### Quiz Intro Screen
+
+Each variant now has an intro screen before question 1. Displays `headline` and `subtitle` from the variant config with a "Start Assessment" button. Implemented as a `started` boolean state in the wizard -- no changes to step numbering or progress bar. Back from question 1 returns to intro. Returning users with localStorage data skip the intro automatically.
+
+### Landing Page at `/quiz`
+
+`/quiz` is now a landing page (server component) showing all 11 variants as a card grid. Each card shows variant name + subtitle and links to `/quiz/{slug}`. Replaced the old redirect to `/quiz/root-cause`. Route flow: `/` → `/quiz` (landing) → click card → `/quiz/{slug}` (intro → quiz).
+
+### Deep Dive Knowledge Files
+
+Two additional knowledge files injected into the LLM system prompt:
+- `metabolism_deep_dive.md` -- biochemical depth on energy metabolism
+- `gut_deep_dive.md` -- mechanistic depth on gut health
+
+Injected with explicit framing: "use it to think, not to quote" -- the agent internalizes the mechanisms for reasoning, not retrieval.
+
+### Performance Optimizations
+
+- Knowledge file loading parallelized with `Promise.all` (was 5 sequential reads)
+- Retry flow parallelized (`getQuizSubmission` + `getQuizResult` in parallel)
+- Server-only fields (`promptOverlay`, `description`, `ogImage`) stripped before passing to client component
+- Mobile responsiveness fixes: textarea font-size 16px (prevents iOS zoom), slider thumb enlarged, slider labels repositioned, safe area insets on sticky header
+- Web guidelines compliance: `color-scheme` on html, `theme-color` meta, `aria-hidden` on decorative SVGs, specific CSS transitions (no `transition-all`)
+
+### Production Storage
+
+Upstash Redis configured in production via `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` environment variables on Vercel. Filesystem fallback for local dev. Tested and verified working.
+
+---
+
 ## What Remains (Future)
 
 ### Possible Enhancements
 
 - [ ] Per-variant OG images (infrastructure supports it -- just needs design assets + `ogImage` field set in each config)
 - [ ] Analytics: conversion tracking per variant (external configuration)
-- [ ] Variant landing/index page at `/quiz` showing all available quizzes
 - [ ] Email capture with per-variant toggle
 - [ ] Name step position configurable per-variant (first vs last)
 
@@ -284,7 +315,7 @@ components/quiz/
     name-step.tsx
 
 app/quiz/
-  page.tsx                          # Redirect to /quiz/root-cause
+  page.tsx                          # Landing page (card grid of all variants)
   [variant]/page.tsx                # Dynamic route (server component)
 
 app/api/quiz/
@@ -307,10 +338,12 @@ server/
 lib/
   quizStorage.ts                    # Variant-scoped localStorage (v2)
   utmStorage.ts                     # UTM tracking
-  knowledge/                        # Shared knowledge files
-    knowledge.md
-    questionaire.md
-    diet_lifestyle_standardized.md
+  knowledge/                        # Shared knowledge files (all injected into LLM prompt)
+    knowledge.md                    # Bioenergetic health model
+    questionaire.md                 # Symptom interpretation guide
+    diet_lifestyle_standardized.md  # Diet/lifestyle framework
+    metabolism_deep_dive.md         # Energy metabolism deep dive (reasoning framework)
+    gut_deep_dive.md                # Gut health deep dive (reasoning framework)
 ```
 
 ---
@@ -319,7 +352,7 @@ lib/
 
 The system works because of a deliberate asymmetry: **deep shared knowledge, thin variant-specific data, constrained output**.
 
-The three knowledge files (bioenergetic model, symptom interpretation, diet/lifestyle framework) are shared across all variants. They give the agent enough theoretical depth to reason about any health condition. The variant config provides:
+Five knowledge files are shared across all variants. Three provide the interpretive lens (bioenergetic model, symptom interpretation, diet/lifestyle framework). Two provide deep mechanistic reasoning frameworks (energy metabolism, gut health) with explicit framing to internalize principles rather than reproduce content. They give the agent enough theoretical depth to reason about any health condition. The variant config provides:
 - **Questions** that collect the right data points for this condition
 - **Prompt overlay** that steers the agent's pattern recognition toward the relevant mechanisms
 - **UI copy** that speaks to the prospect's specific concern

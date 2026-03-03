@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono, Inter, Libre_Baskerville } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/ui/theme-provider";
@@ -26,10 +26,17 @@ const libreBaskerville = Libre_Baskerville({
   display: 'swap',
 });
 
+export const viewport: Viewport = {
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
+    { media: "(prefers-color-scheme: dark)", color: "#262624" },
+  ],
+};
+
 export const metadata: Metadata = {
   title: "Prism Assessment Quiz",
   description: "Trace health symptoms to root causes through energy metabolism, gut health, and stress cascades",
-  metadataBase: new URL("https://prism-questions.vercel.app"),
+  metadataBase: new URL("https://prism-quiz.vercel.app"),
   openGraph: {
     title: "Prism Assessment Quiz",
     description: "Trace health symptoms to root causes through energy metabolism, gut health, and stress cascades",
@@ -59,7 +66,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning style={{ colorScheme: "dark light" }}>
       <body
         className={`${geistSans.variable} ${geistMono.variable} ${inter.variable} ${libreBaskerville.variable} antialiased`}
       >

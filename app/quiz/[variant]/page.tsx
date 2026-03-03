@@ -34,5 +34,20 @@ export default async function QuizVariantPage({ params }: Props) {
   const config = getVariant(slug);
   if (!config) notFound();
 
-  return <QuizClient variant={config} />;
+  // Pass only client-needed fields to minimize serialized props
+  const clientConfig: typeof config = {
+    slug: config.slug,
+    name: config.name,
+    description: "",
+    questions: config.questions,
+    nameField: config.nameField,
+    headline: config.headline,
+    subtitle: config.subtitle,
+    resultBanner: config.resultBanner,
+    ctaText: config.ctaText,
+    ctaUrl: config.ctaUrl,
+    promptOverlay: "",
+  };
+
+  return <QuizClient variant={clientConfig} />;
 }

@@ -18,22 +18,23 @@ export function SliderQuestion({
       <h2 className={questionClass}>{config.question}</h2>
       {config.hint && <p className={hintClass}>{config.hint}</p>}
       <div className="space-y-4">
-        <div className="flex items-center gap-4">
-          <span className="text-xs text-muted-foreground w-16">
-            {config.lowLabel}
-          </span>
+        <div className="space-y-2">
           <Slider
             value={[value]}
             onValueChange={([v]) => onChange(v)}
             min={config.min}
             max={config.max}
             step={1}
-            className="flex-1"
             aria-label={config.question}
           />
-          <span className="text-xs text-muted-foreground w-16 text-right">
-            {config.highLabel}
-          </span>
+          <div className="flex justify-between">
+            <span className="text-sm text-muted-foreground">
+              {config.lowLabel}
+            </span>
+            <span className="text-sm text-muted-foreground">
+              {config.highLabel}
+            </span>
+          </div>
         </div>
         <div className="flex justify-center">
           <div className="relative inline-block">

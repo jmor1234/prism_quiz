@@ -43,19 +43,24 @@ POST /api/quiz { variant, name, answers }
 
 ```
 /                           → redirect to /quiz (via next.config)
-/quiz                       → redirect to /quiz/root-cause (307)
-/quiz/[variant]             → quiz page (server component → client wizard)
+/quiz                       → landing page (card grid of all variants)
+/quiz/[variant]             → intro screen → quiz wizard (server component → client)
 /admin/results              → password-protected admin dashboard
 ```
 
 ### Component Hierarchy
 
 ```
+app/quiz/page.tsx                    Server component — landing page
+  └─ getAllVariants()                Card grid linking to each /quiz/{slug}
+
 app/quiz/[variant]/page.tsx          Server component
   └─ generateMetadata()              Per-variant SEO (title, description, OG)
   └─ generateStaticParams()          Pre-renders all 11 variant routes
+  └─ Strips server-only fields       promptOverlay, description, ogImage
   └─ QuizClient                      "use client" boundary
        └─ QuizWizard                 Core engine — takes VariantConfig
+            ├─ IntroScreen           Headline + subtitle + Start button (before questions)
             ├─ QuestionStep          Dispatcher → routes to type-specific component
             │   ├─ SliderQuestion        Range slider with value display
             │   ├─ YesNoQuestion         Toggle + optional conditional follow-up
@@ -72,7 +77,8 @@ app/quiz/[variant]/page.tsx          Server component
 The central state machine. Driven entirely by `VariantConfig`:
 
 - **State:** `answers: Record<string, unknown>` initialized from config via `buildInitialAnswers()`
-- **Navigation:** step counter, total = `questions.length + 1` (questions + name)
+- **Intro:** `started` boolean — shows headline/subtitle/Start before questions begin
+- **Navigation:** step counter, total = `questions.length + 1` (questions + name); back from step 0 returns to intro
 - **Validation:** per-type via `isQuestionValid()` — gates the Next button
 - **Submit:** POST `{ variant, name, answers }` to `/api/quiz`
 - **Retry:** if submission fails, stores `submissionId` in localStorage for retry
@@ -108,17 +114,22 @@ POST /api/admin/results/pdf       Generate admin PDF export (config-driven)
 System Prompt
 ├── Context (Prism identity, bioenergetic lens)
 ├── Knowledge Foundation
-│   ├── <bioenergetic_knowledge>      knowledge.md
-│   ├── <symptom_interpretation>      questionaire.md
-│   └── <diet_lifestyle>              diet_lifestyle_standardized.md
-├── Condition-Specific Guidance       variant.promptOverlay (when non-empty)
-├── Client's Quiz Answers             formatAnswers(variant, name, answers)
+│   ├── <bioenergetic_knowledge>         knowledge.md
+│   ├── <symptom_interpretation>         questionaire.md
+│   └── <diet_lifestyle>                 diet_lifestyle_standardized.md
+├── Deep Mechanistic Framework
+│   ├── <energy_metabolism_framework>    metabolism_deep_dive.md
+│   └── <gut_health_framework>          gut_deep_dive.md
+├── Condition-Specific Guidance          variant.promptOverlay (when non-empty)
+├── Client's Quiz Answers                formatAnswers(variant, name, answers)
 ├── Task Instructions
 ├── Output Format
 └── Constraints
 ```
 
-The three knowledge files are shared across all variants. The `promptOverlay` steers interpretation toward condition-specific mechanisms. `formatAnswers()` uses `promptLabel` fields from the config for concise, LLM-readable output.
+Five knowledge files are shared across all variants. The first three provide the interpretive lens. The two deep dives provide mechanistic reasoning frameworks — injected with explicit framing ("use it to think, not to quote") so the LLM internalizes principles rather than regurgitating content. All five are loaded in parallel via `Promise.all` and cached after first load.
+
+The `promptOverlay` steers interpretation toward condition-specific mechanisms. `formatAnswers()` uses `promptLabel` fields from the config for concise, LLM-readable output.
 
 ### Storage
 
@@ -212,7 +223,7 @@ app/
 ├── page.tsx                            Root redirect
 ├── error.tsx                           Error boundary
 ├── quiz/
-│   ├── page.tsx                        Redirect → /quiz/root-cause
+│   ├── page.tsx                        Landing page (card grid of all variants)
 │   └── [variant]/
 │       └── page.tsx                    Server component (metadata + static params)
 ├── admin/
@@ -288,7 +299,9 @@ lib/
 ├── knowledge/
 │   ├── knowledge.md                    Bioenergetic health model
 │   ├── questionaire.md                 Symptom interpretation guide
-│   └── diet_lifestyle_standardized.md  Diet/lifestyle framework
+│   ├── diet_lifestyle_standardized.md  Diet/lifestyle framework
+│   ├── metabolism_deep_dive.md         Energy metabolism reasoning framework
+│   └── gut_deep_dive.md               Gut health reasoning framework
 ├── quizStorage.ts                      Variant-scoped localStorage
 ├── utmStorage.ts                       UTM parameter capture
 └── utils.ts                            cn() helper
