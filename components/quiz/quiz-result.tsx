@@ -90,6 +90,10 @@ export function QuizResult({
             </div>
           </motion.div>
 
+          <p className="text-sm text-blue-600 dark:text-blue-400 text-center underline italic font-semibold">
+            Underlined text links to cited research sources and will open in a new tab.
+          </p>
+
           {/* Content area */}
           <motion.div
             initial={shouldReduceMotion ? {} : { opacity: 0, y: 20 }}

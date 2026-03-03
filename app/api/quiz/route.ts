@@ -1,7 +1,8 @@
 // app/api/quiz/route.ts
 
 import { anthropic } from "@ai-sdk/anthropic";
-import { generateText } from "ai";
+import { generateText, stepCountIs } from "ai";
+import { quizTools } from "./tools";
 
 import { getVariant } from "@/lib/quiz/variants";
 import { buildSubmissionSchema } from "@/lib/quiz/schema";
@@ -9,8 +10,8 @@ import { upsertQuizSubmission, getQuizSubmission } from "@/server/quizSubmission
 import { saveQuizResult, getQuizResult } from "@/server/quizResults";
 import { buildQuizPrompt } from "./systemPrompt";
 
-// 60 seconds max - quiz should be fast
-export const maxDuration = 60;
+// 120 seconds — tool calls (evidence retrieval) add latency
+export const maxDuration = 120;
 
 export async function POST(req: Request) {
   let recordId: string | undefined;
@@ -120,18 +121,56 @@ export async function POST(req: Request) {
       throw new Error(`Variant config not found for: ${variant}`);
     }
 
-    // Build system prompt with knowledge + answers
-    const messages = await buildQuizPrompt(variantConfig, name, answers);
+    // Build system prompt + user message
+    const { system, userMessage } = await buildQuizPrompt(variantConfig, name, answers);
 
-    // Generate report
-    console.log(`[Quiz] Starting generation for: ${recordId}`);
+    // Generate report with evidence tools
+    console.log(`[Quiz] Starting generation for: ${recordId} (variant: ${variant})`);
+    const genStart = Date.now();
 
     const result = await generateText({
       model: anthropic("claude-opus-4-6"),
-      messages,
+      system,
+      messages: [{ role: "user" as const, content: userMessage }],
+      tools: quizTools,
+      stopWhen: stepCountIs(5),
+      providerOptions: {
+        anthropic: {
+          thinking: { type: "adaptive" },
+          effort: "low",
+          contextManagement: {
+            edits: [
+              {
+                type: "clear_thinking_20251015",
+                keep: "all",
+              },
+            ],
+          },
+        },
+      },
     });
 
-    console.log(`[Quiz] Generation complete for: ${recordId}`);
+    // Log tool usage summary
+    const genMs = Date.now() - genStart;
+    const toolCounts: Record<string, number> = {};
+    let totalToolTokens = 0;
+    for (const step of result.steps) {
+      for (const tc of step.toolCalls) {
+        toolCounts[tc.toolName] = (toolCounts[tc.toolName] ?? 0) + 1;
+      }
+      for (const tr of step.toolResults) {
+        totalToolTokens += Math.round(JSON.stringify(tr).length / 4);
+      }
+    }
+    const toolSummary = Object.entries(toolCounts)
+      .map(([name, count]) => `${count} ${name}`)
+      .join(" + ");
+    console.log(
+      `[Quiz] Complete: ${recordId} · ${toolSummary || "no tools"} · ~${totalToolTokens} tok to agent · ${result.steps.length} steps`
+    );
+    console.log(
+      `[Quiz] Tokens: in: ${result.usage.inputTokens} · out: ${result.usage.outputTokens} · ${(genMs / 1000).toFixed(1)}s`
+    );
 
     // Save result
     await saveQuizResult({

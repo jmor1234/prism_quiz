@@ -4,7 +4,7 @@
 
 A config-driven health assessment platform. Users take condition-specific quizzes, an LLM analyzes their answers through a bioenergetic framework, and a personalized assessment drives consultation bookings.
 
-**Stack:** Next.js 15 (App Router), TypeScript, TailwindCSS v4, Framer Motion, Claude Opus 4.6, Upstash Redis, Puppeteer (PDF)
+**Stack:** Next.js 15 (App Router), TypeScript, TailwindCSS v4, Framer Motion, Claude Opus 4.6, AI SDK v6, Exa (semantic search), Upstash Redis, Puppeteer (PDF)
 
 ---
 
@@ -27,12 +27,14 @@ POST /api/quiz { variant, name, answers }
     │
     ├─► Validate against dynamic Zod schema (built from config)
     ├─► Save submission to Redis/filesystem
-    ├─► Build prompt: knowledge base + prompt overlay + formatted answers
-    ├─► Call Claude Opus 4.6
+    ├─► Build system prompt (knowledge + instructions) + user message (answers)
+    ├─► Call Claude Opus 4.6 with evidence tools (search + read)
+    │     └─► Agent searches Exa for research, optionally reads sources
+    │         └─► Up to 5 agentic steps (tool calls + final generation)
     └─► Return { id, report }
             │
             ▼
-    QuizResult renders markdown assessment + booking CTA + PDF download
+    QuizResult renders markdown assessment with inline citations + booking CTA + PDF download
 ```
 
 ---
@@ -110,9 +112,11 @@ POST /api/admin/results/pdf       Generate admin PDF export (config-driven)
 
 ### Prompt Architecture
 
+The prompt is split into a **system message** and a **user message**. The system message contains all stable context (knowledge, instructions, tools guidance). The user message contains only the quiz answers. This split enables Anthropic prompt caching across the multi-step tool loop: the ~84KB system message caches after step 1 and reads at 10% cost on subsequent steps.
+
 ```
-System Prompt
-├── Context (Prism identity, bioenergetic lens)
+System Message
+├── Context (Prism identity as evidence-based practice)
 ├── Knowledge Foundation
 │   ├── <bioenergetic_knowledge>         knowledge.md
 │   ├── <symptom_interpretation>         questionaire.md
@@ -121,15 +125,46 @@ System Prompt
 │   ├── <energy_metabolism_framework>    metabolism_deep_dive.md
 │   └── <gut_health_framework>          gut_deep_dive.md
 ├── Condition-Specific Guidance          variant.promptOverlay (when non-empty)
-├── Client's Quiz Answers                formatAnswers(variant, name, answers)
 ├── Task Instructions
+├── Evidence Guidance                    Why to cite, format, source quality, fabrication rule
 ├── Output Format
+├── Closing Guidance
 └── Constraints
+
+User Message
+└── Client's Quiz Answers                formatAnswers(variant, name, answers)
 ```
 
-Five knowledge files are shared across all variants. The first three provide the interpretive lens. The two deep dives provide mechanistic reasoning frameworks — injected with explicit framing ("use it to think, not to quote") so the LLM internalizes principles rather than regurgitating content. All five are loaded in parallel via `Promise.all` and cached after first load.
+Five knowledge files are shared across all variants. The first three provide the interpretive lens. The two deep dives provide mechanistic reasoning frameworks -- injected with explicit framing ("use it to think, not to quote") so the LLM internalizes principles rather than regurgitating content. All five are loaded in parallel via `Promise.all` and cached after first load.
 
 The `promptOverlay` steers interpretation toward condition-specific mechanisms. `formatAnswers()` uses `promptLabel` fields from the config for concise, LLM-readable output.
+
+### Evidence Tools
+
+Two tools built on Exa's semantic search API give the agent real-time access to scientific literature during assessment generation. Prism is an evidence-based brand -- inline citations ground the agent's bioenergetic reasoning in real research.
+
+```
+Tools (passed to generateText)
+├── search    Exa semantic search, 3 results with highlights, category: research paper
+└── read      Exa focused excerpts from a known URL, query-filtered highlights
+```
+
+**Separation of concerns:**
+- **System prompt** (`# Evidence` section): why to cite, citation format (`[phrase](URL)`), source quality (peer-reviewed only), fabrication rule
+- **Tool descriptions**: how each tool works, when to use each, operational guidance (e.g., parallel calls for different angles)
+- No overlap between prompt and tool descriptions
+
+**Agent configuration** (`generateText` in `route.ts`):
+- Model: Claude Opus 4.6
+- Tools: search + read (Exa-backed)
+- Steps: up to 5 (`stopWhen: stepCountIs(5)`)
+- Thinking: adaptive (model decides per-step), low effort (knowledge base does the heavy lifting)
+- Context management: keep all thinking blocks across steps
+- Max duration: 120s (tool calls add latency)
+
+**Tool logging:**
+- Each tool logs query, results, latency, and estimated tokens on execution
+- Route logs a post-generation summary: tool counts, total tokens injected, step count, input/output tokens, wall-clock duration
 
 ### Storage
 
@@ -231,8 +266,9 @@ app/
 │       └── page.tsx                    Config-driven admin dashboard (client component)
 └── api/
     ├── quiz/
-    │   ├── route.ts                    Submission + LLM generation
-    │   ├── systemPrompt.ts             Prompt builder
+    │   ├── route.ts                    Submission + LLM generation (with tools)
+    │   ├── tools.ts                    Exa client + search/read tool definitions + logging
+    │   ├── systemPrompt.ts             System/user message builder
     │   ├── result/route.ts             Result retrieval
     │   └── pdf/
     │       ├── route.ts                User PDF generation

@@ -269,6 +269,61 @@ Upstash Redis configured in production via `UPSTASH_REDIS_REST_URL` and `UPSTASH
 
 ---
 
+## Evidence-Based Citations -- COMPLETE
+
+Added real-time evidence retrieval via Exa's semantic search API. The agent now searches for and cites primary scientific sources inline during assessment generation.
+
+### What Was Built
+
+**Evidence tools** (`app/api/quiz/tools.ts`)
+- `search` tool: Exa semantic search, 3 results with highlights, `category: 'research paper'`
+- `read` tool: Exa focused excerpts from a known URL, query-filtered
+- Shared Exa client with promise-chained rate limiter (10 QPS)
+- Per-tool logging: query, results, latency, estimated tokens
+
+**Prompt restructure** (`app/api/quiz/systemPrompt.ts`)
+- Split from single user message to **system message** (knowledge + instructions) + **user message** (quiz answers only)
+- System message enables Anthropic prompt caching across multi-step tool loop
+- Added `# Evidence` section: why to cite, citation format (`[phrase](URL)`), source quality (peer-reviewed only), fabrication rule
+- Added evidence-based identity to Context: "an evidence-based bioenergetic health practice"
+- Removed "Do NOT include citations" from constraints
+- Removed all em dashes from the prompt itself
+
+**Route changes** (`app/api/quiz/route.ts`)
+- Tools passed to `generateText` with `stopWhen: stepCountIs(5)`
+- Adaptive thinking (model decides per-step), low effort
+- Context management: keep all thinking blocks across steps
+- `maxDuration` bumped from 60s to 120s
+- Post-generation logging: tool counts, tokens injected, step count, input/output tokens, duration
+
+**AI SDK upgrade**
+- Upgraded from AI SDK v5 (`ai: ^5.0.39`) to v6 (`ai: ^6.0.0`)
+- All provider packages bumped to v3 (`@ai-sdk/anthropic`, `@ai-sdk/google`, `@ai-sdk/openai`, `@ai-sdk/react`)
+- Zero code changes needed for the migration
+
+**Citation hint in UI** (`components/quiz/quiz-result.tsx`)
+- Small styled note between success banner and assessment content
+- Mirrors citation styling (blue, underlined, italic) to orient users
+
+### Design Principles
+
+- **Prompt = global intent** (why to cite, quality constraints, citation style)
+- **Tool descriptions = behavioral contract** (how each tool works, when to use each)
+- **No overlap** between prompt and tool descriptions
+- Evidence serves the bioenergetic framework, it does not override it
+- Citations woven into natural prose, not academic references
+
+### What Did NOT Change
+
+- Frontend markdown rendering (Streamdown already renders `[text](url)` as clickable links)
+- PDF pipeline (remark/rehype converts markdown links to `<a>` tags)
+- exa-js version (v1.9.3 has everything needed)
+- Knowledge file loading (same 5 files, same caching)
+- Variant configs (no changes to any variant)
+- Storage, admin, retry flow
+
+---
+
 ## What Remains (Future)
 
 ### Possible Enhancements
@@ -322,8 +377,9 @@ app/quiz/
   [variant]/page.tsx                # Dynamic route (server component)
 
 app/api/quiz/
-  route.ts                          # Variant-aware submission endpoint
-  systemPrompt.ts                   # Prompt builder with overlay support
+  route.ts                          # Submission + LLM generation (with tools)
+  tools.ts                          # Exa client + search/read tool definitions + logging
+  systemPrompt.ts                   # System/user message builder
 
 app/admin/results/
   page.tsx                          # Config-driven admin dashboard

@@ -1,0 +1,27 @@
+{
+  "id": "7101cba4-c6b4-4ffb-ad28-6aac0cdf6a47",
+  "createdAt": "2026-03-03T20:33:13.732Z",
+  "variant": "fatigue",
+  "name": "Ryan",
+  "answers": {
+    "energyLevel": 5,
+    "energyPattern": "all_day",
+    "crashAfterEating": true,
+    "difficultyWaking": false,
+    "exerciseTolerance": false,
+    "coldExtremities": true,
+    "digestiveIssues": [
+      "bloating",
+      "constipation",
+      "diarrhea",
+      "food_sensitivities"
+    ],
+    "brainFog": true,
+    "sleepQuality": {
+      "answer": false,
+      "followUp": []
+    },
+    "typicalEating": "Cereal or nothing for breakfast. Work through lunch, maybe a protein bar. Large dinner, often late. Snacks throughout the evening.",
+    "healthGoals": "Sleep through the night without waking up. Feel sharper at work. Less brain fog."
+  }
+}
