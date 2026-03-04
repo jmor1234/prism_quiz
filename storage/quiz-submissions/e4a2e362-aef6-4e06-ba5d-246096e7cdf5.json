@@ -1,0 +1,22 @@
+{
+  "id": "e4a2e362-aef6-4e06-ba5d-246096e7cdf5",
+  "createdAt": "2026-03-04T21:17:46.193Z",
+  "variant": "weight",
+  "name": "Jess",
+  "answers": {
+    "weightStruggle": "regain",
+    "weightDistribution": "all_over",
+    "dietHistory": [
+      "calorie_counting",
+      "fasting"
+    ],
+    "appetite": "normal",
+    "puffinessRetention": true,
+    "energyLevel": 8,
+    "coldExtremities": false,
+    "digestiveIssues": true,
+    "stressAndSleep": "high_stress_ok_sleep",
+    "typicalEating": "Eggs and toast in the morning. Salad for lunch. Protein with rice and veggies for dinner. Snack on nuts and fruit.",
+    "healthGoals": "Feel like myself again. Used to have so much energy, now I'm always tired. Want to figure out what's wrong."
+  }
+}
