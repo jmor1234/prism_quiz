@@ -1,0 +1,35 @@
+{
+  "id": "05aa2ede-ae09-4972-aa81-5bbbb469527c",
+  "createdAt": "2026-03-04T20:39:54.760Z",
+  "variant": "skin",
+  "name": "Jessie",
+  "answers": {
+    "skinConditions": [
+      "eczema",
+      "rosacea",
+      "rashes"
+    ],
+    "skinOnset": "puberty",
+    "skinLocation": [
+      "chest_back",
+      "arms_legs",
+      "hands"
+    ],
+    "topicalHistory": [
+      "antibiotics",
+      "dietary_changes",
+      "probiotics"
+    ],
+    "digestiveIssues": [
+      "bloating",
+      "constipation",
+      "acid_reflux"
+    ],
+    "whiteTongue": false,
+    "foodSkinConnection": false,
+    "hormonalPattern": "not_applicable",
+    "energyLevel": 3,
+    "typicalEating": "Eggs and toast in the morning. Salad for lunch. Protein with rice and veggies for dinner. Snack on nuts and fruit.",
+    "healthGoals": "Improve gut health and reduce digestive issues. More mental clarity and focus."
+  }
+}

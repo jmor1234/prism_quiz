@@ -1,0 +1,26 @@
+{
+  "id": "40d143da-01fc-4b02-8124-2ecc4abd71c6",
+  "createdAt": "2026-03-04T20:12:28.423Z",
+  "variant": "thyroid",
+  "name": "Illya",
+  "answers": {
+    "thyroidSymptoms": [
+      "cold_sensitivity",
+      "weight_gain",
+      "brain_fog"
+    ],
+    "thyroidHistory": "never_tested",
+    "coldSensitivity": "always_cold",
+    "weightPattern": "slow_metabolism",
+    "hairSkinNails": [
+      "hair_thinning",
+      "brittle_nails"
+    ],
+    "energyPattern": "evening",
+    "digestiveIssues": true,
+    "stressLevel": false,
+    "dietType": "plant_based",
+    "typicalEating": "Smoothie for breakfast. Soup or sandwich for lunch. Home-cooked dinner with meat and vegetables. Lots of water, some wine at night.",
+    "healthGoals": "Improve gut health and reduce digestive issues. More mental clarity and focus."
+  }
+}

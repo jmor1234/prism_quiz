@@ -73,13 +73,14 @@ const searchTool = tool({
     const start = Date.now();
 
     const results = await rateLimited(async () => {
-      const response = await exa.searchAndContents(query, {
+      const response = await exa.search(query, {
         type: "auto",
         numResults: 3,
-        category: "research paper" as const,
-        highlights: {
-          highlightsPerUrl: 2,
-          numSentences: 3,
+        category: "research paper",
+        contents: {
+          highlights: {
+            maxCharacters: 1250,
+          },
         },
         ...(includeText && { includeText: [includeText] }),
         ...(excludeText && { excludeText: [excludeText] }),
@@ -135,8 +136,7 @@ const readTool = tool({
       const response = await exa.getContents([url], {
         highlights: {
           query,
-          highlightsPerUrl: 3,
-          numSentences: 4,
+          maxCharacters: 10_000,
         },
       });
 

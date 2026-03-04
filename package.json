@@ -35,7 +35,7 @@
     "clsx": "^2.1.1",
     "dexie": "^4.2.0",
     "embla-carousel-react": "^8.6.0",
-    "exa-js": "^1.9.3",
+    "exa-js": "^2.7.0",
     "framer-motion": "^12.25.0",
     "lucide-react": "^0.543.0",
     "nanoid": "^5.1.5",

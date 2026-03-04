@@ -1,0 +1,26 @@
+{
+  "id": "3dbc0e16-0b2e-43ac-a1d7-56cb971a0830",
+  "createdAt": "2026-03-04T20:26:16.694Z",
+  "variant": "fatigue",
+  "name": "Alex",
+  "answers": {
+    "energyLevel": 1,
+    "energyPattern": "all_day",
+    "crashAfterEating": true,
+    "difficultyWaking": true,
+    "exerciseTolerance": true,
+    "coldExtremities": false,
+    "digestiveIssues": [
+      "acid_reflux"
+    ],
+    "brainFog": true,
+    "sleepQuality": {
+      "answer": true,
+      "followUp": [
+        "no_reason"
+      ]
+    },
+    "typicalEating": "Cereal or nothing for breakfast. Work through lunch, maybe a protein bar. Large dinner, often late. Snacks throughout the evening.",
+    "healthGoals": "Lose weight and feel less bloated. Want to have energy to exercise again."
+  }
+}

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { Calendar, CheckCircle2, FileDown } from "lucide-react";
+import { Calendar, CheckCircle2, FileDown, MessageSquare } from "lucide-react";
 import { motion, useReducedMotion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { buildBookingUrl } from "@/lib/utmStorage";
@@ -136,7 +136,28 @@ export function QuizResult({
               </a>
             </Button>
 
-            {/* Secondary - Download PDF */}
+            {/* Explore Further CTA */}
+            <Button
+              asChild
+              variant="outline"
+              className={cn(
+                "gap-2 h-12 px-6 text-base",
+                "border-[var(--quiz-gold)]/50 hover:border-[var(--quiz-gold)]",
+                "hover:bg-[var(--quiz-gold)]/10",
+                "transition-all duration-300 hover:-translate-y-0.5"
+              )}
+            >
+              <a href={`/explore/${result.id}`}>
+                <MessageSquare className="h-5 w-5" aria-hidden="true" />
+                Explore Your Results Further
+              </a>
+            </Button>
+            <p className="text-xs text-muted-foreground text-center max-w-xs">
+              Ask questions about your assessment and explore your health
+              patterns further
+            </p>
+
+            {/* Download PDF */}
             <Button
               variant="outline"
               onClick={downloadPdf}
