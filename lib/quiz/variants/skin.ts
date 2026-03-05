@@ -131,6 +131,13 @@ export const skinConfig: VariantConfig = {
       ],
     },
     {
+      id: "coldExtremities",
+      type: "yes_no",
+      question:
+        "Do you frequently feel cold, especially at your fingers, toes, or nose?",
+      promptLabel: "Frequently cold (extremities)",
+    },
+    {
       id: "typicalEating",
       type: "free_text",
       question: "Describe a typical day of eating for you",

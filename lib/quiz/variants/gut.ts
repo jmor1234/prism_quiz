@@ -18,6 +18,7 @@ export const gutConfig: VariantConfig = {
       options: [
         { value: "bloating", label: "Bloating" },
         { value: "gas", label: "Gas/flatulence" },
+        { value: "belching", label: "Belching" },
         { value: "abdominal_pain", label: "Abdominal pain" },
         { value: "diarrhea", label: "Diarrhea" },
         { value: "constipation", label: "Constipation" },

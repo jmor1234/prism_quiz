@@ -122,6 +122,13 @@ export const hormonesWomenConfig: VariantConfig = {
       promptLabel: "Frequently cold (extremities)",
     },
     {
+      id: "stressLevel",
+      type: "yes_no",
+      question:
+        "Would you say your life has been particularly stressful recently?",
+      promptLabel: "Recent significant stress",
+    },
+    {
       id: "typicalEating",
       type: "free_text",
       question: "Describe a typical day of eating for you",
