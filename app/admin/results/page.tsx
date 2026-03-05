@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { ChevronRight, LogOut, RefreshCw, Loader2, Download, Search, X, FileDown, Calendar, MessageSquare } from "lucide-react";
+import { ChevronRight, LogOut, RefreshCw, Loader2, Download, Search, X, FileDown, Calendar, MessageSquare, Sparkles } from "lucide-react";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 
 import { Button } from "@/components/ui/button";
@@ -31,6 +31,7 @@ interface EngagementRecord {
   quizId: string;
   events: EngagementEvent[];
   conversation: SerializedMessage[] | null;
+  summary: string | null;
   updatedAt: string;
 }
 
@@ -324,7 +325,15 @@ function EngagementBadges({ engagement }: { engagement: EngagementRecord | null 
   );
 }
 
-function EngagementSection({ engagement }: { engagement: EngagementRecord | null }) {
+function EngagementSection({
+  engagement,
+  onGenerateSummary,
+  isSummarizing,
+}: {
+  engagement: EngagementRecord | null;
+  onGenerateSummary: () => void;
+  isSummarizing: boolean;
+}) {
   if (!engagement) return null;
 
   const hasEvents = engagement.events.length > 0;
@@ -355,6 +364,41 @@ function EngagementSection({ engagement }: { engagement: EngagementRecord | null
               )}
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Conversation summary */}
+      {hasConversation && (
+        <div className="space-y-3">
+          <div className="flex items-center gap-3">
+            <h5 className="text-[11px] font-semibold text-foreground/50 uppercase tracking-[0.1em]">
+              Summary
+            </h5>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onGenerateSummary}
+              disabled={isSummarizing}
+              className="h-6 px-2 text-[10px] gap-1"
+            >
+              {isSummarizing ? (
+                <>
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                  Generating…
+                </>
+              ) : (
+                <>
+                  <Sparkles className="h-3 w-3" />
+                  {engagement.summary ? "Regenerate" : "Create Summary"}
+                </>
+              )}
+            </Button>
+          </div>
+          {engagement.summary && (
+            <div className="bg-card border rounded-lg p-4">
+              <Response variant="report">{engagement.summary}</Response>
+            </div>
+          )}
         </div>
       )}
 
@@ -398,6 +442,8 @@ function EntryRow({
   onToggle,
   onDownload,
   isDownloading,
+  onGenerateSummary,
+  isSummarizing,
   shouldReduceMotion,
 }: {
   entry: QuizEntry;
@@ -405,6 +451,8 @@ function EntryRow({
   onToggle: () => void;
   onDownload: () => void;
   isDownloading: boolean;
+  onGenerateSummary: () => void;
+  isSummarizing: boolean;
   shouldReduceMotion: boolean | null;
 }) {
   return (
@@ -490,7 +538,11 @@ function EntryRow({
                 <p className="text-sm text-muted-foreground italic">No assessment generated</p>
               )}
 
-              <EngagementSection engagement={entry.engagement} />
+              <EngagementSection
+                engagement={entry.engagement}
+                onGenerateSummary={onGenerateSummary}
+                isSummarizing={isSummarizing}
+              />
             </div>
           </motion.div>
         )}
@@ -513,6 +565,7 @@ export default function AdminResultsPage() {
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  const [summarizingId, setSummarizingId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [isSearching, setIsSearching] = useState(false);
@@ -662,6 +715,48 @@ export default function AdminResultsPage() {
       }
       return next;
     });
+  };
+
+  const handleGenerateSummary = async (quizId: string) => {
+    const savedPassword = sessionStorage.getItem("admin_password");
+    if (!savedPassword) return;
+
+    setSummarizingId(quizId);
+    setError(null);
+
+    try {
+      const response = await fetch("/api/admin/results/summary", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ quizId, key: savedPassword }),
+      });
+
+      if (response.status === 401) {
+        sessionStorage.removeItem("admin_password");
+        setAuthState("unauthenticated");
+        return;
+      }
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to generate summary");
+      }
+
+      const { summary } = await response.json();
+
+      // Update the entry's engagement in local state
+      setEntries((prev) =>
+        prev.map((e) =>
+          e.id === quizId && e.engagement
+            ? { ...e, engagement: { ...e.engagement, summary } }
+            : e
+        )
+      );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Summary generation failed");
+    } finally {
+      setSummarizingId(null);
+    }
   };
 
   const handleDownloadPdf = async (quizId: string) => {
@@ -881,6 +976,8 @@ export default function AdminResultsPage() {
                 onToggle={() => toggleExpanded(entry.id)}
                 onDownload={() => handleDownloadPdf(entry.id)}
                 isDownloading={downloadingId === entry.id}
+                onGenerateSummary={() => handleGenerateSummary(entry.id)}
+                isSummarizing={summarizingId === entry.id}
                 shouldReduceMotion={shouldReduceMotion}
               />
             </motion.div>

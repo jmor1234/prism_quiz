@@ -48,6 +48,7 @@ export interface EngagementRecord {
   quizId: string;
   events: EngagementEvent[];
   conversation: SerializedMessage[] | null;
+  summary: string | null;
   updatedAt: string;
 }
 
@@ -60,6 +61,7 @@ function createEmptyRecord(quizId: string): EngagementRecord {
     quizId,
     events: [],
     conversation: null,
+    summary: null,
     updatedAt: new Date().toISOString(),
   };
 }
@@ -138,6 +140,16 @@ export async function saveEngagementConversation(
 ): Promise<void> {
   const record = (await readRecord(quizId)) ?? createEmptyRecord(quizId);
   record.conversation = messages;
+  record.updatedAt = new Date().toISOString();
+  await writeRecord(record);
+}
+
+export async function saveEngagementSummary(
+  quizId: string,
+  summary: string
+): Promise<void> {
+  const record = (await readRecord(quizId)) ?? createEmptyRecord(quizId);
+  record.summary = summary;
   record.updatedAt = new Date().toISOString();
   await writeRecord(record);
 }
