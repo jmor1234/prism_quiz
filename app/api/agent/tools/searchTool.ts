@@ -42,7 +42,7 @@ export const searchTool = tool({
 
     const { results } = await searchExa(query, {
       numResults: 3,
-      category: null, // no category filter for conversational agent
+      category: "research paper",
       includeText,
       excludeText,
     });
