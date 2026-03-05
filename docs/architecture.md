@@ -203,7 +203,7 @@ After reading their assessment, users can continue into a multi-turn streaming c
 
 **Agent tools** (`app/api/agent/tools/`):
 ```
-├── search           Exa semantic search, 3 results, no category filter
+├── search           Exa semantic search, 3 results, category: research paper
 ├── read             Exa focused highlights from known URL
 └── extract_findings Exa full text → Gemini Flash structured extraction (depth tool)
 ```
