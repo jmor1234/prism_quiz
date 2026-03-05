@@ -142,6 +142,8 @@ export function QuizResult({
               {/* Go Deeper on Your Results */}
               <a
                 href={`/explore/${result.id}`}
+                target="_blank"
+                rel="noopener noreferrer"
                 onClick={() => trackEvent(result.id, "agent_opened", "assessment")}
                 className={cn(
                   "flex flex-col items-center gap-2 rounded-lg border p-5 text-center",

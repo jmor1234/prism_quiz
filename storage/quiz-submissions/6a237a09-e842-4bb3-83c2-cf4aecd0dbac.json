@@ -1,0 +1,25 @@
+{
+  "id": "6a237a09-e842-4bb3-83c2-cf4aecd0dbac",
+  "createdAt": "2026-03-05T14:39:47.153Z",
+  "variant": "fatigue",
+  "name": "Taylor",
+  "answers": {
+    "energyLevel": 2,
+    "energyPattern": "all_day",
+    "crashAfterEating": true,
+    "difficultyWaking": true,
+    "exerciseTolerance": true,
+    "coldExtremities": false,
+    "digestiveIssues": [
+      "diarrhea",
+      "food_sensitivities"
+    ],
+    "brainFog": true,
+    "sleepQuality": {
+      "answer": false,
+      "followUp": []
+    },
+    "typicalEating": "Eggs and toast in the morning. Salad for lunch. Protein with rice and veggies for dinner. Snack on nuts and fruit.",
+    "healthGoals": "Better overall health. Preparing for pregnancy and want to optimize my body first."
+  }
+}
