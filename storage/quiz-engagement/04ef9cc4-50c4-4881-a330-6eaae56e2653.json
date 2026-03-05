@@ -1,0 +1,27 @@
+{
+  "quizId": "04ef9cc4-50c4-4881-a330-6eaae56e2653",
+  "events": [
+    {
+      "type": "booking_click",
+      "source": "assessment",
+      "timestamp": "2026-03-05T18:48:20.368Z"
+    },
+    {
+      "type": "agent_opened",
+      "source": "assessment",
+      "timestamp": "2026-03-05T18:48:21.855Z"
+    }
+  ],
+  "conversation": [
+    {
+      "role": "user",
+      "text": "I just finished the quiz and read through my assessment. I clicked to chat with you to learn more."
+    },
+    {
+      "role": "assistant",
+      "text": "Hi Jessica! Great to have you here.\n\nOne thing I want to dig into that your assessment touched on but didn't fully develop: the connection between your meal timing and your sleep issues around your period. You mentioned insomnia as a PMS symptom, and skipping breakfast means your body is running on stress hormones for most of the morning. Those same hormones, especially cortisol and adrenaline, are what wake people up at night when they spike inappropriately.\n\nWhat makes this worse premenstrually is that estrogen amplifies the stress response. So in the days before your period, you're essentially layering estrogen-driven stress activation on top of an already elevated baseline from your eating pattern. The insomnia isn't random; it's the cumulative effect of both systems converging.\n\nI'm curious about your sleep specifically: when you do have trouble sleeping around your period, is it more difficulty falling asleep, or do you tend to wake up in the middle of the night?"
+    }
+  ],
+  "summary": null,
+  "updatedAt": "2026-03-05T18:48:34.198Z"
+}

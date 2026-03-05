@@ -98,9 +98,6 @@ export interface VariantConfig {
 
   // Prompt
   promptOverlay: string; // variant-specific guidance injected into system prompt
-
-  // OG / Social metadata
-  ogImage?: string;
 }
 
 // --- Answer types ---

@@ -124,6 +124,4 @@ export const rootCauseConfig: VariantConfig = {
   ctaUrl: "https://prism.miami/consultation",
 
   promptOverlay: "",
-
-  ogImage: "/25.png",
 };

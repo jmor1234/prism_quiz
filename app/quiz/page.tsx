@@ -7,6 +7,17 @@ export const metadata: Metadata = {
   title: "Prism Health Assessments",
   description:
     "Discover what's really driving your health concerns. Choose a personalized assessment and uncover the patterns behind your symptoms.",
+  openGraph: {
+    title: "Prism Health Assessments",
+    description:
+      "Discover what's really driving your health concerns. Choose a personalized assessment and uncover the patterns behind your symptoms.",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Prism Health Assessments",
+    description:
+      "Discover what's really driving your health concerns. Choose a personalized assessment and uncover the patterns behind your symptoms.",
+  },
 };
 
 export default function QuizIndexPage() {

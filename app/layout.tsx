@@ -34,27 +34,27 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: "Prism Assessment Quiz",
+  title: "Prism Health Assessments",
   description: "Trace health symptoms to root causes through energy metabolism, gut health, and stress cascades",
   metadataBase: new URL("https://prism-quiz.vercel.app"),
   openGraph: {
-    title: "Prism Assessment Quiz",
+    title: "Prism Health Assessments",
     description: "Trace health symptoms to root causes through energy metabolism, gut health, and stress cascades",
-    url: "https://prism-questions.vercel.app",
-    siteName: "Prism Assessment Quiz",
+    url: "https://prism-quiz.vercel.app",
+    siteName: "Prism Health",
     images: [
       {
         url: "/25.png",
         width: 1000,
         height: 1000,
-        alt: "Prism Assessment Quiz",
+        alt: "Prism Health Assessments",
       },
     ],
     type: "website",
   },
   twitter: {
-    card: "summary",
-    title: "Prism Assessment Quiz",
+    card: "summary_large_image",
+    title: "Prism Health Assessments",
     description: "Trace health symptoms to root causes through energy metabolism, gut health, and stress cascades",
     images: ["/25.png"],
   },

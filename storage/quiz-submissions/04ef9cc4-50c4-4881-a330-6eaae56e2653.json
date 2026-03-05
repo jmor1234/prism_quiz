@@ -1,0 +1,28 @@
+{
+  "id": "04ef9cc4-50c4-4881-a330-6eaae56e2653",
+  "createdAt": "2026-03-05T18:46:18.764Z",
+  "variant": "hormones-women",
+  "name": "Jessica",
+  "answers": {
+    "primaryConcern": [
+      "painful_periods",
+      "weight_gain"
+    ],
+    "birthControlHistory": "never_used",
+    "cycleRegularity": "irregular",
+    "pmsSymptoms": [
+      "mood_swings",
+      "bloating",
+      "cravings",
+      "anxiety",
+      "insomnia"
+    ],
+    "weightPattern": "all_over",
+    "puffiness": false,
+    "digestiveIssues": false,
+    "energyLevel": 5,
+    "coldExtremities": false,
+    "typicalEating": "Skip breakfast, just coffee. Big lunch usually fast food or leftovers. Dinner is whatever's easy - often takeout or frozen meals.",
+    "healthGoals": "More consistent energy throughout the day, better sleep quality, improved digestion and mental clarity."
+  }
+}
