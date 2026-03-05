@@ -44,6 +44,22 @@ export default function QuizIndexPage() {
         {/* Thin gold rule */}
         <div className="mx-auto mb-12 sm:mb-16 w-16 h-px bg-[var(--quiz-gold)]/40" />
 
+        {/* Chat option */}
+        <Link
+          href="/chat"
+          className="group block mx-auto max-w-md mb-10 sm:mb-12 rounded-xl border border-[var(--quiz-gold)]/30 bg-[var(--quiz-gold)]/[0.04] p-5 text-center transition-all duration-300 hover:border-[var(--quiz-gold)]/60 hover:bg-[var(--quiz-gold)]/[0.08] hover:-translate-y-0.5 hover:shadow-lg hover:shadow-[var(--quiz-gold)]/5"
+        >
+          <p className="text-xs text-muted-foreground mb-1.5">
+            Not sure where to start?
+          </p>
+          <p className="text-sm font-semibold group-hover:text-[var(--quiz-gold)] transition-colors duration-300">
+            Chat with our health agent directly
+          </p>
+          <p className="text-xs text-muted-foreground mt-1.5">
+            Describe what you&apos;re experiencing and get research-backed insights
+          </p>
+        </Link>
+
         {/* Card grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
           {variants.map((variant) => (

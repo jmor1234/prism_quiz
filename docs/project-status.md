@@ -368,6 +368,41 @@ Integrated a full conversational health agent into the quiz flow. After reading 
 
 ---
 
+## Standalone Chat Agent -- COMPLETE
+
+Added a standalone entry point (`/chat`) where users can chat with Prism's health agent without taking a quiz. Same tools, knowledge, and evidence-first approach — different conversational posture (discovery vs deepening).
+
+### What Was Built
+
+**Single route, dual prompt** (`app/api/agent/`)
+- Made `quizId` optional — when present: post-quiz mode, when absent: standalone mode
+- Added `buildStandalonePrompt()` to systemPrompt.ts (shares ~90% of sections with post-quiz prompt)
+- Mode-specific sections: The Situation, Your Purpose, The Conversation
+- All tools, caching, model config, rate limiting, logging shared between modes
+
+**Standalone chat frontend** (`app/chat/`)
+- Thread-based routing: `/chat` → `/chat/[threadId]`
+- Thread management sidebar (create, rename, delete)
+- Opening question in empty state, user types first
+- "← Assessments" back link to `/quiz`
+- IndexedDB via separate `prism-chat` Dexie database
+- Persistence hook: `hooks/use-chat-persistence.ts`
+
+**Server-side chat storage** (`server/chatSessions.ts`)
+- Dual-path (Redis/filesystem), keyed by `chat-sessions:{threadId}`
+- Stores: conversation transcript, events (booking clicks), AI summary
+- API: `POST /api/chat/engagement`
+
+**Admin visibility**
+- Tab toggle on admin page: Quiz Results | Conversations
+- Conversations tab: list of standalone sessions with transcripts + on-demand AI summaries
+- Summary API: `POST /api/admin/chats/summary` (Sonnet 4.6)
+
+**Navigation**
+- "Not sure where to start?" card on quiz index page links to `/chat`
+
+---
+
 ## What Remains (Future)
 
 ### Possible Enhancements
@@ -426,12 +461,19 @@ components/ai-elements/
   loader.tsx                        # Loading spinner
 
 app/quiz/
-  page.tsx                          # Landing page (card grid of all variants)
+  page.tsx                          # Landing page (card grid + standalone chat link)
   [variant]/page.tsx                # Dynamic route (server component)
 
 app/explore/[quizId]/
-  page.tsx                          # Agent page server component
-  agent-page.tsx                    # Agent chat client component
+  page.tsx                          # Post-quiz agent server component
+  agent-page.tsx                    # Post-quiz agent client component
+
+app/chat/
+  layout.tsx                        # Standalone chat layout
+  page.tsx                          # Redirect to latest thread
+  [threadId]/
+    page.tsx                        # Thread server component
+    chat-page.tsx                   # Thread client component (chat + sidebar)
 
 app/api/quiz/
   route.ts                          # Submission + LLM generation (with tools)
@@ -439,9 +481,12 @@ app/api/quiz/
   systemPrompt.ts                   # System/user message builder
   engagement/route.ts               # Engagement tracking endpoint
 
+app/api/chat/
+  engagement/route.ts               # Standalone chat tracking endpoint
+
 app/api/agent/
-  route.ts                          # Streaming agent endpoint (Opus 4.6, caching)
-  systemPrompt.ts                   # 8 knowledge files, stable/dynamic split
+  route.ts                          # Streaming agent (dual-mode, Opus 4.6, caching)
+  systemPrompt.ts                   # Shared sections + dual prompt builders
   tools/
     index.ts                        # Exports agentTools
     searchTool.ts                   # Exa semantic search (3 results)
@@ -456,27 +501,34 @@ app/api/agent/
     retryConfig.ts                  # Retry config
 
 app/admin/results/
-  page.tsx                          # Admin dashboard (+ engagement badges, summary, transcript)
+  page.tsx                          # Admin dashboard (Quiz Results | Conversations tabs)
 
-app/api/admin/results/
-  route.ts                          # Admin API (variant filtering + engagement join)
-  summary/route.ts                  # AI conversation summary (Sonnet 4.6)
-  pdf/
-    route.ts                        # Admin PDF export
-    lib/adminPdfTemplate.ts         # Config-driven PDF template
+app/api/admin/
+  results/
+    route.ts                        # Admin quiz results API (variant filtering + engagement)
+    summary/route.ts                # AI quiz conversation summary (Sonnet 4.6)
+    pdf/
+      route.ts                      # Admin PDF export
+      lib/adminPdfTemplate.ts       # Config-driven PDF template
+  chats/
+    route.ts                        # Admin standalone chat sessions listing
+    summary/route.ts                # AI standalone chat summary (Sonnet 4.6)
 
 server/
   quizSubmissions.ts                # Storage with normalization + per-variant indexes
   quizResults.ts                    # Result storage
-  quizEngagement.ts                 # Engagement tracking storage (events + conversations + summaries)
+  quizEngagement.ts                 # Quiz engagement storage (events + conversations + summaries)
+  chatSessions.ts                   # Standalone chat storage (conversations + summaries)
 
 hooks/
-  use-agent-persistence.ts          # IndexedDB + server conversation persistence
+  use-agent-persistence.ts          # Post-quiz IndexedDB + server persistence
+  use-chat-persistence.ts           # Standalone chat IndexedDB + server persistence
   use-mobile.ts                     # Mobile detection
 
 lib/
-  agent/thread-store.ts             # Dexie IndexedDB layer for chat
-  tracking.ts                       # Fire-and-forget engagement tracking
+  agent/thread-store.ts             # Post-quiz Dexie store (keyed by quizId)
+  chat/thread-store.ts              # Standalone Dexie store (threads + messages)
+  tracking.ts                       # Fire-and-forget tracking (quiz + standalone chat)
   message-utils.ts                  # Text extraction + citation URL parsing
   quizStorage.ts                    # Variant-scoped localStorage (v2)
   utmStorage.ts                     # UTM tracking

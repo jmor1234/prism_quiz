@@ -42,3 +42,44 @@ export function saveConversationRemote(
     // Swallow errors
   }
 }
+
+// --- Standalone chat tracking ---
+
+/**
+ * Fire-and-forget event tracking for standalone chat.
+ */
+export function trackChatEvent(
+  threadId: string,
+  type: string,
+  source: string
+): void {
+  try {
+    fetch("/api/chat/engagement", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ threadId, event: { type, source } }),
+      keepalive: true,
+    }).catch(() => {});
+  } catch {
+    // Swallow errors
+  }
+}
+
+/**
+ * Fire-and-forget conversation save for standalone chat.
+ */
+export function saveChatConversationRemote(
+  threadId: string,
+  messages: { role: "user" | "assistant"; text: string }[]
+): void {
+  try {
+    fetch("/api/chat/engagement", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ threadId, conversation: messages }),
+      keepalive: true,
+    }).catch(() => {});
+  } catch {
+    // Swallow errors
+  }
+}

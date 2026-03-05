@@ -62,10 +62,12 @@ POST /api/quiz { variant, name, answers }
 
 ```
 /                           → redirect to /quiz (via next.config)
-/quiz                       → landing page (card grid of all variants)
+/quiz                       → landing page (card grid of all variants + standalone chat link)
 /quiz/[variant]             → intro screen → quiz wizard (server component → client)
-/explore/[quizId]           → agent chat page (server component → client)
-/admin/results              → password-protected admin dashboard (with engagement tracking)
+/explore/[quizId]           → post-quiz agent chat (server component → client)
+/chat                       → redirect to latest thread or create new
+/chat/[threadId]            → standalone agent chat with sidebar (server → client)
+/admin/results              → password-protected admin dashboard (Quiz Results | Conversations tabs)
 ```
 
 ### Component Hierarchy
@@ -125,11 +127,15 @@ GET  /api/quiz/result?quizId=     Fetch stored result
 POST /api/quiz/pdf                Generate user-facing PDF
 POST /api/quiz/engagement         Engagement tracking (events + conversations)
 
-POST /api/agent                   Streaming agent conversation (Opus 4.6)
+POST /api/agent                   Streaming agent conversation (Opus 4.6, dual-mode: quiz/standalone)
+
+POST /api/chat/engagement         Standalone chat tracking (events + conversations)
 
 GET  /api/admin/results           Paginated submissions + engagement (password-protected)
 POST /api/admin/results/pdf       Generate admin PDF export
 POST /api/admin/results/summary   Generate AI conversation summary (Sonnet 4.6)
+GET  /api/admin/chats             Standalone chat sessions (password-protected)
+POST /api/admin/chats/summary     Generate standalone chat summary (Sonnet 4.6)
 ```
 
 ### Prompt Architecture
@@ -190,10 +196,13 @@ Tools (passed to generateText)
 
 ### Conversational Agent
 
-After reading their assessment, users can continue into a multi-turn streaming conversation via `/explore/{quizId}`.
+Single route (`/api/agent`) serves two modes based on whether `quizId` is present in the request body:
 
-**Agent configuration** (`app/api/agent/route.ts`):
-- Model: Claude Opus 4.6 with effort: high
+**Post-quiz mode** (`/explore/{quizId}`): Agent already knows the person from quiz answers + assessment. Deepening posture.
+**Standalone mode** (`/chat/{threadId}`): Agent starts from zero. Discovery posture. Accessible from quiz index page.
+
+**Shared configuration** (`app/api/agent/route.ts`):
+- Model: Claude Opus 4.6 with adaptive thinking, low effort
 - Tools: search + read + extract_findings (Exa v2 backed)
 - Steps: up to 10 (`stopWhen: stepCountIs(10)`)
 - Three-tier prompt caching (tool schemas, stable system prompt, conversation history)
@@ -209,40 +218,49 @@ After reading their assessment, users can continue into a multi-turn streaming c
 ```
 
 **Agent prompt** (`app/api/agent/systemPrompt.ts`):
-- 8 knowledge files (stable, cached across turns)
-- Quiz context: variant name, client name, formatted answers, full assessment (dynamic)
-- Warm greeting, synthesis instruction, dual-purpose evidence framing
-- Booking link shared only when contextually relevant
+- Two builders: `buildAgentPrompt()` (post-quiz) and `buildStandalonePrompt()` (standalone)
+- Shared: 8 knowledge files, behavioral sections (Consultation, Boundaries, Scope, Evidence, Tone)
+- Mode-specific: The Situation, Your Purpose, The Conversation
+- Post-quiz dynamic: quiz context (variant, name, answers, assessment) + date
+- Standalone dynamic: date only
 
-**Frontend** (`app/explore/[quizId]/agent-page.tsx`):
+**Post-quiz frontend** (`app/explore/[quizId]/agent-page.tsx`):
 - Auto-trigger hidden first message, hydration-safe
 - Chat UI: conversation, messages, tool status, sources, reasoning, prompt input
 - Dual persistence: IndexedDB (client) + server (admin)
 
+**Standalone frontend** (`app/chat/[threadId]/chat-page.tsx`):
+- No auto-trigger, opening question in empty state
+- Thread management sidebar (create, rename, delete)
+- Same chat UI components as post-quiz
+- Dual persistence: IndexedDB via `lib/chat/thread-store.ts` + server via `server/chatSessions.ts`
+
 ### Engagement Tracking
 
-Tracks post-assessment user behavior and makes it visible in the admin dashboard.
+Two parallel tracking systems, both visible in the admin dashboard (tab toggle: Quiz Results | Conversations).
 
-**Events tracked:** `pdf_download`, `booking_click` (from assessment or agent chat), `agent_opened`
+**Quiz engagement** (`server/quizEngagement.ts`): Tracks `pdf_download`, `booking_click` (assessment or agent), `agent_opened`. Keyed by `quiz-engagement:{quizId}`.
 
-**Conversation transcripts** saved server-side after each exchange (serialized user/assistant text only).
+**Standalone chat** (`server/chatSessions.ts`): Tracks `booking_click` from chat. Keyed by `chat-sessions:{threadId}`.
 
-**On-demand AI summary** via admin "Create Summary" button — Sonnet 4.6 generates concise prose summary with full quiz + conversation context.
+Both store conversation transcripts server-side (serialized user/assistant text only).
 
-**Storage:** `server/quizEngagement.ts` — same Redis/filesystem dual-path pattern, keyed by `quiz-engagement:{quizId}`.
+**On-demand AI summaries** via admin button — Sonnet 4.6 generates concise prose. Quiz summaries include full quiz context; chat summaries are conversation-only.
 
-**Client:** `lib/tracking.ts` — fire-and-forget with `keepalive: true`.
+**Client:** `lib/tracking.ts` — fire-and-forget with `keepalive: true`. Separate functions for quiz (`trackEvent`, `saveConversationRemote`) and chat (`trackChatEvent`, `saveChatConversationRemote`).
 
 ### Storage
 
 **Dual-mode:** Upstash Redis in production, filesystem JSON in local dev.
 
 ```
-Submissions:  quiz-submissions:{uuid}     → { id, createdAt, variant, name, answers }
-Results:      quiz-results:{uuid}         → { quizId, report, createdAt }
-Engagement:   quiz-engagement:{uuid}      → { quizId, events, conversation, summary, updatedAt }
-Index:        quiz-index                  → sorted set (timestamp → uuid) — global
-              quiz-index:{variant}        → sorted set (timestamp → uuid) — per-variant
+Submissions:    quiz-submissions:{uuid}     → { id, createdAt, variant, name, answers }
+Results:        quiz-results:{uuid}         → { quizId, report, createdAt }
+Engagement:     quiz-engagement:{uuid}      → { quizId, events, conversation, summary, updatedAt }
+Chat sessions:  chat-sessions:{threadId}    → { threadId, events, conversation, summary, createdAt, updatedAt }
+Index:          quiz-index                  → sorted set (timestamp → uuid) — global
+                quiz-index:{variant}        → sorted set (timestamp → uuid) — per-variant
+                chat-sessions-index         → sorted set (timestamp → threadId)
 ```
 
 On save, submissions are dual-indexed to both the global and per-variant sorted sets. Listing with a variant filter uses the per-variant index (Redis) or filters in-memory (filesystem).
@@ -323,19 +341,24 @@ getAllVariantSlugs()      → string[]
 app/
 ├── layout.tsx                          Root layout (fonts, theme, metadata)
 ├── globals.css                         Global styles + CSS custom properties
-├── page.tsx                            Root redirect
 ├── error.tsx                           Error boundary
 ├── quiz/
-│   ├── page.tsx                        Landing page (card grid of all variants)
+│   ├── page.tsx                        Landing page (card grid + standalone chat link)
 │   └── [variant]/
 │       └── page.tsx                    Server component (metadata + static params)
 ├── explore/
 │   └── [quizId]/
-│       ├── page.tsx                    Agent page server component
-│       └── agent-page.tsx              Agent chat client component
+│       ├── page.tsx                    Post-quiz agent server component
+│       └── agent-page.tsx              Post-quiz agent client component
+├── chat/
+│   ├── layout.tsx                      Standalone chat layout
+│   ├── page.tsx                        Redirect to latest thread
+│   └── [threadId]/
+│       ├── page.tsx                    Thread server component
+│       └── chat-page.tsx               Thread client component (chat + sidebar)
 ├── admin/
 │   └── results/
-│       └── page.tsx                    Admin dashboard (engagement + summaries)
+│       └── page.tsx                    Admin dashboard (Quiz Results | Conversations tabs)
 └── api/
     ├── quiz/
     │   ├── route.ts                    Submission + LLM generation (with tools)
@@ -346,9 +369,11 @@ app/
     │   └── pdf/
     │       ├── route.ts                User PDF generation
     │       └── lib/quizTemplateBuilder.ts
+    ├── chat/
+    │   └── engagement/route.ts         Standalone chat tracking endpoint
     ├── agent/
-    │   ├── route.ts                    Streaming agent (Opus 4.6, caching, logging)
-    │   ├── systemPrompt.ts             8 knowledge files, stable/dynamic split
+    │   ├── route.ts                    Streaming agent (Opus 4.6, dual-mode, caching, logging)
+    │   ├── systemPrompt.ts             Shared sections + dual prompt builders
     │   ├── tools/
     │   │   ├── index.ts                Exports agentTools
     │   │   ├── searchTool.ts           Exa semantic search
@@ -362,12 +387,15 @@ app/
     │       ├── llmRetry.ts             Exponential backoff
     │       └── retryConfig.ts          Retry config
     └── admin/
-        └── results/
-            ├── route.ts                Admin results listing (+ engagement join)
-            ├── summary/route.ts        AI conversation summary (Sonnet 4.6)
-            └── pdf/
-                ├── route.ts            Admin PDF export
-                └── lib/adminPdfTemplate.ts
+        ├── results/
+        │   ├── route.ts                Admin results listing (+ engagement join)
+        │   ├── summary/route.ts        AI quiz conversation summary (Sonnet 4.6)
+        │   └── pdf/
+        │       ├── route.ts            Admin PDF export
+        │       └── lib/adminPdfTemplate.ts
+        └── chats/
+            ├── route.ts                Admin standalone chat sessions listing
+            └── summary/route.ts        AI standalone chat summary (Sonnet 4.6)
 
 components/
 ├── quiz/
@@ -395,18 +423,20 @@ components/
 │   ├── collapsible.tsx
 │   ├── mode-toggle.tsx
 │   └── theme-provider.tsx
-└── ai-elements/
-    ├── conversation.tsx                Auto-scroll container
-    ├── message.tsx                     User/assistant bubbles
-    ├── response.tsx                    Markdown renderer (Streamdown)
-    ├── tool-status.tsx                 Research/reading indicator
-    ├── sources.tsx                     Collapsible citation drawer
-    ├── reasoning.tsx                   Collapsible thinking block
-    ├── prompt-input.tsx                Text input + send/stop
-    └── loader.tsx                      Loading spinner
+├── ai-elements/
+│   ├── conversation.tsx                Auto-scroll container
+│   ├── message.tsx                     User/assistant bubbles
+│   ├── response.tsx                    Markdown renderer (Streamdown)
+│   ├── tool-status.tsx                 Research/reading indicator
+│   ├── sources.tsx                     Collapsible citation drawer
+│   ├── reasoning.tsx                   Collapsible thinking block
+│   ├── prompt-input.tsx                Text input + send/stop
+│   └── loader.tsx                      Loading spinner
+└── chat-sidebar.tsx                    Standalone chat thread list (CRUD)
 
 hooks/
-├── use-agent-persistence.ts            IndexedDB + server persistence
+├── use-agent-persistence.ts            Post-quiz IndexedDB + server persistence
+├── use-chat-persistence.ts             Standalone chat IndexedDB + server persistence
 └── use-mobile.ts                       Mobile detection
 
 lib/
@@ -418,7 +448,9 @@ lib/
 │       ├── index.ts                    Registry (12 variants)
 │       └── [12 variant configs]
 ├── agent/
-│   └── thread-store.ts                 Dexie IndexedDB layer
+│   └── thread-store.ts                 Post-quiz Dexie IndexedDB (keyed by quizId)
+├── chat/
+│   └── thread-store.ts                 Standalone Dexie IndexedDB (threads + messages)
 ├── pdf/
 │   ├── generatePdf.ts                  Puppeteer PDF generation
 │   ├── markdownToHtml.ts              Remark/rehype pipeline
@@ -433,7 +465,7 @@ lib/
 │   ├── evidence_hierarchy.md           Evidence framework
 │   ├── takehome.md                     Physiological markers
 │   └── prism_process.md               Prism's process
-├── tracking.ts                         Fire-and-forget engagement tracking
+├── tracking.ts                         Fire-and-forget tracking (quiz + standalone chat)
 ├── message-utils.ts                    Text extraction + citation parsing
 ├── quizStorage.ts                      Variant-scoped localStorage
 ├── utmStorage.ts                       UTM parameter capture
@@ -442,5 +474,6 @@ lib/
 server/
 ├── quizSubmissions.ts                  Submission storage (Redis + filesystem)
 ├── quizResults.ts                      Result storage (Redis + filesystem)
-└── quizEngagement.ts                   Engagement storage (Redis + filesystem)
+├── quizEngagement.ts                   Quiz engagement storage (Redis + filesystem)
+└── chatSessions.ts                     Standalone chat storage (Redis + filesystem)
 ```

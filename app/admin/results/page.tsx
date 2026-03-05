@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import { ChevronRight, LogOut, RefreshCw, Loader2, Download, Search, X, FileDown, Calendar, MessageSquare, Sparkles } from "lucide-react";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { ChevronRight, LogOut, RefreshCw, Loader2, Download, Search, X, FileDown, Calendar, MessageSquare, Sparkles, MessagesSquare } from "lucide-react";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 
 import { Button } from "@/components/ui/button";
@@ -45,6 +45,16 @@ interface QuizEntry {
   engagement: EngagementRecord | null;
 }
 
+interface ChatSession {
+  threadId: string;
+  conversation: SerializedMessage[] | null;
+  summary: string | null;
+  events: { type: string; source: string; timestamp: string }[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+type AdminTab = "quiz" | "chat";
 type AuthState = "checking" | "unauthenticated" | "authenticated";
 
 // ============================================================================
@@ -570,6 +580,11 @@ export default function AdminResultsPage() {
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [isSearching, setIsSearching] = useState(false);
   const [selectedVariant, setSelectedVariant] = useState("");
+  const [activeTab, setActiveTab] = useState<AdminTab>("quiz");
+  const [chatSessions, setChatSessions] = useState<ChatSession[]>([]);
+  const [isChatLoading, setIsChatLoading] = useState(false);
+  const [expandedChatIds, setExpandedChatIds] = useState<Set<string>>(new Set());
+  const [chatSummarizingId, setChatSummarizingId] = useState<string | null>(null);
   const shouldReduceMotion = useReducedMotion();
 
   // Debounce search input
@@ -799,6 +814,90 @@ export default function AdminResultsPage() {
     }
   };
 
+  const fetchChatSessions = useCallback(async (key: string) => {
+    setIsChatLoading(true);
+    setError(null);
+    try {
+      const url = new URL("/api/admin/chats", window.location.origin);
+      url.searchParams.set("key", key);
+      const res = await fetch(url.toString());
+      if (res.status === 401) {
+        sessionStorage.removeItem("admin_password");
+        setAuthState("unauthenticated");
+        return;
+      }
+      if (!res.ok) throw new Error("Failed to fetch chat sessions");
+      const data = await res.json();
+      setChatSessions(data.sessions);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load conversations");
+    } finally {
+      setIsChatLoading(false);
+    }
+  }, []);
+
+  const chatFetchedRef = useRef(false);
+
+  // Fetch chat sessions when switching to chat tab
+  useEffect(() => {
+    if (activeTab !== "chat" || authState !== "authenticated") return;
+    if (chatFetchedRef.current) return;
+    const savedPassword = sessionStorage.getItem("admin_password");
+    if (!savedPassword) return;
+    chatFetchedRef.current = true;
+    fetchChatSessions(savedPassword);
+  }, [activeTab, authState, fetchChatSessions]);
+
+  const handleGenerateChatSummary = async (threadId: string) => {
+    const savedPassword = sessionStorage.getItem("admin_password");
+    if (!savedPassword) return;
+
+    setChatSummarizingId(threadId);
+    setError(null);
+
+    try {
+      const response = await fetch("/api/admin/chats/summary", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ threadId, key: savedPassword }),
+      });
+
+      if (response.status === 401) {
+        sessionStorage.removeItem("admin_password");
+        setAuthState("unauthenticated");
+        return;
+      }
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to generate summary");
+      }
+
+      const { summary } = await response.json();
+      setChatSessions((prev) =>
+        prev.map((s) =>
+          s.threadId === threadId ? { ...s, summary } : s
+        )
+      );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Summary generation failed");
+    } finally {
+      setChatSummarizingId(null);
+    }
+  };
+
+  const toggleChatExpanded = (id: string) => {
+    setExpandedChatIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
+
   // Loading state while checking session
   if (authState === "checking") {
     return (
@@ -878,10 +977,36 @@ export default function AdminResultsPage() {
     <div className="min-h-screen quiz-background flex flex-col">
       <header className="sticky top-0 z-10 bg-background/80 backdrop-blur-sm border-b">
         <div className="max-w-4xl mx-auto px-4 py-3 flex items-center gap-4">
-          <h1 className="text-lg font-semibold quiz-question shrink-0">Quiz Results</h1>
+          <h1 className="text-lg font-semibold quiz-question shrink-0">Admin</h1>
 
-          {/* Search input */}
-          <div className="relative flex-1 max-w-xs">
+          {/* Tab toggle */}
+          <div className="flex items-center gap-1 bg-muted rounded-md p-0.5 shrink-0">
+            <button
+              onClick={() => setActiveTab("quiz")}
+              className={cn(
+                "px-2.5 py-1 rounded text-xs font-medium transition-colors",
+                activeTab === "quiz"
+                  ? "bg-background shadow-sm text-foreground"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              Quiz Results
+            </button>
+            <button
+              onClick={() => setActiveTab("chat")}
+              className={cn(
+                "px-2.5 py-1 rounded text-xs font-medium transition-colors",
+                activeTab === "chat"
+                  ? "bg-background shadow-sm text-foreground"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              Conversations
+            </button>
+          </div>
+
+          {/* Search input + variant filter (quiz tab only) */}
+          {activeTab === "quiz" && <><div className="relative flex-1 max-w-xs">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
             <Input
               type="text"
@@ -916,7 +1041,7 @@ export default function AdminResultsPage() {
             {getAllVariants().map((v) => (
               <option key={v.slug} value={v.slug}>{v.name}</option>
             ))}
-          </select>
+          </select></>}
 
           <div className="flex items-center gap-2">
             <Button
@@ -951,7 +1076,170 @@ export default function AdminResultsPage() {
             </div>
           )}
 
-          {entries.length === 0 && !isLoading && !isSearching && (
+          {/* ===== Chat Sessions Tab ===== */}
+          {activeTab === "chat" && (
+            <>
+              {isChatLoading && (
+                <div className="flex justify-center py-12">
+                  <Loader2 className="h-6 w-6 animate-spin text-[var(--quiz-gold)]" />
+                </div>
+              )}
+
+              {!isChatLoading && chatSessions.length === 0 && (
+                <div className="text-center py-12 text-muted-foreground">
+                  No standalone conversations yet
+                </div>
+              )}
+
+              {chatSessions.map((session, index) => {
+                const isExpanded = expandedChatIds.has(session.threadId);
+                const messageCount = session.conversation?.length ?? 0;
+                const firstUserMsg = session.conversation?.find((m) => m.role === "user");
+                const preview = firstUserMsg?.text.slice(0, 100) ?? "No messages";
+
+                return (
+                  <motion.div
+                    key={session.threadId}
+                    initial={shouldReduceMotion ? {} : { opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={shouldReduceMotion ? { duration: 0 } : { duration: 0.3, delay: index * 0.05 }}
+                  >
+                    <div className="border rounded-lg overflow-hidden transition-shadow duration-200 hover:shadow-md">
+                      <button
+                        onClick={() => toggleChatExpanded(session.threadId)}
+                        className={cn(
+                          "w-full px-4 py-3 flex items-center gap-3 transition-all duration-200 text-left",
+                          "hover:bg-[var(--quiz-cream)]/30",
+                          isExpanded && "bg-[var(--quiz-cream)]/20"
+                        )}
+                        aria-expanded={isExpanded}
+                      >
+                        <motion.div
+                          animate={{ rotate: isExpanded ? 90 : 0 }}
+                          transition={shouldReduceMotion ? { duration: 0 } : { duration: 0.2 }}
+                        >
+                          <ChevronRight className="h-4 w-4 text-[var(--quiz-gold-dark)] shrink-0" />
+                        </motion.div>
+                        <span className="font-medium flex-1 truncate">{preview}</span>
+                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400">
+                          <MessagesSquare className="h-3 w-3" />
+                          {messageCount} msgs
+                        </span>
+                        {session.events.some((e) => e.type === "booking_click") && (
+                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
+                            <Calendar className="h-3 w-3" />
+                            Booking clicked
+                          </span>
+                        )}
+                        <span className="text-sm text-muted-foreground">{formatDate(session.createdAt)}</span>
+                        <span className="text-xs text-muted-foreground font-mono">{session.threadId.slice(0, 12)}</span>
+                      </button>
+
+                      <AnimatePresence>
+                        {isExpanded && (
+                          <motion.div
+                            initial={shouldReduceMotion ? {} : { height: 0, opacity: 0 }}
+                            animate={{ height: "auto", opacity: 1 }}
+                            exit={shouldReduceMotion ? {} : { height: 0, opacity: 0 }}
+                            transition={shouldReduceMotion ? { duration: 0 } : { duration: 0.3, ease: "easeInOut" }}
+                            className="overflow-hidden"
+                          >
+                            <div className="px-4 pb-4 pt-2 border-t space-y-4">
+                              {/* Summary */}
+                              {session.conversation && session.conversation.length > 0 && (
+                                <div className="space-y-3">
+                                  <div className="flex items-center gap-3">
+                                    <h5 className="text-[11px] font-semibold text-foreground/50 uppercase tracking-[0.1em]">
+                                      Summary
+                                    </h5>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => handleGenerateChatSummary(session.threadId)}
+                                      disabled={chatSummarizingId === session.threadId}
+                                      className="h-6 px-2 text-[10px] gap-1"
+                                    >
+                                      {chatSummarizingId === session.threadId ? (
+                                        <>
+                                          <Loader2 className="h-3 w-3 animate-spin" />
+                                          Generating…
+                                        </>
+                                      ) : (
+                                        <>
+                                          <Sparkles className="h-3 w-3" />
+                                          {session.summary ? "Regenerate" : "Create Summary"}
+                                        </>
+                                      )}
+                                    </Button>
+                                  </div>
+                                  {session.summary && (
+                                    <div className="bg-card border rounded-lg p-4">
+                                      <Response variant="report">{session.summary}</Response>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+
+                              {/* Transcript */}
+                              {session.conversation && session.conversation.length > 0 && (
+                                <div className="space-y-3">
+                                  <h5 className="text-[11px] font-semibold text-foreground/50 uppercase tracking-[0.1em]">
+                                    Conversation ({session.conversation.length} messages)
+                                  </h5>
+                                  <div className="space-y-3 max-h-[600px] overflow-y-auto">
+                                    {session.conversation.map((msg, i) => (
+                                      <div
+                                        key={i}
+                                        className={cn(
+                                          "rounded-lg p-3 text-sm",
+                                          msg.role === "user"
+                                            ? "bg-muted/50 border border-border/40"
+                                            : "bg-card border"
+                                        )}
+                                      >
+                                        <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider block mb-1">
+                                          {msg.role === "user" ? "User" : "Agent"}
+                                        </span>
+                                        {msg.role === "assistant" ? (
+                                          <Response variant="report">{msg.text}</Response>
+                                        ) : (
+                                          <p className="whitespace-pre-wrap leading-relaxed">{msg.text}</p>
+                                        )}
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
+                  </motion.div>
+                );
+              })}
+
+              {chatSessions.length > 0 && !isChatLoading && (
+                <div className="flex justify-center">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      const savedPassword = sessionStorage.getItem("admin_password");
+                      if (savedPassword) fetchChatSessions(savedPassword);
+                    }}
+                    className="gap-1.5 text-xs"
+                  >
+                    <RefreshCw className="h-3 w-3" />
+                    Refresh
+                  </Button>
+                </div>
+              )}
+            </>
+          )}
+
+          {/* ===== Quiz Results Tab ===== */}
+          {activeTab === "quiz" && entries.length === 0 && !isLoading && !isSearching && (
             <motion.div
               initial={shouldReduceMotion ? {} : { opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -963,7 +1251,7 @@ export default function AdminResultsPage() {
             </motion.div>
           )}
 
-          {entries.map((entry, index) => (
+          {activeTab === "quiz" && entries.map((entry, index) => (
             <motion.div
               key={entry.id}
               initial={shouldReduceMotion ? {} : { opacity: 0, y: 20 }}
@@ -983,7 +1271,7 @@ export default function AdminResultsPage() {
             </motion.div>
           ))}
 
-          {entries.length > 0 && (
+          {activeTab === "quiz" && entries.length > 0 && (
             <div className="pt-4 space-y-3">
               {/* Only show Load More when not searching and there are more results */}
               {nextCursor && !debouncedSearch && (

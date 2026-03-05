@@ -10,7 +10,7 @@ import {
   createUIMessageStreamResponse,
 } from "ai";
 import { agentTools } from "./tools";
-import { buildAgentPrompt } from "./systemPrompt";
+import { buildAgentPrompt, buildStandalonePrompt } from "./systemPrompt";
 import { CacheManager } from "./lib/cacheManager";
 import { requestRateLimiter, extractIp } from "./lib/rateLimit";
 import { validateInput } from "./lib/inputValidation";
@@ -53,7 +53,7 @@ export async function POST(req: Request) {
     );
   }
 
-  let body: { messages: UIMessage[]; quizId: string };
+  let body: { messages: UIMessage[]; quizId?: string };
   try {
     body = await req.json();
   } catch {
@@ -71,38 +71,42 @@ export async function POST(req: Request) {
     });
   }
 
-  if (!quizId || typeof quizId !== "string") {
-    return new Response("Missing quizId", { status: 400 });
-  }
+  // Build system prompt based on mode
+  let prompt: { stable: string; dynamic: string };
+  const mode = quizId ? "quiz" : "chat";
 
-  // Load quiz context
-  const [submission, quizResult] = await Promise.all([
-    getQuizSubmission(quizId),
-    getQuizResult(quizId),
-  ]);
+  if (quizId) {
+    // Post-quiz mode: load quiz context
+    const [submission, quizResult] = await Promise.all([
+      getQuizSubmission(quizId),
+      getQuizResult(quizId),
+    ]);
 
-  if (!submission || !quizResult) {
-    return new Response(
-      JSON.stringify({ error: "Quiz data not found" }),
-      { status: 404, headers: { "Content-Type": "application/json" } }
+    if (!submission || !quizResult) {
+      return new Response(
+        JSON.stringify({ error: "Quiz data not found" }),
+        { status: 404, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
+    const variantConfig = getVariant(submission.variant);
+    if (!variantConfig) {
+      return new Response(
+        JSON.stringify({ error: `Unknown variant: ${submission.variant}` }),
+        { status: 400, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
+    prompt = await buildAgentPrompt(
+      variantConfig,
+      submission.name,
+      submission.answers,
+      quizResult.report
     );
+  } else {
+    // Standalone chat mode: no quiz context
+    prompt = await buildStandalonePrompt();
   }
-
-  const variantConfig = getVariant(submission.variant);
-  if (!variantConfig) {
-    return new Response(
-      JSON.stringify({ error: `Unknown variant: ${submission.variant}` }),
-      { status: 400, headers: { "Content-Type": "application/json" } }
-    );
-  }
-
-  // Build system prompt
-  const prompt = await buildAgentPrompt(
-    variantConfig,
-    submission.name,
-    submission.answers,
-    quizResult.report
-  );
 
   // Three-tier caching: system messages (stable cached, dynamic fresh)
   const systemMessages = cacheManager.buildCachedSystemMessages(prompt);
@@ -116,15 +120,16 @@ export async function POST(req: Request) {
   const lastText = userMessage?.parts?.find((p) => p.type === "text");
   const preview =
     lastText && "text" in lastText ? lastText.text.substring(0, 80) : "?";
-  console.log(`\n[Agent] ══ Request ══`);
+  const tag = `Agent:${mode}`;
+  console.log(`\n[${tag}] ══ Request ══`);
   console.log(
-    `[Agent] Quiz: ${quizId.slice(0, 8)} · Messages: ${messages.length} · "${preview}..."`
+    `[${tag}] ${quizId ? `Quiz: ${quizId.slice(0, 8)} · ` : ""}Messages: ${messages.length} · "${preview}..."`
   );
   console.log(
-    `[Agent] System messages: ${systemMessages.length}, Model messages: ${modelMessages.length}`
+    `[${tag}] System messages: ${systemMessages.length}, Model messages: ${modelMessages.length}`
   );
   console.log(
-    `[Agent] Streaming with Opus 4.6 (thinking: adaptive, effort: high, max steps: 10)`
+    `[${tag}] Streaming with Opus 4.6 (thinking: adaptive, effort: low, max steps: 10)`
   );
 
   const stream = createUIMessageStream({
