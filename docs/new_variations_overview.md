@@ -244,9 +244,8 @@ export const rootCauseConfig: VariantConfig = {
   ctaText: 'Book a Free Consultation',
 
   promptOverlay: '', // The original root cause quiz has no overlay — the base prompt IS the root cause prompt
-
-  ogImage: '/og/root-cause.png',
 };
+// Note: ogImage field was removed — OG images are generated dynamically via opengraph-image.tsx
 ```
 
 ### Variant Config Registry

@@ -84,7 +84,7 @@ app/quiz/[variant]/opengraph-image.tsx  Dynamic OG image (edge, 1200x630)
 app/quiz/[variant]/twitter-image.tsx    Re-exports OG image for Twitter
   └─ QuizClient                      "use client" boundary
        └─ QuizWizard                 Core engine — takes VariantConfig
-            ├─ IntroScreen           Headline + subtitle + Start button (before questions)
+            ├─ Intro screen (inline)  Headline + subtitle + Start button (before questions)
             ├─ QuestionStep          Dispatcher → routes to type-specific component
             │   ├─ SliderQuestion        Range slider with value display
             │   ├─ YesNoQuestion         Toggle + optional conditional follow-up
@@ -346,7 +346,9 @@ app/
 ├── quiz/
 │   ├── page.tsx                        Landing page (card grid + standalone chat link)
 │   └── [variant]/
-│       └── page.tsx                    Server component (metadata + static params)
+│       ├── page.tsx                    Server component (metadata + static params)
+│       ├── opengraph-image.tsx         Dynamic OG image (edge, 1200x630)
+│       └── twitter-image.tsx           Re-exports OG image for Twitter
 ├── explore/
 │   └── [quizId]/
 │       ├── page.tsx                    Post-quiz agent server component
