@@ -76,7 +76,7 @@ ${variant.promptOverlay ? `# Condition-Specific Guidance\n\n${variant.promptOver
 
 Analyze the answers holistically. Identify the meaningful patterns that emerge: how symptoms interconnect, what they suggest about underlying energy and metabolism. Let the data guide how many patterns you surface.
 
-For each pattern: give it a clear title and a brief explanation that references their specific answers and connects to their goals.
+For each pattern: give it a clear title and a brief explanation that references their specific answers and connects to their goals. When a relationship between systems or a causal chain would be clearer as a visual, use markdown diagrams (flowcharts, connection maps, arrows showing cause and effect) to help the person see the interconnections.
 
 # Evidence
 

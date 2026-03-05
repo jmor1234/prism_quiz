@@ -67,7 +67,7 @@ export function QuizLoading() {
               strokeDasharray={circumference}
               initial={{ strokeDashoffset: circumference }}
               animate={{ strokeDashoffset: circumference * 0.1 }}
-              transition={{ duration: 45, ease: "easeInOut" }}
+              transition={{ duration: 40, ease: "easeInOut" }}
             />
           </svg>
 

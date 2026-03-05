@@ -14,9 +14,9 @@ function domain(url: string): string {
 
 export const searchTool = tool({
   description:
-    "Find studies and sources relevant to a claim you are making. Nearly instantaneous. " +
-    "Searches by meaning, not keywords. Returns results with highlighted excerpts. " +
-    "The highlights are often sufficient to cite a source. " +
+    "Search for research to build your reasoning. Nearly instantaneous. " +
+    "Use this as you think, not after. Searches by meaning, not keywords. " +
+    "Returns results with highlighted excerpts, often sufficient to cite. " +
     "Make parallel calls for different research angles.",
   inputSchema: z.object({
     query: z
@@ -41,7 +41,7 @@ export const searchTool = tool({
     const start = Date.now();
 
     const { results } = await searchExa(query, {
-      numResults: 5,
+      numResults: 3,
       category: null, // no category filter for conversational agent
       includeText,
       excludeText,
