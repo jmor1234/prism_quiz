@@ -2,6 +2,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { listQuizEntries, searchQuizEntriesByName } from "@/server/quizSubmissions";
+import { getEngagementBatch } from "@/server/quizEngagement";
 
 /**
  * GET /api/admin/results
@@ -42,16 +43,26 @@ export async function GET(request: NextRequest) {
     const variant = searchParams.get("variant") ?? undefined;
 
     // If search is provided, search across entries (no pagination)
+    let entries;
+    let nextCursor: string | null = null;
+
     if (search) {
-      const entries = await searchQuizEntriesByName(search, limit, variant);
-      return NextResponse.json({ entries, nextCursor: null });
+      entries = await searchQuizEntriesByName(search, limit, variant);
+    } else {
+      const cursor = searchParams.get("cursor") ?? undefined;
+      const result = await listQuizEntries(limit, cursor, variant);
+      entries = result.entries;
+      nextCursor = result.nextCursor;
     }
 
-    // Otherwise, use cursor-based pagination
-    const cursor = searchParams.get("cursor") ?? undefined;
-    const { entries, nextCursor } = await listQuizEntries(limit, cursor, variant);
+    // Batch-fetch engagement data for all entries
+    const engagementMap = await getEngagementBatch(entries.map((e: { id: string }) => e.id));
+    const entriesWithEngagement = entries.map((e: { id: string }) => ({
+      ...e,
+      engagement: engagementMap.get(e.id) ?? null,
+    }));
 
-    return NextResponse.json({ entries, nextCursor });
+    return NextResponse.json({ entries: entriesWithEngagement, nextCursor });
   } catch (error) {
     console.error("[Admin API] Error fetching results:", error);
     return NextResponse.json(

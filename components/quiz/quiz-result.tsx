@@ -5,6 +5,7 @@ import { Calendar, CheckCircle2, FileDown, MessageSquare } from "lucide-react";
 import { motion, useReducedMotion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { buildBookingUrl } from "@/lib/utmStorage";
+import { trackEvent } from "@/lib/tracking";
 import { Response } from "@/components/ai-elements/response";
 import { Loader } from "@/components/ai-elements/loader";
 import { Button } from "@/components/ui/button";
@@ -23,6 +24,7 @@ export function QuizResult({
   const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
 
   const downloadPdf = useCallback(async () => {
+    trackEvent(result.id, "pdf_download", "assessment");
     setIsDownloadingPdf(true);
     try {
       const response = await fetch("/api/quiz/pdf", {
@@ -119,6 +121,7 @@ export function QuizResult({
                 rel="noopener noreferrer"
                 onClick={(e) => {
                   e.preventDefault();
+                  trackEvent(result.id, "booking_click", "assessment");
                   const url = buildBookingUrl(variant.ctaUrl);
                   window.open(url, "_blank", "noopener,noreferrer");
                 }}
@@ -139,6 +142,7 @@ export function QuizResult({
               {/* Go Deeper on Your Results */}
               <a
                 href={`/explore/${result.id}`}
+                onClick={() => trackEvent(result.id, "agent_opened", "assessment")}
                 className={cn(
                   "flex flex-col items-center gap-2 rounded-lg border p-5 text-center",
                   "border-[var(--quiz-gold)]/50 hover:border-[var(--quiz-gold)]",

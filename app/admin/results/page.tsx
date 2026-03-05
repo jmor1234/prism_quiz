@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { ChevronRight, LogOut, RefreshCw, Loader2, Download, Search, X } from "lucide-react";
+import { ChevronRight, LogOut, RefreshCw, Loader2, Download, Search, X, FileDown, Calendar, MessageSquare } from "lucide-react";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 
 import { Button } from "@/components/ui/button";
@@ -16,6 +16,24 @@ import type { QuestionConfig, YesNoWithFollowUp } from "@/lib/quiz/types";
 // Types
 // ============================================================================
 
+interface EngagementEvent {
+  type: "pdf_download" | "booking_click" | "agent_opened";
+  source: "assessment" | "agent";
+  timestamp: string;
+}
+
+interface SerializedMessage {
+  role: "user" | "assistant";
+  text: string;
+}
+
+interface EngagementRecord {
+  quizId: string;
+  events: EngagementEvent[];
+  conversation: SerializedMessage[] | null;
+  updatedAt: string;
+}
+
 interface QuizEntry {
   id: string;
   createdAt: string;
@@ -23,6 +41,7 @@ interface QuizEntry {
   name: string;
   answers: Record<string, unknown>;
   report: string | null;
+  engagement: EngagementRecord | null;
 }
 
 type AuthState = "checking" | "unauthenticated" | "authenticated";
@@ -254,6 +273,125 @@ function QuizAnswersDisplay({ variant, answers }: { variant: string; answers: Re
   );
 }
 
+const EVENT_LABELS: Record<string, string> = {
+  pdf_download: "PDF",
+  booking_click: "Booking link clicked",
+  agent_opened: "Chat",
+};
+
+function EngagementBadges({ engagement }: { engagement: EngagementRecord | null }) {
+  if (!engagement) return null;
+
+  const hasPdf = engagement.events.some((e) => e.type === "pdf_download");
+  const bookingFromAssessment = engagement.events.some(
+    (e) => e.type === "booking_click" && e.source === "assessment"
+  );
+  const bookingFromAgent = engagement.events.some(
+    (e) => e.type === "booking_click" && e.source === "agent"
+  );
+  const hasChat = engagement.conversation && engagement.conversation.length > 0;
+  const messageCount = engagement.conversation?.length ?? 0;
+
+  if (!hasPdf && !bookingFromAssessment && !bookingFromAgent && !hasChat) return null;
+
+  return (
+    <span className="flex items-center gap-1.5">
+      {hasPdf && (
+        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
+          <FileDown className="h-3 w-3" />
+          PDF
+        </span>
+      )}
+      {bookingFromAssessment && (
+        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
+          <Calendar className="h-3 w-3" />
+          Booking clicked
+        </span>
+      )}
+      {bookingFromAgent && (
+        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
+          <Calendar className="h-3 w-3" />
+          Booking clicked via chat
+        </span>
+      )}
+      {hasChat && (
+        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400">
+          <MessageSquare className="h-3 w-3" />
+          {messageCount} msgs
+        </span>
+      )}
+    </span>
+  );
+}
+
+function EngagementSection({ engagement }: { engagement: EngagementRecord | null }) {
+  if (!engagement) return null;
+
+  const hasEvents = engagement.events.length > 0;
+  const hasConversation = engagement.conversation && engagement.conversation.length > 0;
+
+  if (!hasEvents && !hasConversation) return null;
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-3">
+        <h4 className="text-[11px] font-semibold text-foreground/50 uppercase tracking-[0.1em]">Engagement</h4>
+        <div className="flex-1 h-px bg-border/60" />
+      </div>
+
+      {/* Events timeline */}
+      {hasEvents && (
+        <div className="space-y-1.5">
+          {engagement.events.map((event, i) => (
+            <div key={i} className="flex items-center gap-2 text-xs">
+              <span className="text-muted-foreground font-mono w-36 shrink-0">
+                {formatDate(event.timestamp)}
+              </span>
+              <span className="font-medium">
+                {EVENT_LABELS[event.type] ?? event.type}
+              </span>
+              {event.source !== "assessment" && (
+                <span className="text-muted-foreground">via {event.source}</span>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Conversation transcript */}
+      {hasConversation && (
+        <div className="space-y-3">
+          <h5 className="text-[11px] font-semibold text-foreground/50 uppercase tracking-[0.1em]">
+            Conversation ({engagement.conversation!.length} messages)
+          </h5>
+          <div className="space-y-3 max-h-[600px] overflow-y-auto">
+            {engagement.conversation!.map((msg, i) => (
+              <div
+                key={i}
+                className={cn(
+                  "rounded-lg p-3 text-sm",
+                  msg.role === "user"
+                    ? "bg-muted/50 border border-border/40"
+                    : "bg-card border"
+                )}
+              >
+                <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider block mb-1">
+                  {msg.role === "user" ? "User" : "Agent"}
+                </span>
+                {msg.role === "assistant" ? (
+                  <Response variant="report">{msg.text}</Response>
+                ) : (
+                  <p className="whitespace-pre-wrap leading-relaxed">{msg.text}</p>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function EntryRow({
   entry,
   isExpanded,
@@ -296,6 +434,7 @@ function EntryRow({
               {getVariant(entry.variant)?.name ?? entry.variant}
             </span>
           </span>
+          <EngagementBadges engagement={entry.engagement} />
           <span className="text-sm text-muted-foreground">{formatDate(entry.createdAt)}</span>
           <span className="text-xs text-muted-foreground font-mono">{entry.id.slice(0, 8)}</span>
         </button>
@@ -350,6 +489,8 @@ function EntryRow({
               {!entry.report && (
                 <p className="text-sm text-muted-foreground italic">No assessment generated</p>
               )}
+
+              <EngagementSection engagement={entry.engagement} />
             </div>
           </motion.div>
         )}

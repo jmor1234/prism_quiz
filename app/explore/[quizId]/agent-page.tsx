@@ -27,6 +27,7 @@ import {
 } from "@/components/ai-elements/prompt-input";
 import { ModeToggle } from "@/components/ui/mode-toggle";
 import { extractMessageText, extractCitationUrls } from "@/lib/message-utils";
+import { trackEvent } from "@/lib/tracking";
 
 const AUTO_TRIGGER_TEXT =
   "I just finished the quiz and read through my assessment. I clicked to chat with you to learn more.";
@@ -132,6 +133,17 @@ export function AgentPage({
     return visibleMessages.findLast((m) => m.role === "assistant")?.id ?? null;
   }, [visibleMessages]);
 
+  // Detect booking link clicks in agent markdown responses
+  const handleConversationClick = useCallback(
+    (e: React.MouseEvent) => {
+      const anchor = (e.target as HTMLElement).closest("a");
+      if (anchor?.getAttribute("href")?.includes("prism.miami")) {
+        trackEvent(quizId, "booking_click", "agent");
+      }
+    },
+    [quizId]
+  );
+
   return (
     <div className="h-dvh flex flex-col bg-background">
       {/* Header */}
@@ -146,7 +158,7 @@ export function AgentPage({
 
       {/* Messages */}
       <Conversation className="flex-1">
-        <ConversationContent className="max-w-2xl mx-auto px-4 md:px-8 py-6">
+        <ConversationContent className="max-w-2xl mx-auto px-4 md:px-8 py-6" onClick={handleConversationClick}>
           {visibleMessages.map((message) => {
             const isLastAssistant =
               message.role === "assistant" &&
