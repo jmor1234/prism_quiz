@@ -9,11 +9,33 @@ import { buildSubmissionSchema } from "@/lib/quiz/schema";
 import { upsertQuizSubmission, getQuizSubmission } from "@/server/quizSubmissions";
 import { saveQuizResult, getQuizResult } from "@/server/quizResults";
 import { buildQuizPrompt } from "./systemPrompt";
+import { requestRateLimiter, extractIp } from "../agent/lib/rateLimit";
 
 // 120 seconds — tool calls (evidence retrieval) add latency
 export const maxDuration = 120;
 
 export async function POST(req: Request) {
+  // Rate limiting
+  const ip = extractIp(req);
+  const rateCheck = requestRateLimiter.check(ip);
+  if (!rateCheck.allowed) {
+    console.log(
+      `[Quiz] Rate limited: ${ip} (retry after ${rateCheck.retryAfterSeconds}s)`
+    );
+    return new Response(
+      JSON.stringify({
+        error: "Too many requests. Please try again shortly.",
+      }),
+      {
+        status: 429,
+        headers: {
+          "Content-Type": "application/json",
+          "Retry-After": String(rateCheck.retryAfterSeconds ?? 60),
+        },
+      }
+    );
+  }
+
   let recordId: string | undefined;
 
   // Parse request body

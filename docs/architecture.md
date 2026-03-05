@@ -124,7 +124,7 @@ The central state machine. Driven entirely by `VariantConfig`:
 ### API Routes
 
 ```
-POST /api/quiz                    Quiz submission + LLM generation
+POST /api/quiz                    Quiz submission + LLM generation (rate-limited)
 GET  /api/quiz/result?quizId=     Fetch stored result
 POST /api/quiz/pdf                Generate user-facing PDF
 POST /api/quiz/engagement         Engagement tracking (events + conversations)
