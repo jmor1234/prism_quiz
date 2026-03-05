@@ -4,7 +4,7 @@
 
 A config-driven health assessment platform. Users take condition-specific quizzes, an LLM analyzes their answers through a bioenergetic framework, and a personalized assessment drives consultation bookings.
 
-**Stack:** Next.js 15 (App Router), TypeScript, TailwindCSS v4, Framer Motion, Claude Opus 4.6, AI SDK v6, Exa (semantic search), Upstash Redis, Puppeteer (PDF)
+**Stack:** Next.js 15 (App Router), TypeScript, TailwindCSS v4, Framer Motion, Claude Opus 4.6, Claude Sonnet 4.6, AI SDK v6, Exa v2 (semantic search), Gemini Flash (extraction), Upstash Redis, Puppeteer (PDF), Dexie (IndexedDB)
 
 ---
 
@@ -34,7 +34,24 @@ POST /api/quiz { variant, name, answers }
     └─► Return { id, report }
             │
             ▼
-    QuizResult renders markdown assessment with inline citations + booking CTA + PDF download
+    QuizResult renders markdown assessment with inline citations
+            │
+            ▼
+    Three CTAs: Talk to Our Team | Go Deeper on Your Results | Save Your Assessment
+            │                              │
+            ▼                              ▼
+    Opens booking URL              Navigates to /explore/{quizId}
+    (UTM-tagged)                          │
+                                          ▼
+                                   Agent auto-triggers first message
+                                          │
+                                          ▼
+                                   Multi-turn streaming conversation
+                                   (Opus 4.6, Exa tools, evidence-based)
+                                          │
+                                          ▼
+                                   Conversation saved to IndexedDB + server
+                                   Engagement events tracked
 ```
 
 ---
@@ -47,7 +64,8 @@ POST /api/quiz { variant, name, answers }
 /                           → redirect to /quiz (via next.config)
 /quiz                       → landing page (card grid of all variants)
 /quiz/[variant]             → intro screen → quiz wizard (server component → client)
-/admin/results              → password-protected admin dashboard
+/explore/[quizId]           → agent chat page (server component → client)
+/admin/results              → password-protected admin dashboard (with engagement tracking)
 ```
 
 ### Component Hierarchy
@@ -105,9 +123,13 @@ The central state machine. Driven entirely by `VariantConfig`:
 POST /api/quiz                    Quiz submission + LLM generation
 GET  /api/quiz/result?quizId=     Fetch stored result
 POST /api/quiz/pdf                Generate user-facing PDF
+POST /api/quiz/engagement         Engagement tracking (events + conversations)
 
-GET  /api/admin/results           Paginated submissions (password-protected, ?variant= filter)
-POST /api/admin/results/pdf       Generate admin PDF export (config-driven)
+POST /api/agent                   Streaming agent conversation (Opus 4.6)
+
+GET  /api/admin/results           Paginated submissions + engagement (password-protected)
+POST /api/admin/results/pdf       Generate admin PDF export
+POST /api/admin/results/summary   Generate AI conversation summary (Sonnet 4.6)
 ```
 
 ### Prompt Architecture
@@ -166,6 +188,51 @@ Tools (passed to generateText)
 - Each tool logs query, results, latency, and estimated tokens on execution
 - Route logs a post-generation summary: tool counts, total tokens injected, step count, input/output tokens, wall-clock duration
 
+### Conversational Agent
+
+After reading their assessment, users can continue into a multi-turn streaming conversation via `/explore/{quizId}`.
+
+**Agent configuration** (`app/api/agent/route.ts`):
+- Model: Claude Opus 4.6 with effort: high
+- Tools: search + read + extract_findings (Exa v2 backed)
+- Steps: up to 10 (`stopWhen: stepCountIs(10)`)
+- Three-tier prompt caching (tool schemas, stable system prompt, conversation history)
+- Context management: `clear_thinking`, `clear_tool_uses`, `compact`
+- Rate limiting + input validation
+- Max duration: 300s
+
+**Agent tools** (`app/api/agent/tools/`):
+```
+├── search           Exa semantic search, 5 results, no category filter
+├── read             Exa focused highlights from known URL
+└── extract_findings Exa full text → Gemini Flash structured extraction (depth tool)
+```
+
+**Agent prompt** (`app/api/agent/systemPrompt.ts`):
+- 8 knowledge files (stable, cached across turns)
+- Quiz context: variant name, client name, formatted answers, full assessment (dynamic)
+- Warm greeting, synthesis instruction, dual-purpose evidence framing
+- Booking link shared only when contextually relevant
+
+**Frontend** (`app/explore/[quizId]/agent-page.tsx`):
+- Auto-trigger hidden first message, hydration-safe
+- Chat UI: conversation, messages, tool status, sources, reasoning, prompt input
+- Dual persistence: IndexedDB (client) + server (admin)
+
+### Engagement Tracking
+
+Tracks post-assessment user behavior and makes it visible in the admin dashboard.
+
+**Events tracked:** `pdf_download`, `booking_click` (from assessment or agent chat), `agent_opened`
+
+**Conversation transcripts** saved server-side after each exchange (serialized user/assistant text only).
+
+**On-demand AI summary** via admin "Create Summary" button — Sonnet 4.6 generates concise prose summary with full quiz + conversation context.
+
+**Storage:** `server/quizEngagement.ts` — same Redis/filesystem dual-path pattern, keyed by `quiz-engagement:{quizId}`.
+
+**Client:** `lib/tracking.ts` — fire-and-forget with `keepalive: true`.
+
 ### Storage
 
 **Dual-mode:** Upstash Redis in production, filesystem JSON in local dev.
@@ -173,6 +240,7 @@ Tools (passed to generateText)
 ```
 Submissions:  quiz-submissions:{uuid}     → { id, createdAt, variant, name, answers }
 Results:      quiz-results:{uuid}         → { quizId, report, createdAt }
+Engagement:   quiz-engagement:{uuid}      → { quizId, events, conversation, summary, updatedAt }
 Index:        quiz-index                  → sorted set (timestamp → uuid) — global
               quiz-index:{variant}        → sorted set (timestamp → uuid) — per-variant
 ```
@@ -261,31 +329,52 @@ app/
 │   ├── page.tsx                        Landing page (card grid of all variants)
 │   └── [variant]/
 │       └── page.tsx                    Server component (metadata + static params)
+├── explore/
+│   └── [quizId]/
+│       ├── page.tsx                    Agent page server component
+│       └── agent-page.tsx              Agent chat client component
 ├── admin/
 │   └── results/
-│       └── page.tsx                    Config-driven admin dashboard (client component)
+│       └── page.tsx                    Admin dashboard (engagement + summaries)
 └── api/
     ├── quiz/
     │   ├── route.ts                    Submission + LLM generation (with tools)
-    │   ├── tools.ts                    Exa client + search/read tool definitions + logging
+    │   ├── tools.ts                    Exa v2 client + search/read tools + logging
     │   ├── systemPrompt.ts             System/user message builder
     │   ├── result/route.ts             Result retrieval
+    │   ├── engagement/route.ts         Engagement tracking endpoint
     │   └── pdf/
     │       ├── route.ts                User PDF generation
     │       └── lib/quizTemplateBuilder.ts
+    ├── agent/
+    │   ├── route.ts                    Streaming agent (Opus 4.6, caching, logging)
+    │   ├── systemPrompt.ts             8 knowledge files, stable/dynamic split
+    │   ├── tools/
+    │   │   ├── index.ts                Exports agentTools
+    │   │   ├── searchTool.ts           Exa semantic search
+    │   │   ├── readTool.ts             Exa focused highlights
+    │   │   ├── exaSearch/              Shared Exa v2 client + rate limiter
+    │   │   └── depthTool/              Full text → Gemini Flash extraction
+    │   └── lib/
+    │       ├── cacheManager.ts         Three-tier prompt caching
+    │       ├── rateLimit.ts            IP-based rate limiting
+    │       ├── inputValidation.ts      Message validation
+    │       ├── llmRetry.ts             Exponential backoff
+    │       └── retryConfig.ts          Retry config
     └── admin/
         └── results/
-            ├── route.ts                Admin results listing (variant filter)
+            ├── route.ts                Admin results listing (+ engagement join)
+            ├── summary/route.ts        AI conversation summary (Sonnet 4.6)
             └── pdf/
                 ├── route.ts            Admin PDF export
-                └── lib/adminPdfTemplate.ts  Config-driven answer rendering
+                └── lib/adminPdfTemplate.ts
 
 components/
 ├── quiz/
 │   ├── quiz-client.tsx                 "use client" boundary wrapper
 │   ├── quiz-wizard.tsx                 Core wizard engine
 │   ├── quiz-loading.tsx                Loading animation
-│   ├── quiz-result.tsx                 Result display + CTA + PDF
+│   ├── quiz-result.tsx                 Result display + equal-weight CTAs
 │   ├── quiz-theme.ts                   Shared styling constants
 │   ├── question-step.tsx               Question type dispatcher
 │   └── questions/
@@ -295,7 +384,7 @@ components/
 │       ├── single-select-question.tsx
 │       ├── free-text-question.tsx
 │       └── name-step.tsx
-├── ui/                                 Radix UI primitives
+├── ui/                                 Radix UI primitives + shadcn
 │   ├── button.tsx
 │   ├── input.tsx
 │   ├── textarea.tsx
@@ -303,11 +392,22 @@ components/
 │   ├── toggle.tsx
 │   ├── toggle-group.tsx
 │   ├── dropdown-menu.tsx
+│   ├── collapsible.tsx
 │   ├── mode-toggle.tsx
 │   └── theme-provider.tsx
 └── ai-elements/
+    ├── conversation.tsx                Auto-scroll container
+    ├── message.tsx                     User/assistant bubbles
     ├── response.tsx                    Markdown renderer (Streamdown)
-    └── loader.tsx                      AI loading spinner
+    ├── tool-status.tsx                 Research/reading indicator
+    ├── sources.tsx                     Collapsible citation drawer
+    ├── reasoning.tsx                   Collapsible thinking block
+    ├── prompt-input.tsx                Text input + send/stop
+    └── loader.tsx                      Loading spinner
+
+hooks/
+├── use-agent-persistence.ts            IndexedDB + server persistence
+└── use-mobile.ts                       Mobile detection
 
 lib/
 ├── quiz/
@@ -316,34 +416,31 @@ lib/
 │   ├── formatAnswers.ts                Answer formatter for prompts
 │   └── variants/
 │       ├── index.ts                    Registry (12 variants)
-│       ├── root-cause.ts
-│       ├── gut.ts
-│       ├── fatigue.ts
-│       ├── hormones-women.ts
-│       ├── testosterone.ts
-│       ├── sleep.ts
-│       ├── thyroid.ts
-│       ├── brain-fog.ts
-│       ├── weight.ts
-│       ├── skin.ts
-│       ├── anxiety.ts
-│       └── allergies.ts
+│       └── [12 variant configs]
+├── agent/
+│   └── thread-store.ts                 Dexie IndexedDB layer
 ├── pdf/
 │   ├── generatePdf.ts                  Puppeteer PDF generation
 │   ├── markdownToHtml.ts              Remark/rehype pipeline
 │   ├── pdfStyles.ts                    PDF CSS
 │   └── prism_transparent.png           Logo asset
-├── knowledge/
+├── knowledge/                          8 knowledge files
 │   ├── knowledge.md                    Bioenergetic health model
 │   ├── questionaire.md                 Symptom interpretation guide
 │   ├── diet_lifestyle_standardized.md  Diet/lifestyle framework
 │   ├── metabolism_deep_dive.md         Energy metabolism reasoning framework
-│   └── gut_deep_dive.md               Gut health reasoning framework
+│   ├── gut_deep_dive.md               Gut health reasoning framework
+│   ├── evidence_hierarchy.md           Evidence framework
+│   ├── takehome.md                     Physiological markers
+│   └── prism_process.md               Prism's process
+├── tracking.ts                         Fire-and-forget engagement tracking
+├── message-utils.ts                    Text extraction + citation parsing
 ├── quizStorage.ts                      Variant-scoped localStorage
 ├── utmStorage.ts                       UTM parameter capture
 └── utils.ts                            cn() helper
 
 server/
-├── quizSubmissions.ts                  Submission storage (Redis + filesystem, per-variant indexes)
-└── quizResults.ts                      Result storage (Redis + filesystem)
+├── quizSubmissions.ts                  Submission storage (Redis + filesystem)
+├── quizResults.ts                      Result storage (Redis + filesystem)
+└── quizEngagement.ts                   Engagement storage (Redis + filesystem)
 ```

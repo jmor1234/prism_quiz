@@ -144,7 +144,7 @@ Phase 2 populated the engine with 10 new condition-specific variant configs. Eac
 - **11 questions** following the question architecture: 1-2 anchor, 4-6 condition-specific, 2-3 cross-system, 1 diet, 1 goals
 - **Prompt overlay** -- condition-specific guidance for the LLM (how to interpret answers through the bioenergetic lens for this condition)
 - **UI copy** -- headline, subtitle, description, result banner
-- **Shared CTA** -- "Book a Free Consultation" → prism.miami/consultation (all variants)
+- **Shared CTA** -- equal-weight cards: "Talk to Our Team" + "Go Deeper on Your Results", with "Save Your Assessment" below
 
 ### Question Architecture
 
@@ -317,10 +317,54 @@ Added real-time evidence retrieval via Exa's semantic search API. The agent now 
 
 - Frontend markdown rendering (Streamdown already renders `[text](url)` as clickable links)
 - PDF pipeline (remark/rehype converts markdown links to `<a>` tags)
-- exa-js version (v1.9.3 has everything needed)
+- exa-js version (upgraded to v2.7.0 — both quiz and agent tools use `exa.search()` with `contents` option)
 - Knowledge file loading (same 5 files, same caching)
 - Variant configs (no changes to any variant)
 - Storage, admin, retry flow
+
+---
+
+## Agent Integration -- COMPLETE
+
+Integrated a full conversational health agent into the quiz flow. After reading their assessment, users can choose "Go Deeper on Your Results" to enter a multi-turn streaming conversation.
+
+### What Was Built
+
+**Chat agent backend** (`app/api/agent/`)
+- Streaming endpoint with Claude Opus 4.6, three-tier prompt caching, rate limiting, input validation
+- 8 knowledge files loaded into system prompt (stable/cached)
+- Quiz context (variant, answers, assessment) in dynamic prompt section
+- Three Exa v2 tools: search (5 results), read (highlights), extract_findings (depth extraction via Gemini Flash)
+- Supporting infrastructure: cache manager, rate limiter, input validation, retry logic
+
+**Chat agent frontend** (`app/explore/[quizId]/`)
+- Auto-trigger hidden first message on mount, hydration-safe
+- Full chat UI: conversation, messages, tool status, sources, reasoning, prompt input
+- Dual persistence: IndexedDB (client hydration) + server (admin visibility)
+
+**Post-assessment CTA redesign** (`components/quiz/quiz-result.tsx`)
+- "Talk to Our Team" + "Go Deeper on Your Results" as equal-weight side-by-side cards
+- "Save Your Assessment" as tertiary option below
+- Each CTA has icon, label, and value-communicating subtitle
+- Quiz agent prompt does NOT mention these options (separation of analysis and conversion)
+
+**Engagement tracking**
+- Tracks: PDF download, booking clicks (from assessment + from chat), agent opened
+- Full conversation transcripts saved server-side after each exchange
+- Storage: `server/quizEngagement.ts` (Redis/filesystem dual-path, keyed by `quiz-engagement:{quizId}`)
+- Client: `lib/tracking.ts` fire-and-forget helpers with `keepalive: true`
+- API: `POST /api/quiz/engagement`
+
+**Admin engagement visibility** (`app/admin/results/page.tsx`)
+- Engagement badges in collapsed rows (PDF, Booking clicked, Chat + count)
+- Events timeline with timestamps in expanded view
+- Full conversation transcript with markdown rendering
+- On-demand AI summary (Sonnet 4.6) via "Create Summary" button
+- Summary API: `POST /api/admin/results/summary` (admin-authenticated)
+
+**Exa SDK upgrade**
+- Upgraded from exa-js v1.9.3 to v2.7.0
+- Both quiz and agent tools use v2 `exa.search()` with `contents` option
 
 ---
 
@@ -329,7 +373,6 @@ Added real-time evidence retrieval via Exa's semantic search API. The agent now 
 ### Possible Enhancements
 
 - [ ] Per-variant OG images (infrastructure supports it -- just needs design assets + `ogImage` field set in each config)
-- [ ] Analytics: conversion tracking per variant (external configuration)
 - [ ] Email capture with per-variant toggle
 - [ ] Name step position configurable per-variant (first vs last)
 
@@ -361,7 +404,7 @@ components/quiz/
   quiz-wizard.tsx                   # Config-driven wizard engine
   quiz-client.tsx                   # Client boundary wrapper
   quiz-loading.tsx                  # Loading animation
-  quiz-result.tsx                   # Result display + CTA + PDF
+  quiz-result.tsx                   # Result display + equal-weight CTAs + PDF
   quiz-theme.ts                     # Shared styling constants
   question-step.tsx                 # Question type dispatcher
   questions/
@@ -372,20 +415,52 @@ components/quiz/
     free-text-question.tsx
     name-step.tsx
 
+components/ai-elements/
+  conversation.tsx                  # Auto-scroll container (use-stick-to-bottom)
+  message.tsx                       # User/assistant message bubbles
+  response.tsx                      # Markdown renderer (Streamdown)
+  tool-status.tsx                   # Research/reading indicator
+  sources.tsx                       # Collapsible citation drawer
+  reasoning.tsx                     # Collapsible thinking block
+  prompt-input.tsx                  # Text input + send/stop
+  loader.tsx                        # Loading spinner
+
 app/quiz/
   page.tsx                          # Landing page (card grid of all variants)
   [variant]/page.tsx                # Dynamic route (server component)
 
+app/explore/[quizId]/
+  page.tsx                          # Agent page server component
+  agent-page.tsx                    # Agent chat client component
+
 app/api/quiz/
   route.ts                          # Submission + LLM generation (with tools)
-  tools.ts                          # Exa client + search/read tool definitions + logging
+  tools.ts                          # Exa v2 client + search/read tools + logging
   systemPrompt.ts                   # System/user message builder
+  engagement/route.ts               # Engagement tracking endpoint
+
+app/api/agent/
+  route.ts                          # Streaming agent endpoint (Opus 4.6, caching)
+  systemPrompt.ts                   # 8 knowledge files, stable/dynamic split
+  tools/
+    index.ts                        # Exports agentTools
+    searchTool.ts                   # Exa semantic search (5 results)
+    readTool.ts                     # Exa focused highlights
+    exaSearch/                      # Shared Exa v2 client + rate limiter
+    depthTool/                      # Full text → Gemini Flash extraction
+  lib/
+    cacheManager.ts                 # Three-tier prompt caching
+    rateLimit.ts                    # IP-based rate limiting
+    inputValidation.ts              # Message validation
+    llmRetry.ts                     # Exponential backoff
+    retryConfig.ts                  # Retry config
 
 app/admin/results/
-  page.tsx                          # Config-driven admin dashboard
+  page.tsx                          # Admin dashboard (+ engagement badges, summary, transcript)
 
 app/api/admin/results/
-  route.ts                          # Admin API with variant filtering
+  route.ts                          # Admin API (variant filtering + engagement join)
+  summary/route.ts                  # AI conversation summary (Sonnet 4.6)
   pdf/
     route.ts                        # Admin PDF export
     lib/adminPdfTemplate.ts         # Config-driven PDF template
@@ -393,16 +468,27 @@ app/api/admin/results/
 server/
   quizSubmissions.ts                # Storage with normalization + per-variant indexes
   quizResults.ts                    # Result storage
+  quizEngagement.ts                 # Engagement tracking storage (events + conversations + summaries)
+
+hooks/
+  use-agent-persistence.ts          # IndexedDB + server conversation persistence
+  use-mobile.ts                     # Mobile detection
 
 lib/
+  agent/thread-store.ts             # Dexie IndexedDB layer for chat
+  tracking.ts                       # Fire-and-forget engagement tracking
+  message-utils.ts                  # Text extraction + citation URL parsing
   quizStorage.ts                    # Variant-scoped localStorage (v2)
   utmStorage.ts                     # UTM tracking
-  knowledge/                        # Shared knowledge files (all injected into LLM prompt)
+  knowledge/                        # Shared knowledge files (8 total)
     knowledge.md                    # Bioenergetic health model
     questionaire.md                 # Symptom interpretation guide
     diet_lifestyle_standardized.md  # Diet/lifestyle framework
-    metabolism_deep_dive.md         # Energy metabolism deep dive (reasoning framework)
-    gut_deep_dive.md                # Gut health deep dive (reasoning framework)
+    metabolism_deep_dive.md         # Energy metabolism deep dive
+    gut_deep_dive.md                # Gut health deep dive
+    evidence_hierarchy.md           # Evidence framework
+    takehome.md                     # Physiological markers
+    prism_process.md                # Prism's process
 ```
 
 ---

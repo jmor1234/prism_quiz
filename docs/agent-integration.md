@@ -1,130 +1,213 @@
 # Prism Agent Integration
 
-## What We Started With
+## Overview
 
-A config-driven health quiz engine (12 variants) that generates one-shot AI assessments. After completing a quiz, users see their assessment with a booking CTA and PDF download. No way to continue the conversation.
+The quiz project now includes a full conversational health agent. After completing a quiz and reading their assessment, users can continue into a multi-turn streaming conversation that goes deeper on their health patterns with real-time evidence retrieval.
 
-Separately, a standalone Prism conversational health agent exists as its own project — a proven, multi-turn streaming chat that helps prospects understand their health through Prism's bioenergetic lens. It has evidence retrieval tools, 8 knowledge files, three-tier prompt caching, context management, rate limiting, voice input, thread persistence, and a polished chat UI.
+**User flow:** Quiz → Assessment → Three CTAs (Talk to Our Team / Go Deeper on Your Results / Save Your Assessment) → Agent conversation (if they choose to explore)
 
-## The Goal
+## Backend
 
-Integrate the Prism agent into the quiz project so users can continue exploring their health after reading their assessment. The agent starts seeded with the user's quiz data (answers + assessment), so there's no cold start — it already knows their situation and can go deeper immediately.
+### Agent Route (`app/api/agent/route.ts`)
 
-The user flow: Quiz → Assessment → "Explore Your Results Further" → Agent conversation (streaming, evidence-based, multi-turn).
+Streaming endpoint using Claude Opus 4.6 with:
+- Three-tier Anthropic prompt caching (tool schemas, stable system prompt, conversation history)
+- `prepareStep` hook for incremental cache advancement
+- Context management (`clear_thinking`, `clear_tool_uses`, `compact`)
+- Rate limiting (IP-based per-minute/per-hour, dev bypass)
+- Input validation (message array + length)
+- Comprehensive logging (cache metrics, cost calculation, context management events)
+- `maxDuration: 300`
 
-## What's Implemented So Far
+### System Prompt (`app/api/agent/systemPrompt.ts`)
 
-### Backend (simplified reimplementations, not ported from standalone)
+Loads 8 knowledge files from `lib/knowledge/` via `Promise.all` with module-level caching:
+- `knowledge.md`, `questionaire.md`, `diet_lifestyle_standardized.md`
+- `metabolism_deep_dive.md`, `gut_deep_dive.md`
+- `evidence_hierarchy.md`, `takehome.md`, `prism_process.md`
 
-| File | Status | Notes |
-|------|--------|-------|
-| `app/api/agent/route.ts` | ✅ Built | Streaming endpoint with Sonnet 4.6, context management. Missing: cache manager, rate limiting, input validation |
-| `app/api/agent/systemPrompt.ts` | ✅ Built | All 8 knowledge files, quiz context seeding (answers + assessment), stable/dynamic split. Adapted from standalone prompt structure |
-| `app/api/agent/tools.ts` | ✅ Built | Search + read tools only. Missing: extract_findings depth tool |
+Prompt split into stable (cached) and dynamic (per-request) sections. The dynamic section includes the quiz variant, client name, formatted answers, and the full assessment.
 
-### Persistence (simplified reimplementations)
+Key prompt features:
+- Warm greeting with name on first message
+- Synthesis paragraph (agent brings patterns together when it has enough understanding)
+- Dual-purpose evidence framing (tools ground reasoning AND expand it)
+- Fake name handling (don't reference clearly fake names)
+- Booking link shared conversationally only when contextually relevant
 
-| File | Status | Notes |
-|------|--------|-------|
-| `lib/agent/thread-store.ts` | ✅ Built | Dexie table keyed by quizId. Simplified from standalone |
-| `hooks/use-agent-persistence.ts` | ✅ Built | Hydrate on mount, save on stream complete. Simplified from standalone |
+### Agent Tools (`app/api/agent/tools/`)
 
-### Frontend (simplified reimplementations — NOT ported from standalone)
+Three tools, all Exa v2 SDK (`exa-js@2.7.0`):
 
-| File | Status | Notes |
-|------|--------|-------|
-| `components/ai-elements/conversation.tsx` | ✅ Built | Auto-scroll via use-stick-to-bottom. Simplified |
-| `components/ai-elements/message.tsx` | ✅ Built | User/assistant bubbles. Simplified |
-| `components/ai-elements/tool-status.tsx` | ✅ Built | Animated indicator. Simplified |
-| `components/ai-elements/sources.tsx` | ✅ Built | Collapsible citation drawer. Simplified |
-| `components/ai-elements/reasoning.tsx` | ✅ Built | Collapsible thinking block. Simplified |
-| `components/agent/agent-composer.tsx` | ✅ Built | Text input + send/stop. Simplified (no voice, no attachments) |
+| Tool | Description | Config |
+|------|-------------|--------|
+| `search` | Semantic search for studies/sources | 5 results, no category filter, 1250 char highlights |
+| `read` | Focused highlights from a specific URL | 10K char highlights |
+| `extract_findings` | Full text → Gemini Flash structured extraction | 400K char text, retry with exponential backoff |
 
-### Pages
+Shared infrastructure:
+- `exaSearch/exaClient.ts` — configurable Exa v2 client (numResults, category)
+- `exaSearch/rateLimiter.ts` — promise-chained 10 QPS
+- `depthTool/` — depth extraction pipeline (Exa full text → Gemini Flash `generateObject`)
 
-| File | Status | Notes |
-|------|--------|-------|
-| `app/explore/[quizId]/page.tsx` | ✅ Built | Server component — validates quizId, passes props |
-| `app/explore/[quizId]/agent-page.tsx` | ✅ Built | Client component — useChat with DefaultChatTransport, auto-trigger hidden first message, persistence |
+### Supporting Infrastructure (`app/api/agent/lib/`)
 
-### Quiz Integration (complete)
+| File | Purpose |
+|------|---------|
+| `cacheManager.ts` | Three-tier prompt caching, accepts `{stable, dynamic}` |
+| `rateLimit.ts` | IP-based rate limiting with dev bypass |
+| `inputValidation.ts` | Message array + length validation |
+| `llmRetry.ts` | Exponential backoff with jitter for extraction |
+| `retryConfig.ts` | Phase-based retry configuration |
 
-| File | Change | Status |
-|------|--------|--------|
-| `app/api/quiz/systemPrompt.ts` | Removed mandatory consultation closing | ✅ Done |
-| `components/quiz/quiz-result.tsx` | Added "Explore Your Results Further" CTA | ✅ Done |
+## Frontend
 
-### Knowledge Files
+### Agent Page (`app/explore/[quizId]/`)
 
-All 8 present in `lib/knowledge/`:
-- knowledge.md, questionaire.md, diet_lifestyle_standardized.md
-- metabolism_deep_dive.md, gut_deep_dive.md
-- evidence_hierarchy.md, takehome.md, prism_process.md
+- `page.tsx` — Server component, validates quizId, loads submission/result
+- `agent-page.tsx` — Client component with the full chat interface
 
-### Build Status
+Key patterns:
+- **Auto-trigger**: Hidden first message fires on mount ("I just finished the quiz and read through my assessment. I clicked to chat with you to learn more."), filtered from rendered UI
+- **Hydration-safe**: Auto-trigger waits for IndexedDB hydration before deciding to fire
+- **Persistence**: Dual save — IndexedDB (client, for hydration) + server (for admin visibility)
+- **Booking link detection**: Event delegation on conversation container catches clicks on `prism.miami` links
 
-✅ Compiles clean. All routes present. Not yet tested end-to-end.
+### Chat UI Components (`components/ai-elements/`)
 
-## What Needs To Happen Next
+| Component | Purpose |
+|-----------|---------|
+| `conversation.tsx` | Auto-scroll container (use-stick-to-bottom) |
+| `message.tsx` | User/assistant message bubbles with cva variants |
+| `response.tsx` | Markdown renderer (Streamdown/react-markdown) |
+| `tool-status.tsx` | Animated research/reading indicator |
+| `sources.tsx` | Collapsible citation drawer (compound pattern) |
+| `reasoning.tsx` | Collapsible thinking block with duration tracking |
+| `prompt-input.tsx` | Text input + send/stop button |
 
-The current frontend components and some backend infrastructure are simplified rewrites, not the proven code from the standalone agent. We need to bring over the actual files and integrate them properly.
+### Persistence (`hooks/use-agent-persistence.ts`)
 
-### Files to copy from the standalone Prism agent project
+- Hydrates from IndexedDB on mount via `lib/agent/thread-store.ts` (Dexie)
+- Saves to IndexedDB when streaming completes (status: streaming/submitted → ready)
+- Also saves serialized conversation to server via `lib/tracking.ts` for admin visibility
 
-**Frontend components** (replace simplified versions):
+## Engagement Tracking
+
+Full post-assessment engagement tracking, visible in the admin dashboard.
+
+### What's Tracked
+
+| Event | Source | Trigger |
+|-------|--------|---------|
+| `pdf_download` | `assessment` | User clicks "Save Your Assessment" |
+| `booking_click` | `assessment` | User clicks "Talk to Our Team" |
+| `agent_opened` | `assessment` | User clicks "Go Deeper on Your Results" |
+| `booking_click` | `agent` | User clicks booking link in agent chat |
+
+Conversation transcripts are saved server-side after each exchange (serialized to user/assistant text only, stripped of tool calls and reasoning).
+
+### Storage (`server/quizEngagement.ts`)
+
+Dual-path (Redis in prod, filesystem in dev), keyed by `quiz-engagement:{quizId}`:
+
+```typescript
+interface EngagementRecord {
+  quizId: string;
+  events: EngagementEvent[];
+  conversation: SerializedMessage[] | null;
+  summary: string | null;
+  updatedAt: string;
+}
 ```
-components/ai-elements/conversation.tsx
-components/ai-elements/message.tsx
-components/ai-elements/tool-status.tsx
-components/ai-elements/sources.tsx
-components/ai-elements/reasoning.tsx
-components/ai-elements/prompt-input.tsx
-components/chat-view.tsx
-```
 
-**Hooks** (replace simplified versions):
-```
-hooks/use-persisted-chat.ts
-hooks/use-thread-persistence.ts
-```
+### Client Tracking (`lib/tracking.ts`)
 
-**Lib utilities:**
-```
-lib/message-utils.ts
-```
+Fire-and-forget helpers with `keepalive: true` (survives page navigation):
+- `trackEvent(quizId, type, source)` — discrete event
+- `saveConversationRemote(quizId, messages)` — conversation snapshot
 
-**Depth extraction tool** (new — not yet in project):
-```
-app/api/chat/tools/depthTool/depthTool.ts
-app/api/chat/tools/depthTool/types.ts
-app/api/chat/tools/depthTool/extraction/agent.ts
-app/api/chat/tools/depthTool/extraction/prompt.ts
-app/api/chat/tools/depthTool/extraction/schema.ts
-```
+### Admin Display
 
-**Infrastructure** (new — not yet in project):
-```
-app/api/chat/lib/cacheManager.ts
-app/api/chat/lib/rateLimit.ts
-app/api/chat/lib/inputValidation.ts
-app/api/chat/lib/llmRetry.ts
-app/api/chat/lib/retryConfig.ts
-```
+- **Collapsed row**: Engagement badges (PDF, Booking clicked, Chat + message count)
+- **Expanded view**: Events timeline with timestamps, conversation summary (on-demand), full transcript
 
-**Exa client** (for shared tool infrastructure):
-```
-app/api/chat/tools/researchTool/exaSearch/exaClient.ts
-app/api/chat/tools/researchTool/exaSearch/rateLimiter.ts
-app/api/chat/tools/researchTool/exaSearch/types.ts
-```
+### Conversation Summary
 
-### After files are copied
+On-demand AI summary generated via admin button click:
+- `POST /api/admin/results/summary` — admin-authenticated
+- Fetches conversation + quiz context (variant, answers, assessment)
+- Claude Sonnet 4.6 generates concise prose summary
+- Saved to engagement record, displayed above transcript in admin
 
-1. **Read and understand each file** in the context of this project
-2. **Adapt paths and imports** — the standalone uses `app/api/chat/`, we use `app/api/agent/`
-3. **Replace simplified components** with the proven versions, adapting for this project's context (no sidebar, no voice, single conversation per quiz)
-4. **Wire the depth tool** into the agent route alongside search + read
-5. **Integrate cache manager** into the agent route (stable/dynamic prompt split already exists)
-6. **Integrate rate limiting + input validation** into the agent route
-7. **Update agent-page.tsx** to use the proven chat UI components
-8. **Build and test** end-to-end
+## Post-Assessment CTAs (`components/quiz/quiz-result.tsx`)
+
+Redesigned for clarity. Equal-weight side-by-side cards on desktop:
+
+| CTA | Label | Subtitle | Action |
+|-----|-------|----------|--------|
+| Booking | Talk to Our Team | Free intro call to discuss your results and how we can help | Opens booking URL (UTM-tagged) |
+| Explore | Go Deeper on Your Results | Ask questions and explore your patterns with real-time research | Navigates to `/explore/{quizId}` |
+| PDF | Save Your Assessment | Download a PDF copy to reference or share | Downloads assessment PDF |
+
+The quiz agent prompt explicitly does NOT mention these options. The assessment builds trust and desire; the UI offers the paths.
+
+## File Structure
+
+```
+app/api/agent/
+├── route.ts                          Streaming endpoint (Opus 4.6, caching, logging)
+├── systemPrompt.ts                   8 knowledge files, stable/dynamic split
+├── tools/
+│   ├── index.ts                      Exports agentTools (search, read, extract_findings)
+│   ├── searchTool.ts                 Exa semantic search (5 results, no category)
+│   ├── readTool.ts                   Exa focused highlights
+│   ├── exaSearch/
+│   │   ├── exaClient.ts              Exa v2 client (configurable)
+│   │   ├── rateLimiter.ts            Promise-chained 10 QPS
+│   │   └── types.ts                  Extended SearchOptions
+│   └── depthTool/
+│       ├── depthTool.ts              Full text → Gemini Flash extraction
+│       ├── types.ts                  Finding, ExtractionOutput
+│       └── extraction/
+│           ├── agent.ts              withRetry + generateObject
+│           ├── prompt.ts             Extraction prompt template
+│           └── schema.ts             Zod schema
+└── lib/
+    ├── cacheManager.ts               Three-tier prompt caching
+    ├── rateLimit.ts                  IP-based rate limiting
+    ├── inputValidation.ts            Message validation
+    ├── llmRetry.ts                   Exponential backoff
+    └── retryConfig.ts                Phase-based retry config
+
+app/api/quiz/engagement/
+└── route.ts                          POST endpoint for tracking events + conversations
+
+app/api/admin/results/summary/
+└── route.ts                          POST endpoint for AI conversation summary
+
+app/explore/[quizId]/
+├── page.tsx                          Server component (validates quizId)
+└── agent-page.tsx                    Client component (chat interface)
+
+components/ai-elements/
+├── conversation.tsx                  Auto-scroll container
+├── message.tsx                       User/assistant bubbles
+├── response.tsx                      Markdown renderer
+├── tool-status.tsx                   Research indicator
+├── sources.tsx                       Citation drawer
+├── reasoning.tsx                     Thinking block
+├── prompt-input.tsx                  Text input + send/stop
+└── loader.tsx                        Loading spinner
+
+hooks/
+├── use-agent-persistence.ts          IndexedDB + server persistence
+└── use-mobile.ts                     Mobile detection
+
+lib/
+├── agent/thread-store.ts             Dexie IndexedDB layer
+├── tracking.ts                       Fire-and-forget engagement tracking
+└── message-utils.ts                  Text extraction + citation URL parsing
+
+server/
+└── quizEngagement.ts                 Engagement storage (Redis/filesystem)
+```
