@@ -306,7 +306,7 @@ function EngagementBadges({ engagement }: { engagement: EngagementRecord | null 
       {bookingFromAssessment && (
         <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
           <Calendar className="h-3 w-3" />
-          Booking clicked
+          Booking clicked via assessment
         </span>
       )}
       {bookingFromAgent && (
