@@ -1,0 +1,17 @@
+{
+  "threadId": "thr_CMybdFw3RBne",
+  "conversation": [
+    {
+      "role": "user",
+      "text": "how are you"
+    },
+    {
+      "role": "assistant",
+      "text": "\n\nGood, thanks for reaching out! What's going on with your health that brought you here?"
+    }
+  ],
+  "summary": null,
+  "events": [],
+  "createdAt": "2026-03-05T18:43:28.642Z",
+  "updatedAt": "2026-03-05T18:43:28.642Z"
+}
