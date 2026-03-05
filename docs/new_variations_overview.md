@@ -129,10 +129,8 @@ interface VariantConfig {
 
   // Prompt
   promptOverlay: string;         // variant-specific system prompt section (see Prompt Architecture)
-
-  // OG / Social metadata
-  ogImage?: string;              // path to variant-specific OG image
 }
+// Note: OG images are generated dynamically via opengraph-image.tsx (no ogImage field needed)
 ```
 
 ### Example: Root Cause Variant Config (migrating the existing quiz)

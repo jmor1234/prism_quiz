@@ -189,7 +189,7 @@ Cross-system questions are the key differentiator. They reveal *why* the primary
 1. **"None of these" in multi_selects** -- removed from option lists, replaced with `required: false` + hint "Select all that apply, or skip if none". Prevents contradictory state.
 2. **Inline question definitions** -- each config is self-contained. No shared question pool. Same IDs enable cross-variant comparison without coupling.
 3. **promptLabel on every question** -- short noun-phrase labels for clean AI prompt output (e.g., "Energy Level", "Crash after eating", "Digestive issues").
-4. **ogImage omitted** -- deferred to Phase 3 for per-variant social preview images.
+4. **Dynamic OG images** -- `opengraph-image.tsx` and `twitter-image.tsx` in `app/quiz/[variant]/` generate branded 1200x630 images per variant (edge runtime, Prism logo + variant name + subtitle). No static assets needed.
 
 ### Verified Working
 
@@ -259,7 +259,7 @@ Injected with explicit framing: "use it to think, not to quote" -- the agent int
 
 - Knowledge file loading parallelized with `Promise.all` (was 5 sequential reads)
 - Retry flow parallelized (`getQuizSubmission` + `getQuizResult` in parallel)
-- Server-only fields (`promptOverlay`, `description`, `ogImage`) stripped before passing to client component
+- Server-only fields (`promptOverlay`, `description`) stripped before passing to client component
 - Mobile responsiveness fixes: textarea font-size 16px (prevents iOS zoom), slider thumb enlarged, slider labels repositioned, safe area insets on sticky header
 - Web guidelines compliance: `color-scheme` on html, `theme-color` meta, `aria-hidden` on decorative SVGs, specific CSS transitions (no `transition-all`)
 
@@ -407,7 +407,7 @@ Added a standalone entry point (`/chat`) where users can chat with Prism's healt
 
 ### Possible Enhancements
 
-- [ ] Per-variant OG images (infrastructure supports it -- just needs design assets + `ogImage` field set in each config)
+- [x] Per-variant OG images -- dynamic generation via `opengraph-image.tsx` (edge runtime, branded 1200x630)
 - [ ] Email capture with per-variant toggle
 - [ ] Name step position configurable per-variant (first vs last)
 

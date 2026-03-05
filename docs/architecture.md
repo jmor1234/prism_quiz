@@ -77,9 +77,11 @@ app/quiz/page.tsx                    Server component — landing page
   └─ getAllVariants()                Card grid linking to each /quiz/{slug}
 
 app/quiz/[variant]/page.tsx          Server component
-  └─ generateMetadata()              Per-variant SEO (title, description, OG)
+  └─ generateMetadata()              Per-variant SEO (title, description, OG, Twitter)
   └─ generateStaticParams()          Pre-renders all 12 variant routes
-  └─ Strips server-only fields       promptOverlay, description, ogImage
+  └─ Strips server-only fields       promptOverlay, description
+app/quiz/[variant]/opengraph-image.tsx  Dynamic OG image (edge, 1200x630)
+app/quiz/[variant]/twitter-image.tsx    Re-exports OG image for Twitter
   └─ QuizClient                      "use client" boundary
        └─ QuizWizard                 Core engine — takes VariantConfig
             ├─ IntroScreen           Headline + subtitle + Start button (before questions)
@@ -291,8 +293,7 @@ VariantConfig
 ├── nameField                        Name collection config
 ├── headline, subtitle               Page metadata
 ├── resultBanner, ctaText, ctaUrl    Result display
-├── promptOverlay                    LLM condition-specific guidance
-└── ogImage?                         Social preview
+└── promptOverlay                    LLM condition-specific guidance
 ```
 
 ### QuestionConfig — 5 types
