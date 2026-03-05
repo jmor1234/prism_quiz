@@ -3,6 +3,7 @@
 import { NextRequest } from "next/server";
 import { getQuizSubmission } from "@/server/quizSubmissions";
 import { getQuizResult } from "@/server/quizResults";
+import { getEngagement } from "@/server/quizEngagement";
 import { markdownToHtml } from "@/lib/pdf/markdownToHtml";
 import { generatePdf } from "@/lib/pdf/generatePdf";
 import { buildAdminPdfHtml } from "./lib/adminPdfTemplate";
@@ -46,9 +47,10 @@ export async function POST(request: NextRequest) {
     console.log(`[Admin PDF] Starting export for quiz: ${quizId}`);
 
     // 3. Fetch data in parallel
-    const [submission, result] = await Promise.all([
+    const [submission, result, engagement] = await Promise.all([
       getQuizSubmission(quizId),
       getQuizResult(quizId),
+      getEngagement(quizId),
     ]);
 
     if (!submission) {
@@ -72,6 +74,7 @@ export async function POST(request: NextRequest) {
       name: submission.name,
       answers: submission.answers,
       reportHtml,
+      summary: engagement?.summary ?? null,
     });
 
     // 6. Generate PDF

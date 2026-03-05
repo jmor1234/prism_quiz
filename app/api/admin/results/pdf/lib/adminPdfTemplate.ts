@@ -10,6 +10,7 @@ interface AdminPdfData {
   name: string;
   answers: Record<string, unknown>;
   reportHtml: string;
+  summary?: string | null;
 }
 
 /**
@@ -21,7 +22,7 @@ interface AdminPdfData {
  * 3. AI Assessment (markdown converted to HTML)
  */
 export function buildAdminPdfHtml(data: AdminPdfData): string {
-  const { quizId, createdAt, variant, name, answers, reportHtml } = data;
+  const { quizId, createdAt, variant, name, answers, reportHtml, summary } = data;
 
   const config = getVariant(variant);
   const variantName = config?.name ?? variant;
@@ -31,12 +32,14 @@ export function buildAdminPdfHtml(data: AdminPdfData): string {
     ? buildAnswersSection(config.questions, answers)
     : buildFallbackAnswersSection(answers);
   const assessmentSection = buildAssessmentSection(reportHtml);
+  const summarySection = buildSummarySection(summary);
 
   return `
     ${header}
     <div class="content-section">
       ${answersSection}
       ${assessmentSection}
+      ${summarySection}
     </div>
   `;
 }
@@ -156,6 +159,15 @@ function buildAssessmentSection(reportHtml: string): string {
   return `
     <h2>AI Assessment</h2>
     ${reportHtml}
+  `;
+}
+
+function buildSummarySection(summary?: string | null): string {
+  if (!summary) return "";
+
+  return `
+    <h2>Conversation Summary</h2>
+    <div class="freetext-answer">${escapeHtml(summary)}</div>
   `;
 }
 

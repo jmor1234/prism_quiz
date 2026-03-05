@@ -114,6 +114,26 @@ export function QuizResult({
             className="flex flex-col items-center gap-4"
           >
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full">
+              {/* Go Deeper on Your Results */}
+              <a
+                href={`/explore/${result.id}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => trackEvent(result.id, "agent_opened", "assessment")}
+                className={cn(
+                  "flex flex-col items-center gap-2 rounded-lg border p-5 text-center",
+                  "border-[var(--quiz-gold)]/50 hover:border-[var(--quiz-gold)]",
+                  "hover:bg-[var(--quiz-gold)]/10",
+                  "transition-all duration-300 hover:-translate-y-0.5"
+                )}
+              >
+                <MessageSquare className="h-5 w-5 text-[var(--quiz-gold-dark)]" aria-hidden="true" />
+                <span className="text-base font-semibold">Go Deeper on Your Results</span>
+                <span className="text-xs text-muted-foreground">
+                  Ask questions and explore your patterns with real-time research
+                </span>
+              </a>
+
               {/* Talk to Our Team */}
               <a
                 href={variant.ctaUrl}
@@ -136,26 +156,6 @@ export function QuizResult({
                 <span className="text-base font-semibold">Talk to Our Team</span>
                 <span className="text-xs text-muted-foreground">
                   Free intro call to discuss your results and how we can help
-                </span>
-              </a>
-
-              {/* Go Deeper on Your Results */}
-              <a
-                href={`/explore/${result.id}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={() => trackEvent(result.id, "agent_opened", "assessment")}
-                className={cn(
-                  "flex flex-col items-center gap-2 rounded-lg border p-5 text-center",
-                  "border-[var(--quiz-gold)]/50 hover:border-[var(--quiz-gold)]",
-                  "hover:bg-[var(--quiz-gold)]/10",
-                  "transition-all duration-300 hover:-translate-y-0.5"
-                )}
-              >
-                <MessageSquare className="h-5 w-5 text-[var(--quiz-gold-dark)]" aria-hidden="true" />
-                <span className="text-base font-semibold">Go Deeper on Your Results</span>
-                <span className="text-xs text-muted-foreground">
-                  Ask questions and explore your patterns with real-time research
                 </span>
               </a>
             </div>

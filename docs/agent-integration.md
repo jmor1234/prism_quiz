@@ -138,6 +138,7 @@ On-demand AI summary generated via admin button click:
 - Fetches conversation + quiz context (variant, answers, assessment)
 - Claude Sonnet 4.6 generates concise prose summary
 - Saved to engagement record, displayed above transcript in admin
+- Included in admin PDF export when present (appears after AI Assessment section)
 
 ## Post-Assessment CTAs (`components/quiz/quiz-result.tsx`)
 

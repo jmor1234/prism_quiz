@@ -256,7 +256,7 @@ On save, submissions are dual-indexed to both the global and per-variant sorted 
 Two PDF pipelines, both using Puppeteer with serverless-aware Chromium (`@sparticuz/chromium` on Vercel):
 
 - **User PDF:** markdown report → HTML (remark/rehype) → cover template → PDF
-- **Admin PDF:** variant config → config-driven answer rendering + report → admin template → PDF
+- **Admin PDF:** variant config → config-driven answer rendering + report + conversation summary (if exists) → admin template → PDF
 
 ---
 

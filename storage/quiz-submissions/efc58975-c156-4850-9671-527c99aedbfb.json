@@ -1,0 +1,24 @@
+{
+  "id": "efc58975-c156-4850-9671-527c99aedbfb",
+  "createdAt": "2026-03-05T15:38:03.874Z",
+  "variant": "weight",
+  "name": "Priscila",
+  "answers": {
+    "weightStruggle": "stuck",
+    "weightDistribution": "all_over",
+    "dietHistory": [
+      "calorie_counting",
+      "keto",
+      "fasting",
+      "intense_exercise"
+    ],
+    "appetite": "normal",
+    "puffinessRetention": false,
+    "energyLevel": 6,
+    "coldExtremities": false,
+    "digestiveIssues": true,
+    "stressAndSleep": "both_good",
+    "typicalEating": "breakfast i will have some eggs and a protein bagel, maybe avacado, and coffee\n\nlunch is fruit and some more eggs and chicken\n\ndinner usually some lean meat with veggies",
+    "healthGoals": "i lost a lot of weight of many months of working out and eating well in calorie deficit but i havent lost anymore weight since september i feel like ive been stuck and hitting a platue even though im still eating well and working out i dont want to bring my cals even lower."
+  }
+}
