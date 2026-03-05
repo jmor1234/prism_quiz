@@ -41,7 +41,7 @@ Three tools, all Exa v2 SDK (`exa-js@2.7.0`):
 
 | Tool | Description | Config |
 |------|-------------|--------|
-| `search` | Semantic search for studies/sources | 5 results, no category filter, 1250 char highlights |
+| `search` | Semantic search for studies/sources | 3 results, no category filter, 1250 char highlights |
 | `read` | Focused highlights from a specific URL | 10K char highlights |
 | `extract_findings` | Full text → Gemini Flash structured extraction | 400K char text, retry with exponential backoff |
 
@@ -159,7 +159,7 @@ app/api/agent/
 ├── systemPrompt.ts                   8 knowledge files, stable/dynamic split
 ├── tools/
 │   ├── index.ts                      Exports agentTools (search, read, extract_findings)
-│   ├── searchTool.ts                 Exa semantic search (5 results, no category)
+│   ├── searchTool.ts                 Exa semantic search (3 results, no category)
 │   ├── readTool.ts                   Exa focused highlights
 │   ├── exaSearch/
 │   │   ├── exaClient.ts              Exa v2 client (configurable)

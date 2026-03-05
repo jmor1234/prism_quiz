@@ -334,7 +334,7 @@ Integrated a full conversational health agent into the quiz flow. After reading 
 - Streaming endpoint with Claude Opus 4.6, three-tier prompt caching, rate limiting, input validation
 - 8 knowledge files loaded into system prompt (stable/cached)
 - Quiz context (variant, answers, assessment) in dynamic prompt section
-- Three Exa v2 tools: search (5 results), read (highlights), extract_findings (depth extraction via Gemini Flash)
+- Three Exa v2 tools: search (3 results), read (highlights), extract_findings (depth extraction via Gemini Flash)
 - Supporting infrastructure: cache manager, rate limiter, input validation, retry logic
 
 **Chat agent frontend** (`app/explore/[quizId]/`)
@@ -444,7 +444,7 @@ app/api/agent/
   systemPrompt.ts                   # 8 knowledge files, stable/dynamic split
   tools/
     index.ts                        # Exports agentTools
-    searchTool.ts                   # Exa semantic search (5 results)
+    searchTool.ts                   # Exa semantic search (3 results)
     readTool.ts                     # Exa focused highlights
     exaSearch/                      # Shared Exa v2 client + rate limiter
     depthTool/                      # Full text → Gemini Flash extraction
