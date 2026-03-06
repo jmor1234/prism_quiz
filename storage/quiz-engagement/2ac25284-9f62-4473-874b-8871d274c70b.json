@@ -10,6 +10,11 @@
       "type": "agent_opened",
       "source": "assessment",
       "timestamp": "2026-03-06T15:05:47.510Z"
+    },
+    {
+      "type": "pdf_download",
+      "source": "assessment",
+      "timestamp": "2026-03-06T15:44:26.047Z"
     }
   ],
   "conversation": [
@@ -47,5 +52,5 @@
     }
   ],
   "summary": null,
-  "updatedAt": "2026-03-06T15:08:00.666Z"
+  "updatedAt": "2026-03-06T15:44:26.047Z"
 }
