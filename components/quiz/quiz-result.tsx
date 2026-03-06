@@ -106,84 +106,87 @@ export function QuizResult({
             <Response variant="report">{result.report}</Response>
           </motion.div>
 
-          {/* Action cards */}
+          {/* Save Your Assessment */}
           <motion.div
             initial={shouldReduceMotion ? {} : { opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: staggerDelay * 2 }}
-            className="flex flex-col items-center gap-4"
+            className="flex flex-col items-center gap-1"
           >
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full">
-              {/* Go Deeper on Your Results */}
-              <a
-                href={`/explore/${result.id}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={() => trackEvent(result.id, "agent_opened", "assessment")}
-                className={cn(
-                  "flex flex-col items-center gap-2 rounded-lg border p-5 text-center",
-                  "border-[var(--quiz-gold)]/50 hover:border-[var(--quiz-gold)]",
-                  "hover:bg-[var(--quiz-gold)]/10",
-                  "transition-all duration-300 hover:-translate-y-0.5"
-                )}
-              >
-                <MessageSquare className="h-5 w-5 text-[var(--quiz-gold-dark)]" aria-hidden="true" />
-                <span className="text-base font-semibold">Go Deeper on Your Results</span>
-                <span className="text-xs text-muted-foreground">
-                  Ask questions and explore your patterns with real-time research
-                </span>
-              </a>
+            <Button
+              variant="outline"
+              onClick={downloadPdf}
+              disabled={isDownloadingPdf}
+              className="gap-2 transition-all duration-300 hover:-translate-y-0.5"
+            >
+              {isDownloadingPdf ? (
+                <>
+                  <Loader className="h-4 w-4" />
+                  Generating PDF…
+                </>
+              ) : (
+                <>
+                  <FileDown className="h-4 w-4" />
+                  Save Your Assessment
+                </>
+              )}
+            </Button>
+            <span className="text-xs text-muted-foreground">
+              Download a PDF copy to reference or share
+            </span>
+          </motion.div>
 
-              {/* Talk to Our Team */}
-              <a
-                href={variant.ctaUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={(e) => {
-                  e.preventDefault();
-                  trackEvent(result.id, "booking_click", "assessment");
-                  const url = buildBookingUrl(variant.ctaUrl);
-                  window.open(url, "_blank", "noopener,noreferrer");
-                }}
-                className={cn(
-                  "flex flex-col items-center gap-2 rounded-lg border p-5 text-center",
-                  "border-[var(--quiz-gold)]/50 hover:border-[var(--quiz-gold)]",
-                  "hover:bg-[var(--quiz-gold)]/10",
-                  "transition-all duration-300 hover:-translate-y-0.5"
-                )}
-              >
-                <Calendar className="h-5 w-5 text-[var(--quiz-gold-dark)]" aria-hidden="true" />
-                <span className="text-base font-semibold">Talk to Our Team</span>
-                <span className="text-xs text-muted-foreground">
-                  Free intro call to discuss your results and how we can help
-                </span>
-              </a>
-            </div>
-
-            {/* Save Your Assessment */}
-            <div className="flex flex-col items-center gap-1">
-              <Button
-                variant="outline"
-                onClick={downloadPdf}
-                disabled={isDownloadingPdf}
-                className="gap-2 transition-all duration-300 hover:-translate-y-0.5"
-              >
-                {isDownloadingPdf ? (
-                  <>
-                    <Loader className="h-4 w-4" />
-                    Generating PDF…
-                  </>
-                ) : (
-                  <>
-                    <FileDown className="h-4 w-4" />
-                    Save Your Assessment
-                  </>
-                )}
-              </Button>
+          {/* Action cards */}
+          <motion.div
+            initial={shouldReduceMotion ? {} : { opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: staggerDelay * 3 }}
+            className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full"
+          >
+            {/* Go Deeper on Your Results */}
+            <a
+              href={`/explore/${result.id}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={() => trackEvent(result.id, "agent_opened", "assessment")}
+              className={cn(
+                "flex flex-col items-center gap-2 rounded-lg border p-5 text-center",
+                "border-[var(--quiz-gold)]/50 hover:border-[var(--quiz-gold)]",
+                "hover:bg-[var(--quiz-gold)]/10",
+                "transition-all duration-300 hover:-translate-y-0.5"
+              )}
+            >
+              <MessageSquare className="h-5 w-5 text-[var(--quiz-gold-dark)]" aria-hidden="true" />
+              <span className="text-base font-semibold">Go Deeper on Your Results</span>
               <span className="text-xs text-muted-foreground">
-                Download a PDF copy to reference or share
+                Ask questions and explore your patterns with real-time research
               </span>
-            </div>
+            </a>
+
+            {/* Talk to Our Team */}
+            <a
+              href={variant.ctaUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => {
+                e.preventDefault();
+                trackEvent(result.id, "booking_click", "assessment");
+                const url = buildBookingUrl(variant.ctaUrl);
+                window.open(url, "_blank", "noopener,noreferrer");
+              }}
+              className={cn(
+                "flex flex-col items-center gap-2 rounded-lg border p-5 text-center",
+                "border-[var(--quiz-gold)]/50 hover:border-[var(--quiz-gold)]",
+                "hover:bg-[var(--quiz-gold)]/10",
+                "transition-all duration-300 hover:-translate-y-0.5"
+              )}
+            >
+              <Calendar className="h-5 w-5 text-[var(--quiz-gold-dark)]" aria-hidden="true" />
+              <span className="text-base font-semibold">Talk to Our Team</span>
+              <span className="text-xs text-muted-foreground">
+                Free intro call to discuss your results and how we can help
+              </span>
+            </a>
           </motion.div>
         </div>
       </main>
