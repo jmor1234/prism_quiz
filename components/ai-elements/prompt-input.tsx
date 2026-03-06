@@ -64,6 +64,8 @@ export const PromptInputTextarea = ({
   placeholder = "Ask anything\u2026",
   ...props
 }: ComponentProps<typeof Textarea>) => {
+  const status = (props as Record<string, unknown>)["data-status"] as string | undefined;
+  const isDisabled = status === "streaming" || status === "submitted";
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
   useEffect(() => {
@@ -121,6 +123,7 @@ export const PromptInputTextarea = ({
       placeholder={placeholder}
       rows={1}
       {...props}
+      disabled={isDisabled}
     />
   );
 };
