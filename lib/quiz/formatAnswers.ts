@@ -6,6 +6,7 @@ import type {
   QuizAnswers,
   YesNoWithFollowUp,
 } from "./types";
+import { isOtherValue, getOtherText } from "./otherOption";
 
 function getOptionPromptLabel(option: { label: string; promptLabel?: string }): string {
   return option.promptLabel ?? option.label.toLowerCase();
@@ -56,6 +57,7 @@ function formatSingleAnswer(q: QuestionConfig, value: unknown): string {
       if (selected.length > 0) {
         const labels = selected
           .map((v) => {
+            if (isOtherValue(v)) return `other: ${getOtherText(v)}`;
             const opt = q.options.find((o) => o.value === v);
             return opt ? getOptionPromptLabel(opt) : v;
           })
@@ -67,6 +69,9 @@ function formatSingleAnswer(q: QuestionConfig, value: unknown): string {
 
     case "single_select": {
       const selected = value as string;
+      if (isOtherValue(selected)) {
+        return `**${label}:** other: ${getOtherText(selected)}`;
+      }
       const opt = q.options.find((o) => o.value === selected);
       return `**${label}:** ${opt ? getOptionPromptLabel(opt) : selected}`;
     }

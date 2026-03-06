@@ -1,0 +1,27 @@
+{
+  "id": "2ac25284-9f62-4473-874b-8871d274c70b",
+  "createdAt": "2026-03-06T15:04:14.719Z",
+  "variant": "testosterone",
+  "name": "Jack",
+  "answers": {
+    "primaryConcerns": [
+      "brain_fog"
+    ],
+    "muscleRecovery": true,
+    "bodyFatPattern": "__other__:Face and neck puffiness",
+    "libidoMorningErections": true,
+    "stressRecovery": true,
+    "sleepQuality": "waking_night",
+    "digestiveHealth": [
+      "constipation",
+      "diarrhea",
+      "gas",
+      "food_sensitivities",
+      "__other__:Feeling of food sitting in stomach for hours"
+    ],
+    "energyLevel": 4,
+    "coldExtremities": false,
+    "typicalEating": "Cereal or nothing for breakfast. Work through lunch, maybe a protein bar. Large dinner, often late. Snacks throughout the evening.",
+    "healthGoals": "Improve gut health and reduce digestive issues. More mental clarity and focus."
+  }
+}

@@ -44,6 +44,7 @@ export interface MultiSelectQuestionConfig {
   promptLabel?: string;
   options: OptionConfig[];
   required?: boolean; // default true
+  allowOther?: boolean; // default true — set false to disable
 }
 
 export interface SingleSelectQuestionConfig {
@@ -53,6 +54,7 @@ export interface SingleSelectQuestionConfig {
   hint?: string;
   promptLabel?: string;
   options: OptionConfig[];
+  allowOther?: boolean; // default true — set false to disable
 }
 
 export interface FreeTextQuestionConfig {

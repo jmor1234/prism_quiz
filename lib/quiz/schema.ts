@@ -2,6 +2,7 @@
 
 import { z } from "zod";
 import type { QuestionConfig, VariantConfig } from "./types";
+import { OTHER_PREFIX } from "./otherOption";
 
 function questionToZodField(q: QuestionConfig): z.ZodTypeAny {
   switch (q.type) {
@@ -22,12 +23,25 @@ function questionToZodField(q: QuestionConfig): z.ZodTypeAny {
 
     case "multi_select": {
       const validValues = q.options.map((o) => o.value);
-      return z.array(z.enum(validValues as [string, ...string[]]));
+      const itemSchema = q.allowOther !== false
+        ? z.union([
+            z.enum(validValues as [string, ...string[]]),
+            z.string().startsWith(OTHER_PREFIX).min(OTHER_PREFIX.length + 1).max(OTHER_PREFIX.length + 500),
+          ])
+        : z.enum(validValues as [string, ...string[]]);
+      return z.array(itemSchema);
     }
 
     case "single_select": {
       const validValues = q.options.map((o) => o.value);
-      return z.enum(validValues as [string, ...string[]]);
+      const enumSchema = z.enum(validValues as [string, ...string[]]);
+      if (q.allowOther !== false) {
+        return z.union([
+          enumSchema,
+          z.string().startsWith(OTHER_PREFIX).min(OTHER_PREFIX.length + 1).max(OTHER_PREFIX.length + 500),
+        ]);
+      }
+      return enumSchema;
     }
 
     case "free_text":

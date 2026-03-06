@@ -2,6 +2,7 @@
 
 import { getVariant } from "@/lib/quiz/variants";
 import type { QuestionConfig, YesNoWithFollowUp } from "@/lib/quiz/types";
+import { isOtherValue, getOtherText } from "@/lib/quiz/otherOption";
 
 interface AdminPdfData {
   quizId: string;
@@ -95,6 +96,7 @@ function formatAnswerValue(q: QuestionConfig, value: unknown): string {
       return escapeHtml(
         selected
           .map((v) => {
+            if (isOtherValue(v)) return `Other: ${getOtherText(v)}`;
             const opt = q.options.find((o) => o.value === v);
             return opt ? opt.label : v;
           })
@@ -103,6 +105,9 @@ function formatAnswerValue(q: QuestionConfig, value: unknown): string {
     }
 
     case "single_select": {
+      if (typeof value === "string" && isOtherValue(value)) {
+        return escapeHtml(`Other: ${getOtherText(value)}`);
+      }
       const opt = q.options.find((o) => o.value === value);
       return escapeHtml(opt ? opt.label : String(value ?? ""));
     }

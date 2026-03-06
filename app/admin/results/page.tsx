@@ -10,6 +10,7 @@ import { ModeToggle } from "@/components/ui/mode-toggle";
 import { Response } from "@/components/ai-elements/response";
 import { cn } from "@/lib/utils";
 import { getVariant, getAllVariants } from "@/lib/quiz/variants";
+import { isOtherValue, getOtherText } from "@/lib/quiz/otherOption";
 import type { QuestionConfig, YesNoWithFollowUp } from "@/lib/quiz/types";
 
 // ============================================================================
@@ -164,6 +165,7 @@ function AnswerField({ question, value }: { question: QuestionConfig; value: unk
           <span className="text-[13px] font-medium text-foreground">
             {selected.length > 0
               ? selected.map((v) => {
+                  if (isOtherValue(v)) return `Other: ${getOtherText(v)}`;
                   const opt = question.options.find((o) => o.value === v);
                   return opt ? opt.label : v;
                 }).join(", ")
@@ -174,12 +176,14 @@ function AnswerField({ question, value }: { question: QuestionConfig; value: unk
     }
 
     case "single_select": {
-      const opt = question.options.find((o) => o.value === value);
+      const displayValue = typeof value === "string" && isOtherValue(value)
+        ? `Other: ${getOtherText(value)}`
+        : (() => { const opt = question.options.find((o) => o.value === value); return opt ? opt.label : String(value ?? ""); })();
       return (
         <div className="flex items-baseline gap-2 py-1.5 border-b border-border/40 last:border-0">
           <span className="text-[13px] text-foreground/80 shrink-0">{label}</span>
           <span className="text-[13px] font-medium text-foreground">
-            {opt ? opt.label : String(value ?? "")}
+            {displayValue}
           </span>
         </div>
       );
