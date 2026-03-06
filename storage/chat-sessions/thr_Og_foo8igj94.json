@@ -1,0 +1,81 @@
+{
+  "threadId": "thr_Og_foo8igj94",
+  "conversation": [
+    {
+      "role": "user",
+      "text": "hey how are you"
+    },
+    {
+      "role": "assistant",
+      "text": "\n\nHey, doing well! What's going on with your health that brought you here?"
+    },
+    {
+      "role": "user",
+      "text": "i mean alot"
+    },
+    {
+      "role": "assistant",
+      "text": "\n\nI hear you. What's the biggest thing bothering you right now?"
+    },
+    {
+      "role": "user",
+      "text": "testing"
+    },
+    {
+      "role": "assistant",
+      "text": "\n\nNo worries. Whenever you're ready to share what's going on health-wise, I'm here."
+    },
+    {
+      "role": "user",
+      "text": "how are you"
+    },
+    {
+      "role": "assistant",
+      "text": "\n\nI'm good! Whenever you want to dig into what's going on with your health, just let me know."
+    },
+    {
+      "role": "user",
+      "text": "how are you"
+    },
+    {
+      "role": "assistant",
+      "text": "\n\nSame as before, ready when you are. What's the health stuff you mentioned having a lot going on with?"
+    },
+    {
+      "role": "user",
+      "text": "oh are you annoyed with me"
+    },
+    {
+      "role": "assistant",
+      "text": "\n\nNot at all! Just here whenever you're ready. No rush."
+    },
+    {
+      "role": "user",
+      "text": "just be honest"
+    },
+    {
+      "role": "assistant",
+      "text": "\n\nGenuinely not annoyed. I'm just here for health questions, so there's not much I can do until you're ready to share what's going on. Take your time."
+    },
+    {
+      "role": "user",
+      "text": "atleast 1% annoyed tho, be honest"
+    },
+    {
+      "role": "assistant",
+      "text": "\n\nHa, zero percent. I'm patient by nature. Whenever you're ready to talk health, I'm here."
+    },
+    {
+      "role": "user",
+      "text": "not even 0.01%?"
+    },
+    {
+      "role": "assistant",
+      "text": "\n\nNot even 0.01%. Whenever you're ready!"
+    }
+  ],
+  "summary": null,
+  "events": [],
+  "createdAt": "2026-03-06T18:09:23.780Z",
+  "updatedAt": "2026-03-06T19:43:59.791Z"
+}

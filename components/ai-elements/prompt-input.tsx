@@ -160,7 +160,11 @@ export const PromptInputSubmit = ({
 
   return (
     <Button
-      className={cn("gap-1.5 rounded-lg", className)}
+      className={cn(
+        "gap-1.5 rounded-lg",
+        status === "streaming" && "!bg-red-500 hover:!bg-red-600 text-white",
+        className
+      )}
       size={size}
       type={buttonType}
       variant={variant}
