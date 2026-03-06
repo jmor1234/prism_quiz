@@ -12,6 +12,22 @@
  */
 
 export const PDF_STYLES = `
+  /* Full Noto Sans Mono (not subset) for box-drawing & Unicode support in serverless */
+  @font-face {
+    font-family: 'Noto Sans Mono';
+    font-weight: 400;
+    font-style: normal;
+    font-display: swap;
+    src: url(https://fonts.gstatic.com/s/notosansmono/v37/BngrUXNETWXI6LwhGYvaxZikqZqK6fBq6kPvUce2oAZcdthSBUsYck4-_FNJ49o.ttf) format('truetype');
+  }
+  @font-face {
+    font-family: 'Noto Sans Mono';
+    font-weight: 600;
+    font-style: normal;
+    font-display: swap;
+    src: url(https://fonts.gstatic.com/s/notosansmono/v37/BngrUXNETWXI6LwhGYvaxZikqZqK6fBq6kPvUce2oAZcdthSBUsYck4-_I1O49o.ttf) format('truetype');
+  }
+
   /* CSS Reset for consistent PDF rendering */
   * {
     margin: 0;
