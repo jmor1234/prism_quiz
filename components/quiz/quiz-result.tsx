@@ -189,7 +189,7 @@ export function QuizResult({
               )}
             >
               <MessageSquare className="h-5 w-5 text-[var(--quiz-gold-dark)]" aria-hidden="true" />
-              <span className="text-base font-semibold">Go Deeper on Your Results</span>
+              <span className="text-base font-semibold">Go Deeper on Your Results With Our AI Assistant</span>
               <span className="text-xs text-muted-foreground">
                 Ask questions and explore your patterns with real-time research
               </span>

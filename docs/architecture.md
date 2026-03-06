@@ -37,7 +37,7 @@ POST /api/quiz { variant, name, answers }
     QuizResult renders markdown assessment with inline citations
             │
             ▼
-    Save Your Assessment (PDF) | Go Deeper on Your Results | Talk to Our Team
+    Save Your Assessment (PDF) | Talk to Our Team | Go Deeper on Your Results
             │                              │
             ▼                              ▼
     Opens booking URL              Navigates to /explore/{quizId}
