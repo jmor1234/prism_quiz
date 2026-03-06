@@ -37,7 +37,7 @@ POST /api/quiz { variant, name, answers }
     QuizResult renders markdown assessment with inline citations
             │
             ▼
-    Three CTAs: Talk to Our Team | Go Deeper on Your Results | Save Your Assessment
+    Save Your Assessment (PDF) | Go Deeper on Your Results | Talk to Our Team
             │                              │
             ▼                              ▼
     Opens booking URL              Navigates to /explore/{quizId}
@@ -405,7 +405,7 @@ components/
 │   ├── quiz-client.tsx                 "use client" boundary wrapper
 │   ├── quiz-wizard.tsx                 Core wizard engine
 │   ├── quiz-loading.tsx                Loading animation
-│   ├── quiz-result.tsx                 Result display + equal-weight CTAs
+│   ├── quiz-result.tsx                 Result display + PDF download + action CTAs
 │   ├── quiz-theme.ts                   Shared styling constants
 │   ├── question-step.tsx               Question type dispatcher
 │   └── questions/

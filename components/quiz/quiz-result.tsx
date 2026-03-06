@@ -26,6 +26,11 @@ export function QuizResult({
   const downloadPdf = useCallback(async () => {
     trackEvent(result.id, "pdf_download", "assessment");
     setIsDownloadingPdf(true);
+
+    // Open a new tab synchronously (within user gesture context) so mobile
+    // browsers don't block it. We'll direct it to the PDF once generated.
+    const pdfTab = window.open("", "_blank");
+
     try {
       const response = await fetch("/api/quiz/pdf", {
         method: "POST",
@@ -43,22 +48,24 @@ export function QuizResult({
       }
 
       const blob = await response.blob();
-      const contentDisposition = response.headers.get("Content-Disposition");
-      const filenameMatch = contentDisposition?.match(/filename="(.+)"/);
-      const filename =
-        filenameMatch?.[1] ||
-        `prism-assessment-${result.id.slice(0, 8)}.pdf`;
-
       const url = window.URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      window.URL.revokeObjectURL(url);
+
+      if (pdfTab) {
+        pdfTab.location.href = url;
+      } else {
+        // Fallback if popup was blocked: download in current tab
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `prism-assessment-${result.id.slice(0, 8)}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+      }
     } catch (err) {
       console.error("[Quiz PDF] Download error:", err);
+      // Close the blank tab if generation failed
+      if (pdfTab) pdfTab.close();
       alert(
         `Failed to download PDF: ${err instanceof Error ? err.message : "Unknown error"}`
       );
