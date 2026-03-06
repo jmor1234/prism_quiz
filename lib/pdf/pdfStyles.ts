@@ -34,7 +34,7 @@ export const PDF_STYLES = `
 
   /* Body typography */
   body {
-    font-family: Georgia, 'Times New Roman', serif;
+    font-family: 'Noto Serif', Georgia, 'Times New Roman', serif;
     font-size: 11pt;
     line-height: 1.6;
     color: #1a1a1a;
@@ -302,7 +302,7 @@ export const PDF_STYLES = `
 
   /* Inline code */
   code {
-    font-family: 'Courier New', monospace;
+    font-family: 'Noto Sans Mono', 'Courier New', monospace;
     font-size: 10pt;
     background-color: #f3f4f6;
     padding: 0.125rem 0.375rem;
@@ -486,7 +486,7 @@ export const PDF_STYLES = `
 
   .admin-header-id {
     margin-left: 1.5rem;
-    font-family: 'Courier New', monospace;
+    font-family: 'Noto Sans Mono', 'Courier New', monospace;
   }
 
   /* Answers Table (compact two-column layout) */
