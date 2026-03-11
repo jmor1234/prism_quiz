@@ -27,7 +27,7 @@ export function AssessmentResult({
       </header>
 
       <main className="flex-1 px-4 py-8">
-      <div className="max-w-2xl mx-auto space-y-6">
+        <div className="max-w-2xl mx-auto space-y-6">
         {/* Success banner */}
         <motion.div
           initial={{ opacity: 0, y: 10 }}
@@ -91,7 +91,7 @@ export function AssessmentResult({
             Start your root-cause health journey today
           </p>
         </motion.div>
-      </div>
+        </div>
       </main>
     </div>
   );

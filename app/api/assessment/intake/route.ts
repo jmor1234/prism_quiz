@@ -1,7 +1,7 @@
 // app/api/assessment/intake/route.ts
 
 import { anthropic } from "@ai-sdk/anthropic";
-import { generateObject } from "ai";
+import { generateText, Output } from "ai";
 import { z } from "zod";
 
 import { buildIntakePrompt } from "./prompt";
@@ -9,6 +9,12 @@ import { requestRateLimiter, extractIp } from "@/app/api/agent/lib/rateLimit";
 import type { IntakeStep } from "../types";
 
 export const maxDuration = 30;
+
+// Sonnet 4.6 pricing (per token)
+const PRICE_INPUT = 3 / 1_000_000;
+const PRICE_WRITE = 3.75 / 1_000_000;
+const PRICE_READ = 0.3 / 1_000_000;
+const PRICE_OUTPUT = 15 / 1_000_000;
 
 const intakeStepSchema = z.object({
   question: z
@@ -109,19 +115,60 @@ export async function POST(req: Request) {
     );
     const genStart = Date.now();
 
-    const result = await generateObject({
+    const result = await generateText({
       model: anthropic("claude-sonnet-4-6"),
-      schema: intakeStepSchema,
-      system,
-      messages: [{ role: "user" as const, content: userMessage }],
+      output: Output.object({ schema: intakeStepSchema }),
+      messages: [
+        {
+          role: "system" as const,
+          content: system,
+          providerOptions: {
+            anthropic: { cacheControl: { type: "ephemeral" as const } },
+          },
+        },
+        { role: "user" as const, content: userMessage },
+      ],
     });
+
+    if (!result.output) {
+      throw new Error("Failed to generate structured output");
+    }
 
     const genMs = Date.now() - genStart;
     console.log(
-      `[Intake] Complete · status: ${result.object.status} · progress: ${result.object.progressEstimate} · ${(genMs / 1000).toFixed(1)}s`
+      `[Intake] Complete · status: ${result.output.status} · progress: ${result.output.progressEstimate} · ${(genMs / 1000).toFixed(1)}s`
+    );
+    console.log(
+      `[Intake] Tokens: in: ${result.usage.inputTokens} · out: ${result.usage.outputTokens}`
     );
 
-    return new Response(JSON.stringify(result.object), {
+    // Cache performance
+    const d = result.usage.inputTokenDetails;
+    const cacheRead = d.cacheReadTokens ?? 0;
+    const cacheWrite = d.cacheWriteTokens ?? 0;
+    const noCache = d.noCacheTokens ?? 0;
+    const totalInput = result.usage.inputTokens ?? 0;
+    const totalOutput = result.usage.outputTokens ?? 0;
+    const hitRate =
+      totalInput > 0 ? ((cacheRead / totalInput) * 100).toFixed(1) : "0.0";
+
+    const costRead = cacheRead * PRICE_READ;
+    const costWrite = cacheWrite * PRICE_WRITE;
+    const costNoCache = noCache * PRICE_INPUT;
+    const costOutput = totalOutput * PRICE_OUTPUT;
+    const costTotal = costRead + costWrite + costNoCache + costOutput;
+    const costBaseline =
+      totalInput * PRICE_INPUT + totalOutput * PRICE_OUTPUT;
+    const savings = costBaseline - costTotal;
+
+    console.log(
+      `[Intake] Cache: read: ${cacheRead} · write: ${cacheWrite} · uncached: ${noCache} · hit: ${hitRate}%`
+    );
+    console.log(
+      `[Intake] Cost: in: $${(costRead + costWrite + costNoCache).toFixed(4)} · out: $${costOutput.toFixed(4)} · total: $${costTotal.toFixed(4)} · saved: $${savings.toFixed(4)}`
+    );
+
+    return new Response(JSON.stringify(result.output), {
       status: 200,
       headers: { "Content-Type": "application/json" },
     });

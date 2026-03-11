@@ -134,12 +134,9 @@ export function AssessmentStepSkeleton() {
           <motion.p
             key={messageIndex}
             initial={{ opacity: 0, y: 4 }}
-            animate={{ opacity: [0.5, 1, 0.5], y: 0 }}
+            animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -4 }}
-            transition={{
-              y: { duration: 0.3 },
-              opacity: { duration: 2, repeat: Infinity, ease: "easeInOut" },
-            }}
+            transition={{ duration: 0.3 }}
             className="text-sm text-muted-foreground"
           >
             {LOADING_MESSAGES[messageIndex]}

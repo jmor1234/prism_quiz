@@ -13,6 +13,12 @@ import { z } from "zod";
 
 export const maxDuration = 120;
 
+// Opus 4.6 pricing (per token)
+const PRICE_INPUT = 15 / 1_000_000;
+const PRICE_WRITE = 18.75 / 1_000_000;
+const PRICE_READ = 1.5 / 1_000_000;
+const PRICE_OUTPUT = 75 / 1_000_000;
+
 const inputSchema = z.object({
   name: z.string().max(100).optional(),
   steps: z
@@ -136,10 +142,36 @@ export async function POST(req: Request) {
       .map(([name, count]) => `${count} ${name}`)
       .join(" + ");
     console.log(
-      `[Assessment] Complete: ${recordId} · ${toolSummary || "no tools"} · ~${totalToolTokens} tok to agent · ${result.steps.length} steps`
+      `[Assessment] Complete: ${recordId} · ${toolSummary || "no tools"} · ~${totalToolTokens} tok to agent · ${result.steps.length} steps · ${(genMs / 1000).toFixed(1)}s`
     );
     console.log(
-      `[Assessment] Tokens: in: ${result.usage.inputTokens} · out: ${result.usage.outputTokens} · ${(genMs / 1000).toFixed(1)}s`
+      `[Assessment] Tokens: in: ${result.usage.inputTokens} · out: ${result.usage.outputTokens}`
+    );
+
+    // Cache & cost breakdown
+    const d = result.usage.inputTokenDetails;
+    const cacheRead = d.cacheReadTokens ?? 0;
+    const cacheWrite = d.cacheWriteTokens ?? 0;
+    const noCache = d.noCacheTokens ?? 0;
+    const totalInput = result.usage.inputTokens ?? 0;
+    const totalOutput = result.usage.outputTokens ?? 0;
+    const hitRate =
+      totalInput > 0 ? ((cacheRead / totalInput) * 100).toFixed(1) : "0.0";
+
+    const costRead = cacheRead * PRICE_READ;
+    const costWrite = cacheWrite * PRICE_WRITE;
+    const costNoCache = noCache * PRICE_INPUT;
+    const costOutput = totalOutput * PRICE_OUTPUT;
+    const costTotal = costRead + costWrite + costNoCache + costOutput;
+    const costBaseline =
+      totalInput * PRICE_INPUT + totalOutput * PRICE_OUTPUT;
+    const savings = costBaseline - costTotal;
+
+    console.log(
+      `[Assessment] Cache: read: ${cacheRead} · write: ${cacheWrite} · uncached: ${noCache} · hit: ${hitRate}%`
+    );
+    console.log(
+      `[Assessment] Cost: in: $${(costRead + costWrite + costNoCache).toFixed(4)} · out: $${costOutput.toFixed(4)} · total: $${costTotal.toFixed(4)} · saved: $${savings.toFixed(4)}`
     );
 
     // Save result
