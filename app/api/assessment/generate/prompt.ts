@@ -11,6 +11,8 @@ let questionnaireGuide: string | null = null;
 let dietLifestyleGuide: string | null = null;
 let metabolismDeepDive: string | null = null;
 let gutDeepDive: string | null = null;
+let prismProcess: string | null = null;
+let physiologicalMarkers: string | null = null;
 
 async function loadKnowledge() {
   if (
@@ -18,11 +20,13 @@ async function loadKnowledge() {
     !questionnaireGuide ||
     !dietLifestyleGuide ||
     !metabolismDeepDive ||
-    !gutDeepDive
+    !gutDeepDive ||
+    !prismProcess ||
+    !physiologicalMarkers
   ) {
     const knowledgeDir = path.join(process.cwd(), "lib", "knowledge");
 
-    const [kb, qg, dl, md, gd] = await Promise.all([
+    const [kb, qg, dl, md, gd, pp, pm] = await Promise.all([
       fs.readFile(path.join(knowledgeDir, "knowledge.md"), "utf-8"),
       fs.readFile(path.join(knowledgeDir, "questionaire.md"), "utf-8"),
       fs.readFile(
@@ -31,6 +35,8 @@ async function loadKnowledge() {
       ),
       fs.readFile(path.join(knowledgeDir, "metabolism_deep_dive.md"), "utf-8"),
       fs.readFile(path.join(knowledgeDir, "gut_deep_dive.md"), "utf-8"),
+      fs.readFile(path.join(knowledgeDir, "prism_process.md"), "utf-8"),
+      fs.readFile(path.join(knowledgeDir, "takehome.md"), "utf-8"),
     ]);
 
     knowledgeBase = kb;
@@ -38,6 +44,8 @@ async function loadKnowledge() {
     dietLifestyleGuide = dl;
     metabolismDeepDive = md;
     gutDeepDive = gd;
+    prismProcess = pp;
+    physiologicalMarkers = pm;
   }
   return {
     knowledgeBase,
@@ -45,6 +53,8 @@ async function loadKnowledge() {
     dietLifestyleGuide,
     metabolismDeepDive,
     gutDeepDive,
+    prismProcess,
+    physiologicalMarkers,
   };
 }
 
@@ -58,6 +68,8 @@ export async function buildAssessmentPrompt(
     dietLifestyleGuide,
     metabolismDeepDive,
     gutDeepDive,
+    prismProcess,
+    physiologicalMarkers,
   } = await loadKnowledge();
 
   const system = `
@@ -91,9 +103,17 @@ ${metabolismDeepDive}
 ${gutDeepDive}
 </gut_health_framework>
 
-# About Prism
+# Prism's Process
 
-Prism Health is a team-based practice specializing in root-cause health optimization through the bioenergetic framework. Each client works with a dedicated health advisor backed by a collaborative team of experts. The process includes comprehensive intake and lab analysis, personalized reporting that explains the why behind every recommendation, one-on-one video consultations, and ongoing messaging support. Prism addresses the upstream causes - energy metabolism, gut health, stress response - rather than managing symptoms in isolation.
+Understanding how Prism works lets you connect the person's specific patterns to specific aspects of the process. Draw on this naturally throughout the assessment wherever a specific element of the process is the natural extension of an insight you've just delivered.
+
+<prism_process>
+${prismProcess}
+</prism_process>
+
+<physiological_markers>
+${physiologicalMarkers}
+</physiological_markers>
 
 # Your Task
 
@@ -105,7 +125,7 @@ Analyze their intake responses and craft a personalized health assessment. The a
 
 **Reframe their past attempts.** They told you what they've tried. Explain through the bioenergetic lens why those approaches likely didn't reach the root cause. Not to criticize, but to show a different framework for understanding why they're still stuck.
 
-**Arrive at what addressing this actually requires.** Naturally conclude with what working on these root-cause patterns involves: comprehensive assessment, proper lab work, understanding the interconnections between their specific systems, and a personalized plan that addresses causes not symptoms.
+**Arrive at what addressing this actually requires.** Contextualize what you've identified to how Prism's specific process addresses it. Connect their patterns to the specific assessments, markers, and expertise that would reveal and resolve what's going on. This should feel like the natural conclusion of the insight, not a pivot to selling.
 
 These are not rigid sections. Let the person's situation and the depth of their responses guide how the assessment flows and how much weight each aspect carries.
 
@@ -125,7 +145,7 @@ Focused and substantive. Every sentence should earn its place, but don't artific
 
 # Closing Guidance
 
-Bring the analysis together. Briefly acknowledge that this assessment surfaces patterns from limited information and that proper evaluation - comprehensive intake, lab work, clinical assessment - would reveal the full picture. Note honestly that this kind of root-cause, systems-level work is what Prism's team is built for. Keep it brief. The interface provides the action step separately below the assessment.
+Bring the analysis together. Briefly acknowledge that this assessment surfaces patterns from limited information and that the full picture requires deeper evaluation. Keep it brief. The interface provides the action step separately below the assessment.
 
 # Important
 

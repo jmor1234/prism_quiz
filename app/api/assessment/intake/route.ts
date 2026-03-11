@@ -14,7 +14,7 @@ const intakeStepSchema = z.object({
   question: z
     .string()
     .describe(
-      "The question to present. Warm, conversational, referencing previous answers."
+      "The question to present. Concise, no em dashes."
     ),
   options: z
     .array(
@@ -24,7 +24,7 @@ const intakeStepSchema = z.object({
       })
     )
     .describe(
-      "4-6 contextually relevant preset options. Should feel like 'yes, that's me' recognitions."
+      "Contextually relevant preset options. Should feel like 'yes, that's me' recognitions."
     ),
   freeTextPlaceholder: z
     .string()
@@ -39,6 +39,9 @@ const intakeStepSchema = z.object({
   progressEstimate: z
     .number()
     .describe("Estimated progress through the intake, a decimal from 0 (just starting) to 1 (complete)"),
+  multiSelect: z
+    .boolean()
+    .describe("Whether the user can select multiple options"),
 });
 
 const inputSchema = z.object({

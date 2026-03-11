@@ -5,16 +5,22 @@ import { promises as fs } from "node:fs";
 import path from "node:path";
 
 let intakeIntelligence: string | null = null;
+let knowledgeBase: string | null = null;
+let prismProcess: string | null = null;
 
 async function loadKnowledge() {
-  if (!intakeIntelligence) {
+  if (!intakeIntelligence || !knowledgeBase || !prismProcess) {
     const knowledgeDir = path.join(process.cwd(), "lib", "knowledge");
-    intakeIntelligence = await fs.readFile(
-      path.join(knowledgeDir, "intake_intelligence.md"),
-      "utf-8"
-    );
+    const [ii, kb, pp] = await Promise.all([
+      fs.readFile(path.join(knowledgeDir, "intake_intelligence.md"), "utf-8"),
+      fs.readFile(path.join(knowledgeDir, "knowledge.md"), "utf-8"),
+      fs.readFile(path.join(knowledgeDir, "prism_process.md"), "utf-8"),
+    ]);
+    intakeIntelligence = ii;
+    knowledgeBase = kb;
+    prismProcess = pp;
   }
-  return { intakeIntelligence };
+  return { intakeIntelligence, knowledgeBase, prismProcess };
 }
 
 function formatStepsForPrompt(steps: IntakeStep[]): string {
@@ -45,7 +51,7 @@ function formatStepsForPrompt(steps: IntakeStep[]): string {
 export async function buildIntakePrompt(
   steps: IntakeStep[]
 ): Promise<{ system: string; userMessage: string }> {
-  const { intakeIntelligence } = await loadKnowledge();
+  const { intakeIntelligence, knowledgeBase, prismProcess } = await loadKnowledge();
 
   const system = `
 # Role
@@ -76,13 +82,25 @@ If an answer on a core area is thin, you may ask one targeted follow-up before m
 
 Once all five core areas are covered, assess the full picture. If you see a high-value thread - a gap, a connection between symptoms they haven't noticed, or a detail that would meaningfully sharpen the assessment - generate one targeted follow-up. This is optional for the user (they can skip to their assessment), so make it count. Limit to 1-2 optional follow-ups.
 
-# Tone
+# Voice
 
-Warm and conversational. This should feel like someone is paying attention, not like filling out a form.
+This is a guided quiz, not a conversation. Warmth comes from asking the right question that shows you paid attention, not from conversational filler.
+
+# Knowledge
+
+The bioenergetic framework informs how symptoms connect and what details matter. Use it to ask better questions and generate options that reflect the person's likely experience. The process context shapes what information is worth gathering.
+
+<bioenergetic_knowledge>
+${knowledgeBase}
+</bioenergetic_knowledge>
 
 <intake_intelligence>
 ${intakeIntelligence}
 </intake_intelligence>
+
+<prism_process>
+${prismProcess}
+</prism_process>
 `.trim();
 
   const userMessage = formatStepsForPrompt(steps);

@@ -1,7 +1,9 @@
 "use client";
 
+import { useState, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
-import { ACCENT, questionClass, hintClass } from "@/components/quiz/quiz-theme";
+import { ACCENT, hintClass } from "@/components/quiz/quiz-theme";
 import { Textarea } from "@/components/ui/textarea";
 
 export function AssessmentStep({
@@ -11,6 +13,7 @@ export function AssessmentStep({
   selectedOptions,
   freeText,
   freeTextPlaceholder,
+  multiSelect = true,
   onToggleOption,
   onFreeTextChange,
 }: {
@@ -20,6 +23,7 @@ export function AssessmentStep({
   selectedOptions: string[];
   freeText: string;
   freeTextPlaceholder: string;
+  multiSelect?: boolean;
   onToggleOption: (value: string) => void;
   onFreeTextChange: (text: string) => void;
 }) {
@@ -43,8 +47,15 @@ export function AssessmentStep({
 
   return (
     <div className="space-y-8">
-      <h2 className={questionClass}>{question}</h2>
-      {hint && <p className={hintClass}>{hint}</p>}
+      <div className="space-y-2">
+        <h2 className="text-lg sm:text-xl font-semibold text-center leading-relaxed quiz-question">
+          {question}
+        </h2>
+        {hint && <p className={hintClass}>{hint}</p>}
+        {multiSelect && options.length > 0 && (
+          <p className={hintClass}>Select all that apply</p>
+        )}
+      </div>
 
       {options.length > 0 && (
         <div className="flex flex-wrap justify-center gap-3">
@@ -79,23 +90,62 @@ export function AssessmentStep({
   );
 }
 
+const LOADING_MESSAGES = [
+  "Analyzing your answers...",
+  "Personalizing your next question...",
+  "Understanding your patterns...",
+];
+
 /**
- * Skeleton placeholder shown while the next step is loading from the API.
+ * Loading indicator shown while the next step is fetched from the API.
  */
 export function AssessmentStepSkeleton() {
+  const [messageIndex, setMessageIndex] = useState(0);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setMessageIndex((i) => (i + 1) % LOADING_MESSAGES.length);
+    }, 2500);
+    return () => clearInterval(interval);
+  }, []);
+
   return (
-    <div className="space-y-8 animate-pulse">
-      <div className="h-8 bg-muted rounded-lg w-3/4 mx-auto" />
-      <div className="flex flex-wrap justify-center gap-3">
-        {[100, 120, 90, 140, 110].map((w, i) => (
-          <div
+    <div className="flex flex-col items-center justify-center py-12 gap-6">
+      <div className="flex items-center gap-1.5">
+        {[0, 1, 2].map((i) => (
+          <motion.div
             key={i}
-            className="h-12 bg-muted rounded-full"
-            style={{ width: `${w}px` }}
+            className="w-2 h-2 rounded-full bg-[var(--quiz-gold)]"
+            animate={{
+              scale: [1, 1.3, 1],
+              opacity: [0.4, 1, 0.4],
+            }}
+            transition={{
+              duration: 1,
+              repeat: Infinity,
+              delay: i * 0.2,
+              ease: "easeInOut",
+            }}
           />
         ))}
       </div>
-      <div className="h-20 bg-muted rounded-lg" />
+      <div className="h-5 relative">
+        <AnimatePresence mode="wait">
+          <motion.p
+            key={messageIndex}
+            initial={{ opacity: 0, y: 4 }}
+            animate={{ opacity: [0.5, 1, 0.5], y: 0 }}
+            exit={{ opacity: 0, y: -4 }}
+            transition={{
+              y: { duration: 0.3 },
+              opacity: { duration: 2, repeat: Infinity, ease: "easeInOut" },
+            }}
+            className="text-sm text-muted-foreground"
+          >
+            {LOADING_MESSAGES[messageIndex]}
+          </motion.p>
+        </AnimatePresence>
+      </div>
     </div>
   );
 }

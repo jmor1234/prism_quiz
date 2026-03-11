@@ -93,15 +93,23 @@ export function AssessmentClient() {
           {wizard.phase === "loading_step" && <AssessmentStepSkeleton />}
 
           {(wizard.phase === "goals" || wizard.phase === "answering") && (
+            <>
+            {showSkip && (
+              <p className="text-sm text-muted-foreground text-center mb-4">
+                The more you share, the more specific your assessment will be
+              </p>
+            )}
             <AssessmentStep
               question={wizard.currentQuestion}
               options={wizard.currentOptions}
               selectedOptions={wizard.selectedOptions}
               freeText={wizard.freeText}
               freeTextPlaceholder={wizard.currentPlaceholder}
+              multiSelect={wizard.currentMultiSelect}
               onToggleOption={wizard.toggleOption}
               onFreeTextChange={wizard.setFreeText}
             />
+            </>
           )}
 
           {wizard.phase === "error" && (
@@ -134,7 +142,6 @@ export function AssessmentClient() {
       {(showBack || showNext || showSkip) && (
         <div className="sticky bottom-0 z-10 bg-background/95 border-t pb-[max(1rem,env(safe-area-inset-bottom))]">
           <div className="flex items-center justify-between px-4 py-3 max-w-md mx-auto">
-            {/* Back */}
             <div>
               {showBack && (
                 <button
@@ -148,17 +155,7 @@ export function AssessmentClient() {
               )}
             </div>
 
-            {/* Next / Skip */}
-            <div className="flex items-center gap-3">
-              {showSkip && (
-                <button
-                  type="button"
-                  onClick={wizard.skip}
-                  className="text-sm text-muted-foreground hover:text-foreground transition-colors underline underline-offset-2"
-                >
-                  Skip to my assessment
-                </button>
-              )}
+            <div className="flex flex-col items-end gap-1">
               {showNext && (
                 <button
                   type="button"
@@ -176,6 +173,15 @@ export function AssessmentClient() {
                 >
                   Next
                   <ArrowRight className="w-4 h-4" />
+                </button>
+              )}
+              {showSkip && (
+                <button
+                  type="button"
+                  onClick={wizard.skip}
+                  className="text-xs text-muted-foreground hover:text-foreground transition-colors underline underline-offset-2"
+                >
+                  Get my assessment early
                 </button>
               )}
             </div>

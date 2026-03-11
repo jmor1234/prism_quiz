@@ -12,6 +12,7 @@ export type QuestionHistoryEntry = {
   freeTextPlaceholder: string;
   status: "in_progress" | "optional";
   progressEstimate: number;
+  multiSelect: boolean;
 };
 
 export type AssessmentStorageData = {

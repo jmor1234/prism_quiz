@@ -50,6 +50,7 @@ export type WizardState = {
   currentOptions: { value: string; label: string }[];
   currentPlaceholder: string;
   currentStatus: StepStatus;
+  currentMultiSelect: boolean;
   selectedOptions: string[];
   freeText: string;
   progressEstimate: number;
@@ -91,6 +92,7 @@ const initialState: WizardState = {
   currentOptions: HEALTH_GOALS_OPTIONS,
   currentPlaceholder: GOALS_PLACEHOLDER,
   currentStatus: "in_progress",
+  currentMultiSelect: true,
   selectedOptions: [],
   freeText: "",
   progressEstimate: 0,
@@ -114,9 +116,15 @@ function reducer(state: WizardState, action: WizardAction): WizardState {
       return { ...state, phase: "goals", direction: "forward", stepIndex: 0 };
 
     case "TOGGLE_OPTION": {
-      const selected = state.selectedOptions.includes(action.value)
-        ? state.selectedOptions.filter((v) => v !== action.value)
-        : [...state.selectedOptions, action.value];
+      const alreadySelected = state.selectedOptions.includes(action.value);
+      let selected: string[];
+      if (state.currentMultiSelect) {
+        selected = alreadySelected
+          ? state.selectedOptions.filter((v) => v !== action.value)
+          : [...state.selectedOptions, action.value];
+      } else {
+        selected = alreadySelected ? [] : [action.value];
+      }
       return { ...state, selectedOptions: selected };
     }
 
@@ -145,6 +153,7 @@ function reducer(state: WizardState, action: WizardAction): WizardState {
         currentOptions: action.data.options,
         currentPlaceholder: action.data.freeTextPlaceholder,
         currentStatus: action.data.status,
+        currentMultiSelect: action.data.multiSelect,
         progressEstimate: action.data.progressEstimate,
         selectedOptions: [],
         freeText: "",
@@ -195,6 +204,7 @@ function reducer(state: WizardState, action: WizardAction): WizardState {
           currentOptions: HEALTH_GOALS_OPTIONS,
           currentPlaceholder: GOALS_PLACEHOLDER,
           currentStatus: "in_progress",
+          currentMultiSelect: true,
           selectedOptions: [],
           freeText: "",
           progressEstimate: 0,
@@ -218,6 +228,7 @@ function reducer(state: WizardState, action: WizardAction): WizardState {
           currentOptions: HEALTH_GOALS_OPTIONS,
           currentPlaceholder: GOALS_PLACEHOLDER,
           currentStatus: "in_progress",
+          currentMultiSelect: true,
           selectedOptions: lastStep.selectedOptions,
           freeText: lastStep.freeText,
           progressEstimate: 0,
@@ -236,6 +247,7 @@ function reducer(state: WizardState, action: WizardAction): WizardState {
         currentOptions: prevQ.options,
         currentPlaceholder: prevQ.freeTextPlaceholder,
         currentStatus: prevQ.status,
+        currentMultiSelect: prevQ.multiSelect,
         progressEstimate: prevQ.progressEstimate,
         selectedOptions: lastStep.selectedOptions,
         freeText: lastStep.freeText,
@@ -328,6 +340,7 @@ export function useAssessmentWizard() {
             currentOptions: lastQ.options,
             currentPlaceholder: lastQ.freeTextPlaceholder,
             currentStatus: lastQ.status,
+            currentMultiSelect: lastQ.multiSelect,
             progressEstimate: lastQ.progressEstimate,
             selectedOptions: lastStep.selectedOptions,
             freeText: lastStep.freeText,
@@ -373,6 +386,7 @@ export function useAssessmentWizard() {
         freeTextPlaceholder: data.freeTextPlaceholder,
         status: data.status,
         progressEstimate: data.progressEstimate,
+        multiSelect: data.multiSelect,
       };
 
       dispatch({ type: "INTAKE_SUCCESS", data: historyEntry });
