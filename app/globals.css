@@ -280,7 +280,6 @@
 }
 
 .report-markdown [data-streamdown="heading-2"] {
-  text-align: center;
   /* Black - inherit default text color */
 }
 
@@ -314,7 +313,6 @@
 }
 
 .dark .report-markdown [data-streamdown="heading-2"] {
-  text-align: center;
   /* Black - inherit default text color */
 }
 
