@@ -11,12 +11,16 @@ const STORAGE_ROOT = path.join(process.cwd(), "storage", "assessment-results");
 let redisClient: Redis | null = null;
 
 function getRedisClient(): Redis | null {
-  if (process.env.UPSTASH_ASSESSMENT_REDIS_REST_URL) {
+  const url = process.env.UPSTASH_ASSESSMENT_REDIS_REST_URL;
+  const token = process.env.UPSTASH_ASSESSMENT_REDIS_REST_TOKEN;
+  if (url) {
+    if (!token) {
+      throw new Error(
+        "UPSTASH_ASSESSMENT_REDIS_REST_TOKEN must be set when UPSTASH_ASSESSMENT_REDIS_REST_URL is set"
+      );
+    }
     if (!redisClient) {
-      redisClient = new Redis({
-        url: process.env.UPSTASH_ASSESSMENT_REDIS_REST_URL,
-        token: process.env.UPSTASH_ASSESSMENT_REDIS_REST_TOKEN!,
-      });
+      redisClient = new Redis({ url, token });
     }
     return redisClient;
   }

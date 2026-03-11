@@ -76,7 +76,7 @@ export function QuizResult({
 
   return (
     <div className="min-h-screen quiz-background flex flex-col">
-      <header className="sticky top-0 z-10 bg-background/80 backdrop-blur-sm border-b">
+      <header className="sticky top-0 z-10 bg-background/95 border-b">
         <div className="max-w-2xl mx-auto px-4 py-3 flex justify-end">
           <ModeToggle />
         </div>

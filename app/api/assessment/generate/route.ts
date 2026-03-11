@@ -14,17 +14,18 @@ import { z } from "zod";
 export const maxDuration = 120;
 
 const inputSchema = z.object({
-  name: z.string().optional(),
+  name: z.string().max(100).optional(),
   steps: z
     .array(
       z.object({
-        question: z.string(),
+        question: z.string().max(500),
         selectedOptions: z.array(z.string()),
-        freeText: z.string(),
+        freeText: z.string().max(2000),
       })
     )
-    .min(1, "At least one intake step is required"),
-  resultId: z.string().optional(),
+    .min(1, "At least one intake step is required")
+    .max(20),
+  resultId: z.string().uuid().optional(),
 });
 
 export async function POST(req: Request) {
@@ -72,6 +73,8 @@ export async function POST(req: Request) {
 
   const { name, steps, resultId } = parsed.data;
 
+  let recordId: string | undefined;
+
   try {
     // Retry case: check for existing result
     if (resultId) {
@@ -91,7 +94,7 @@ export async function POST(req: Request) {
     const { system, userMessage } = await buildAssessmentPrompt(name, steps);
 
     // Generate assessment with evidence tools
-    const recordId = resultId ?? crypto.randomUUID();
+    recordId = resultId ?? crypto.randomUUID();
     console.log(`[Assessment] Starting generation: ${recordId}`);
     const genStart = Date.now();
 
@@ -155,6 +158,7 @@ export async function POST(req: Request) {
     console.error("[Assessment] Generation failed:", error);
     return new Response(
       JSON.stringify({
+        ...(recordId && { id: recordId }),
         error:
           error instanceof Error
             ? error.message

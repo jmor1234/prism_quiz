@@ -77,7 +77,7 @@ export default function QuizIndexPage() {
             <Link
               key={variant.slug}
               href={`/quiz/${variant.slug}`}
-              className="group relative block rounded-xl border border-[var(--quiz-gold)]/20 bg-[var(--quiz-cream)]/40 dark:bg-white/[0.07] backdrop-blur-md shadow-md shadow-black/[0.06] dark:shadow-black/40 p-6 transition-all duration-300 hover:border-[var(--quiz-gold)]/50 hover:bg-[var(--quiz-cream)]/60 dark:hover:bg-white/[0.12] hover:shadow-xl hover:shadow-[var(--quiz-gold)]/15 hover:-translate-y-1"
+              className="group relative block rounded-xl border border-[var(--quiz-gold)]/20 bg-[var(--quiz-cream)]/60 dark:bg-white/[0.09] shadow-md shadow-black/[0.06] dark:shadow-black/40 p-6 transition-all duration-300 hover:border-[var(--quiz-gold)]/50 hover:bg-[var(--quiz-cream)]/60 dark:hover:bg-white/[0.12] hover:shadow-xl hover:shadow-[var(--quiz-gold)]/15 hover:-translate-y-1"
             >
               {/* Gold top accent line */}
               <div className="absolute top-0 left-6 right-6 h-px bg-gradient-to-r from-transparent via-[var(--quiz-gold)]/30 to-transparent group-hover:via-[var(--quiz-gold)]/60 transition-all duration-500" />

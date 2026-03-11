@@ -1,0 +1,94 @@
+"use client";
+
+import { motion, useReducedMotion } from "framer-motion";
+import { CheckCircle2, ArrowRight } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { ACCENT } from "@/components/quiz/quiz-theme";
+import { Response } from "@/components/ai-elements/response";
+import { ModeToggle } from "@/components/ui/mode-toggle";
+
+// Placeholder — will be replaced with actual purchase page URL
+const PURCHASE_URL = "/purchase";
+
+export function AssessmentResult({
+  report,
+}: {
+  report: string;
+}) {
+  const shouldReduceMotion = useReducedMotion();
+  const transition = shouldReduceMotion ? { duration: 0 } : undefined;
+
+  return (
+    <div className="min-h-screen bg-background">
+      <div className="sticky top-0 z-10 flex justify-end p-4 bg-background/95">
+        <ModeToggle />
+      </div>
+
+      <div className="max-w-2xl mx-auto px-4 pb-12 space-y-6">
+        {/* Success banner */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={transition}
+          className={cn(
+            "flex items-center gap-3 p-4 rounded-xl",
+            "border border-[var(--quiz-gold)]/50 bg-[var(--quiz-gold)]/10"
+          )}
+        >
+          <CheckCircle2 className="w-5 h-5 text-[var(--quiz-gold-dark)] shrink-0" />
+          <p className="text-sm font-medium">
+            Your personalized health assessment is ready
+          </p>
+        </motion.div>
+
+        {/* Info about links */}
+        <motion.p
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ ...transition, delay: shouldReduceMotion ? 0 : 0.1 }}
+          className="text-sm text-blue-600 dark:text-blue-400 italic"
+        >
+          Underlined text links to cited research sources and will open in a new
+          tab.
+        </motion.p>
+
+        {/* Assessment report */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ ...transition, delay: shouldReduceMotion ? 0 : 0.15 }}
+          className="rounded-xl border shadow-sm p-6 sm:p-8"
+        >
+          <Response variant="report">{report}</Response>
+        </motion.div>
+
+        {/* Purchase CTA */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ ...transition, delay: shouldReduceMotion ? 0 : 0.3 }}
+        >
+          <a
+            href={PURCHASE_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={cn(
+              "flex items-center justify-center gap-3 w-full px-8 py-4 rounded-xl",
+              "text-base font-semibold",
+              "transition-all duration-300 ease-out",
+              "hover:-translate-y-0.5 hover:shadow-lg active:translate-y-0",
+              ACCENT.base,
+              ACCENT.text
+            )}
+          >
+            Take the Next Step With Prism
+            <ArrowRight className="w-5 h-5" />
+          </a>
+          <p className="text-center text-sm text-muted-foreground mt-3">
+            Start your root-cause health journey today
+          </p>
+        </motion.div>
+      </div>
+    </div>
+  );
+}

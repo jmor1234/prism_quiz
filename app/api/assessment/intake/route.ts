@@ -38,19 +38,19 @@ const intakeStepSchema = z.object({
     ),
   progressEstimate: z
     .number()
-    .min(0)
-    .max(1)
-    .describe("Estimated progress through the intake from 0 to 1"),
+    .describe("Estimated progress through the intake, a decimal from 0 (just starting) to 1 (complete)"),
 });
 
 const inputSchema = z.object({
-  steps: z.array(
-    z.object({
-      question: z.string(),
-      selectedOptions: z.array(z.string()),
-      freeText: z.string(),
-    })
-  ),
+  steps: z
+    .array(
+      z.object({
+        question: z.string().max(500),
+        selectedOptions: z.array(z.string()),
+        freeText: z.string().max(2000),
+      })
+    )
+    .max(20),
 });
 
 export async function POST(req: Request) {

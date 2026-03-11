@@ -180,7 +180,7 @@ export function ChatPage({ threadId }: { threadId: string }) {
       {/* Main content */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Header */}
-        <header className="sticky top-0 z-10 bg-background/80 backdrop-blur-sm border-b">
+        <header className="sticky top-0 z-10 bg-background/95 border-b">
           <div className="max-w-2xl mx-auto px-4 py-3 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <button
