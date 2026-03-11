@@ -431,7 +431,7 @@ export function QuizWizard({ config }: { config: VariantConfig }) {
   return (
     <div className="min-h-screen quiz-background flex flex-col">
       {/* Header */}
-      <header className="sticky top-0 z-10 bg-background/80 backdrop-blur-sm border-b pt-[env(safe-area-inset-top)]">
+      <header className="sticky top-0 z-10 bg-background/95 border-b pt-[env(safe-area-inset-top)]">
         <div className="max-w-2xl mx-auto px-4 py-3 space-y-2">
           {/* Progress bar */}
           <div
@@ -526,7 +526,7 @@ export function QuizWizard({ config }: { config: VariantConfig }) {
       </main>
 
       {/* Footer navigation */}
-      <footer className="sticky bottom-0 bg-background/80 backdrop-blur-sm border-t p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+      <footer className="sticky bottom-0 bg-background/95 border-t p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
         <div className="max-w-md mx-auto">
           {error && (
             <div className="mb-3 p-3 bg-destructive/10 text-destructive rounded-xl text-sm text-center" role="alert">

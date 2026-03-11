@@ -36,7 +36,7 @@ function YesNoToggle({
     <div className="flex justify-center">
       <ToggleGroup
         type="single"
-        value={value === null ? undefined : value ? "yes" : "no"}
+        value={value === null ? "" : value ? "yes" : "no"}
         onValueChange={(v) => v && onChange(v === "yes")}
         className="gap-4"
       >
