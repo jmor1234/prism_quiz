@@ -19,9 +19,8 @@ const PRICE_OUTPUT = 15 / 1_000_000;
 const intakeStepSchema = z.object({
   question: z
     .string()
-    .describe(
-      "The question to present. Concise, no em dashes."
-    ),
+    .describe("The question to present. Concise, no em dashes. Present for in_progress and follow_up.")
+    .optional(),
   options: z
     .array(
       z.object({
@@ -29,25 +28,28 @@ const intakeStepSchema = z.object({
         label: z.string().describe("Display text shown as a selectable chip"),
       })
     )
-    .describe(
-      "Contextually relevant preset options. Should feel like 'yes, that's me' recognitions."
-    ),
+    .describe("Contextually relevant preset options. Present for in_progress and follow_up.")
+    .optional(),
   freeTextPlaceholder: z
     .string()
-    .describe(
-      "Contextual placeholder guiding what additional detail would be helpful"
-    ),
+    .describe("Contextual placeholder guiding what additional detail would be helpful. Present for in_progress and follow_up.")
+    .optional(),
+  transitionMessage: z
+    .string()
+    .describe("The transition decision point message shown to the user. Present only for transition.")
+    .optional(),
   status: z
-    .enum(["in_progress", "optional", "complete"])
+    .enum(["in_progress", "transition", "follow_up", "complete"])
     .describe(
-      "in_progress: core areas still being covered. optional: core areas complete, targeted follow-up the user may skip. complete: intake finished."
+      "in_progress: building understanding across core areas. transition: core areas covered, decision point. follow_up: user opted to continue for deeper questions. complete: intake finished."
     ),
   progressEstimate: z
     .number()
-    .describe("Estimated progress through the intake, a decimal from 0 (just starting) to 1 (complete)"),
+    .describe("Progress through the intake, 0 to 1. in_progress: 0–0.7, transition: ~0.75, follow_up: 0.75–0.95, complete: 1.0"),
   multiSelect: z
     .boolean()
-    .describe("Whether the user can select multiple options"),
+    .describe("Whether the user can select multiple options. Present for in_progress and follow_up.")
+    .optional(),
 });
 
 const inputSchema = z.object({

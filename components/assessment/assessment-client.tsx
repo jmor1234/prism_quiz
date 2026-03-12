@@ -12,6 +12,7 @@ import { useAssessmentWizard } from "./use-assessment-wizard";
 import { StepTransition } from "./step-transition";
 import { IntroScreen } from "./intro-screen";
 import { AssessmentStep, AssessmentStepSkeleton } from "./assessment-step";
+import { AssessmentTransition } from "./assessment-transition";
 import { AssessmentLoading } from "./assessment-loading";
 import { AssessmentResult } from "./assessment-result";
 
@@ -41,13 +42,13 @@ export function AssessmentClient() {
   const showProgress =
     wizard.phase === "goals" ||
     wizard.phase === "answering" ||
-    wizard.phase === "loading_step";
+    wizard.phase === "loading_step" ||
+    wizard.phase === "transition";
   const showBack =
-    wizard.phase === "goals" || wizard.phase === "answering";
+    (wizard.phase === "goals" || wizard.phase === "answering") &&
+    !wizard.passedTransition;
   const showNext =
     wizard.phase === "goals" || wizard.phase === "answering";
-  const showSkip =
-    wizard.phase === "answering" && wizard.currentStatus === "optional";
 
   return (
     <div className="min-h-screen quiz-background flex flex-col pt-[env(safe-area-inset-top)]">
@@ -79,7 +80,13 @@ export function AssessmentClient() {
       {/* Main content */}
       <div className="flex-1 flex items-center justify-center px-4 py-8">
         <StepTransition
-          stepKey={wizard.phase === "intro" ? "intro" : wizard.stepIndex}
+          stepKey={
+            wizard.phase === "intro"
+              ? "intro"
+              : wizard.phase === "transition"
+              ? "transition"
+              : wizard.stepIndex
+          }
           direction={wizard.direction}
         >
           {wizard.phase === "intro" && (
@@ -93,12 +100,6 @@ export function AssessmentClient() {
           {wizard.phase === "loading_step" && <AssessmentStepSkeleton />}
 
           {(wizard.phase === "goals" || wizard.phase === "answering") && (
-            <>
-            {showSkip && (
-              <p className="text-sm text-muted-foreground text-center mb-4">
-                The more you share, the more specific your assessment will be
-              </p>
-            )}
             <AssessmentStep
               question={wizard.currentQuestion}
               options={wizard.currentOptions}
@@ -109,7 +110,14 @@ export function AssessmentClient() {
               onToggleOption={wizard.toggleOption}
               onFreeTextChange={wizard.setFreeText}
             />
-            </>
+          )}
+
+          {wizard.phase === "transition" && wizard.transitionMessage && (
+            <AssessmentTransition
+              message={wizard.transitionMessage}
+              onContinue={wizard.continueFromTransition}
+              onSkip={wizard.skipFromTransition}
+            />
           )}
 
           {wizard.phase === "error" && (
@@ -139,7 +147,7 @@ export function AssessmentClient() {
       </div>
 
       {/* Footer */}
-      {(showBack || showNext || showSkip) && (
+      {(showBack || showNext) && (
         <div className="sticky bottom-0 z-10 bg-background/95 border-t pb-[max(1rem,env(safe-area-inset-bottom))]">
           <div className="flex items-center justify-between px-4 py-3 max-w-md mx-auto">
             <div>
@@ -155,7 +163,7 @@ export function AssessmentClient() {
               )}
             </div>
 
-            <div className="flex flex-col items-end gap-1">
+            <div>
               {showNext && (
                 <button
                   type="button"
@@ -173,15 +181,6 @@ export function AssessmentClient() {
                 >
                   Next
                   <ArrowRight className="w-4 h-4" />
-                </button>
-              )}
-              {showSkip && (
-                <button
-                  type="button"
-                  onClick={wizard.skip}
-                  className="text-xs text-muted-foreground hover:text-foreground transition-colors underline underline-offset-2"
-                >
-                  Get my assessment early
                 </button>
               )}
             </div>

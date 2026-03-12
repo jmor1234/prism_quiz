@@ -4,15 +4,16 @@
 import type { IntakeStep } from "@/app/api/assessment/types";
 
 const STORAGE_KEY = "prism-assessment";
-const SCHEMA_VERSION = 1;
+const SCHEMA_VERSION = 2;
 
 export type QuestionHistoryEntry = {
-  question: string;
-  options: { value: string; label: string }[];
-  freeTextPlaceholder: string;
-  status: "in_progress" | "optional";
+  status: "in_progress" | "transition" | "follow_up";
   progressEstimate: number;
-  multiSelect: boolean;
+  question?: string;
+  options?: { value: string; label: string }[];
+  freeTextPlaceholder?: string;
+  multiSelect?: boolean;
+  transitionMessage?: string;
 };
 
 export type AssessmentStorageData = {

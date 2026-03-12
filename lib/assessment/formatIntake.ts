@@ -17,6 +17,9 @@ export function formatIntake(
   }
 
   for (const step of steps) {
+    // Skip synthetic transition marker — not a real user answer
+    if (step.question === "[transition]") continue;
+
     lines.push(`**${step.question}**`);
 
     if (step.selectedOptions.length > 0) {

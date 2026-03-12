@@ -35,11 +35,12 @@ export type WizardPhase =
   | "goals"
   | "loading_step"
   | "answering"
+  | "transition"
   | "generating"
   | "result"
   | "error";
 
-type StepStatus = "in_progress" | "optional";
+type StepStatus = "in_progress" | "follow_up";
 
 export type WizardState = {
   phase: WizardPhase;
@@ -56,6 +57,8 @@ export type WizardState = {
   progressEstimate: number;
   stepIndex: number;
   direction: "forward" | "back";
+  transitionMessage: string | null;
+  passedTransition: boolean;
   error: string | null;
   retryAction: "intake" | "generate" | null;
   result: { id: string; report: string } | null;
@@ -72,8 +75,11 @@ type WizardAction =
   | { type: "SET_FREE_TEXT"; text: string }
   | { type: "SUBMIT_STEP" }
   | { type: "INTAKE_SUCCESS"; data: QuestionHistoryEntry }
+  | { type: "INTAKE_TRANSITION"; transitionMessage: string; progressEstimate: number }
   | { type: "INTAKE_COMPLETE" }
   | { type: "INTAKE_ERROR"; error: string }
+  | { type: "CONTINUE_FROM_TRANSITION"; steps: IntakeStep[] }
+  | { type: "SKIP_FROM_TRANSITION" }
   | { type: "GENERATE_START" }
   | { type: "GENERATE_SUCCESS"; id: string; report: string }
   | { type: "GENERATE_ERROR"; error: string }
@@ -98,6 +104,8 @@ const initialState: WizardState = {
   progressEstimate: 0,
   stepIndex: 0,
   direction: "forward",
+  transitionMessage: null,
+  passedTransition: false,
   error: null,
   retryAction: null,
   result: null,
@@ -146,14 +154,15 @@ function reducer(state: WizardState, action: WizardAction): WizardState {
     }
 
     case "INTAKE_SUCCESS":
+      // Only dispatched for in_progress/follow_up — question fields guaranteed present
       return {
         ...state,
         phase: "answering",
-        currentQuestion: action.data.question,
-        currentOptions: action.data.options,
-        currentPlaceholder: action.data.freeTextPlaceholder,
-        currentStatus: action.data.status,
-        currentMultiSelect: action.data.multiSelect,
+        currentQuestion: action.data.question!,
+        currentOptions: action.data.options!,
+        currentPlaceholder: action.data.freeTextPlaceholder!,
+        currentStatus: action.data.status as StepStatus,
+        currentMultiSelect: action.data.multiSelect!,
         progressEstimate: action.data.progressEstimate,
         selectedOptions: [],
         freeText: "",
@@ -162,7 +171,28 @@ function reducer(state: WizardState, action: WizardAction): WizardState {
         direction: "forward",
       };
 
+    case "INTAKE_TRANSITION":
+      return {
+        ...state,
+        phase: "transition",
+        transitionMessage: action.transitionMessage,
+        progressEstimate: action.progressEstimate,
+        direction: "forward",
+      };
+
     case "INTAKE_COMPLETE":
+      return { ...state, phase: "generating" };
+
+    case "CONTINUE_FROM_TRANSITION":
+      return {
+        ...state,
+        phase: "loading_step",
+        passedTransition: true,
+        steps: action.steps,
+        direction: "forward",
+      };
+
+    case "SKIP_FROM_TRANSITION":
       return { ...state, phase: "generating" };
 
     case "INTAKE_ERROR":
@@ -192,6 +222,8 @@ function reducer(state: WizardState, action: WizardAction): WizardState {
       };
 
     case "BACK": {
+      if (state.passedTransition) return state;
+
       if (state.phase === "goals") {
         return { ...state, phase: "intro", direction: "back" };
       }
@@ -238,16 +270,17 @@ function reducer(state: WizardState, action: WizardAction): WizardState {
       }
 
       const prevQ = prevHistory[prevHistory.length - 1];
+      // Back is blocked after transition, so prevQ is always in_progress
       return {
         ...state,
         phase: "answering",
         steps: prevSteps,
         questionHistory: prevHistory,
-        currentQuestion: prevQ.question,
-        currentOptions: prevQ.options,
-        currentPlaceholder: prevQ.freeTextPlaceholder,
-        currentStatus: prevQ.status,
-        currentMultiSelect: prevQ.multiSelect,
+        currentQuestion: prevQ.question!,
+        currentOptions: prevQ.options!,
+        currentPlaceholder: prevQ.freeTextPlaceholder!,
+        currentStatus: prevQ.status as StepStatus,
+        currentMultiSelect: prevQ.multiSelect!,
         progressEstimate: prevQ.progressEstimate,
         selectedOptions: lastStep.selectedOptions,
         freeText: lastStep.freeText,
@@ -328,7 +361,28 @@ export function useAssessmentWizard() {
 
       if (stored.steps.length > 0 && stored.questionHistory.length > 0) {
         const lastQ = stored.questionHistory[stored.questionHistory.length - 1];
+
+        // Restore to transition screen if that's where user was
+        if (lastQ.status === "transition") {
+          dispatch({
+            type: "HYDRATE",
+            state: {
+              phase: "transition",
+              name: stored.name,
+              steps: stored.steps,
+              questionHistory: stored.questionHistory,
+              transitionMessage: lastQ.transitionMessage ?? "",
+              progressEstimate: lastQ.progressEstimate,
+              stepIndex: stored.steps.length,
+            },
+          });
+          return;
+        }
+
         const lastStep = stored.steps[stored.steps.length - 1];
+        const hasPassedTransition = stored.questionHistory.some(
+          (q) => q.status === "transition"
+        );
         dispatch({
           type: "HYDRATE",
           state: {
@@ -336,15 +390,16 @@ export function useAssessmentWizard() {
             name: stored.name,
             steps: stored.steps.slice(0, -1),
             questionHistory: stored.questionHistory.slice(0, -1),
-            currentQuestion: lastQ.question,
-            currentOptions: lastQ.options,
-            currentPlaceholder: lastQ.freeTextPlaceholder,
-            currentStatus: lastQ.status,
-            currentMultiSelect: lastQ.multiSelect,
+            currentQuestion: lastQ.question!,
+            currentOptions: lastQ.options!,
+            currentPlaceholder: lastQ.freeTextPlaceholder!,
+            currentStatus: lastQ.status as StepStatus,
+            currentMultiSelect: lastQ.multiSelect!,
             progressEstimate: lastQ.progressEstimate,
             selectedOptions: lastStep.selectedOptions,
             freeText: lastStep.freeText,
             stepIndex: stored.steps.length - 1,
+            passedTransition: hasPassedTransition,
           },
         });
         return;
@@ -377,6 +432,27 @@ export function useAssessmentWizard() {
       if (data.status === "complete") {
         dispatch({ type: "INTAKE_COMPLETE" });
         generateRef.current?.(steps);
+        return;
+      }
+
+      if (data.status === "transition") {
+        dispatch({
+          type: "INTAKE_TRANSITION",
+          transitionMessage: data.transitionMessage,
+          progressEstimate: data.progressEstimate,
+        });
+
+        const s = stateRef.current;
+        const transitionEntry: QuestionHistoryEntry = {
+          status: "transition",
+          progressEstimate: data.progressEstimate,
+          transitionMessage: data.transitionMessage,
+        };
+        setAssessmentStorage({
+          name: s.name,
+          steps,
+          questionHistory: [...s.questionHistory, transitionEntry],
+        });
         return;
       }
 
@@ -492,8 +568,27 @@ export function useAssessmentWizard() {
     dispatch({ type: "BACK" });
   }, []);
 
-  const skip = useCallback(() => {
+  const continueFromTransition = useCallback(() => {
+    if (isSubmitting.current) return;
+    isSubmitting.current = true;
+
     const s = stateRef.current;
+    const syntheticStep: IntakeStep = {
+      question: "[transition]",
+      selectedOptions: ["continue"],
+      freeText: "",
+    };
+    const newSteps = [...s.steps, syntheticStep];
+    dispatch({ type: "CONTINUE_FROM_TRANSITION", steps: newSteps });
+    fetchNextStep(newSteps);
+  }, [fetchNextStep]);
+
+  const skipFromTransition = useCallback(() => {
+    if (isSubmitting.current) return;
+    isSubmitting.current = true;
+
+    const s = stateRef.current;
+    dispatch({ type: "SKIP_FROM_TRANSITION" });
     generateRef.current?.(s.steps);
   }, []);
 
@@ -531,7 +626,8 @@ export function useAssessmentWizard() {
     setFreeText,
     next,
     back,
-    skip,
+    continueFromTransition,
+    skipFromTransition,
     retry,
     reset,
   };
