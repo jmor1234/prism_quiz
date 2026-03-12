@@ -12,21 +12,21 @@ import {
 // --- Q1 Static Configuration ---
 
 const HEALTH_GOALS_OPTIONS: { value: string; label: string }[] = [
-  { value: "energy", label: "Energy / Fatigue" },
-  { value: "digestion", label: "Digestion / Gut Health" },
-  { value: "sleep", label: "Sleep" },
-  { value: "weight", label: "Weight" },
-  { value: "brain_fog", label: "Brain Fog / Mental Clarity" },
-  { value: "mood", label: "Mood / Anxiety" },
-  { value: "hormones", label: "Hormones" },
-  { value: "skin", label: "Skin" },
-  { value: "allergies", label: "Allergies / Immune" },
-  { value: "pain", label: "Pain / Inflammation" },
+  { value: "energy", label: "Low energy or fatigue" },
+  { value: "digestion", label: "Digestive issues" },
+  { value: "sleep", label: "Poor sleep" },
+  { value: "weight", label: "Weight changes" },
+  { value: "brain_fog", label: "Brain fog" },
+  { value: "mood", label: "Mood or anxiety" },
+  { value: "hormones", label: "Hormonal issues" },
+  { value: "skin", label: "Skin problems" },
+  { value: "allergies", label: "Allergies or immune issues" },
+  { value: "pain", label: "Pain or inflammation" },
 ];
 
-export const GOALS_QUESTION = "What are your primary health goals?";
+export const GOALS_QUESTION = "What have you been dealing with?";
 export const GOALS_PLACEHOLDER =
-  "Anything else about your health situation you'd like us to know...";
+  "Tell us more about what you're experiencing...";
 
 // --- Types ---
 
@@ -36,6 +36,7 @@ export type WizardPhase =
   | "loading_step"
   | "answering"
   | "transition"
+  | "name_collect"
   | "generating"
   | "result"
   | "error";
@@ -80,6 +81,7 @@ type WizardAction =
   | { type: "INTAKE_ERROR"; error: string }
   | { type: "CONTINUE_FROM_TRANSITION"; steps: IntakeStep[] }
   | { type: "SKIP_FROM_TRANSITION" }
+  | { type: "SUBMIT_NAME_AND_GENERATE" }
   | { type: "GENERATE_START" }
   | { type: "GENERATE_SUCCESS"; id: string; report: string }
   | { type: "GENERATE_ERROR"; error: string }
@@ -181,7 +183,7 @@ function reducer(state: WizardState, action: WizardAction): WizardState {
       };
 
     case "INTAKE_COMPLETE":
-      return { ...state, phase: "generating" };
+      return { ...state, phase: "name_collect" };
 
     case "CONTINUE_FROM_TRANSITION":
       return {
@@ -193,6 +195,9 @@ function reducer(state: WizardState, action: WizardAction): WizardState {
       };
 
     case "SKIP_FROM_TRANSITION":
+      return { ...state, phase: "name_collect" };
+
+    case "SUBMIT_NAME_AND_GENERATE":
       return { ...state, phase: "generating" };
 
     case "INTAKE_ERROR":
@@ -359,6 +364,19 @@ export function useAssessmentWizard() {
         return;
       }
 
+      if (stored.intakeComplete) {
+        dispatch({
+          type: "HYDRATE",
+          state: {
+            phase: "name_collect",
+            name: stored.name,
+            steps: stored.steps,
+            questionHistory: stored.questionHistory,
+          },
+        });
+        return;
+      }
+
       if (stored.steps.length > 0 && stored.questionHistory.length > 0) {
         const lastQ = stored.questionHistory[stored.questionHistory.length - 1];
 
@@ -431,7 +449,13 @@ export function useAssessmentWizard() {
 
       if (data.status === "complete") {
         dispatch({ type: "INTAKE_COMPLETE" });
-        generateRef.current?.(steps);
+        const s = stateRef.current;
+        setAssessmentStorage({
+          name: s.name,
+          steps,
+          questionHistory: s.questionHistory,
+          intakeComplete: true,
+        });
         return;
       }
 
@@ -439,7 +463,13 @@ export function useAssessmentWizard() {
         // Prevent double transition — treat as complete
         if (stateRef.current.passedTransition) {
           dispatch({ type: "INTAKE_COMPLETE" });
-          generateRef.current?.(steps);
+          const s = stateRef.current;
+          setAssessmentStorage({
+            name: s.name,
+            steps,
+            questionHistory: s.questionHistory,
+            intakeComplete: true,
+          });
           return;
         }
 
@@ -596,6 +626,18 @@ export function useAssessmentWizard() {
 
     const s = stateRef.current;
     dispatch({ type: "SKIP_FROM_TRANSITION" });
+    setAssessmentStorage({
+      name: s.name,
+      steps: s.steps,
+      questionHistory: s.questionHistory,
+      intakeComplete: true,
+    });
+    isSubmitting.current = false;
+  }, []);
+
+  const submitNameAndGenerate = useCallback(() => {
+    const s = stateRef.current;
+    dispatch({ type: "SUBMIT_NAME_AND_GENERATE" });
     generateRef.current?.(s.steps);
   }, []);
 
@@ -635,6 +677,7 @@ export function useAssessmentWizard() {
     back,
     continueFromTransition,
     skipFromTransition,
+    submitNameAndGenerate,
     retry,
     reset,
   };

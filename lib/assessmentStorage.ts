@@ -21,6 +21,7 @@ export type AssessmentStorageData = {
   name: string;
   steps: IntakeStep[];
   questionHistory: QuestionHistoryEntry[];
+  intakeComplete?: boolean;
   resultId?: string;
   result?: { id: string; report: string };
 };

@@ -15,6 +15,7 @@ import { AssessmentStep, AssessmentStepSkeleton } from "./assessment-step";
 import { AssessmentTransition } from "./assessment-transition";
 import { AssessmentLoading } from "./assessment-loading";
 import { AssessmentResult } from "./assessment-result";
+import { NameCollectScreen } from "./name-collect-screen";
 
 export function AssessmentClient() {
   const wizard = useAssessmentWizard();
@@ -85,16 +86,14 @@ export function AssessmentClient() {
               ? "intro"
               : wizard.phase === "transition"
               ? "transition"
+              : wizard.phase === "name_collect"
+              ? "name_collect"
               : wizard.stepIndex
           }
           direction={wizard.direction}
         >
           {wizard.phase === "intro" && (
-            <IntroScreen
-              name={wizard.name}
-              onNameChange={wizard.setName}
-              onStart={wizard.start}
-            />
+            <IntroScreen onStart={wizard.start} />
           )}
 
           {wizard.phase === "loading_step" && <AssessmentStepSkeleton />}
@@ -117,6 +116,14 @@ export function AssessmentClient() {
               message={wizard.transitionMessage}
               onContinue={wizard.continueFromTransition}
               onSkip={wizard.skipFromTransition}
+            />
+          )}
+
+          {wizard.phase === "name_collect" && (
+            <NameCollectScreen
+              name={wizard.name}
+              onNameChange={wizard.setName}
+              onGenerate={wizard.submitNameAndGenerate}
             />
           )}
 
