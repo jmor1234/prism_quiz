@@ -145,15 +145,15 @@ hover:bg-[var(--quiz-gold)]/10 hover:text-[var(--quiz-gold-dark)]
 
 ---
 
-## Glassmorphism / Backdrop Effects
+## Sticky Chrome
 
-### Frosted Header/Footer
+### Header/Footer
 
 ```
-bg-background/80 backdrop-blur-sm border-b
+bg-background/95 border-b
 ```
 
-80% background opacity + 4px blur = frosted glass. Used for sticky headers/footers.
+95% background opacity. Avoid `backdrop-blur-sm` on sticky elements — it forces per-frame GPU blur recomputation during animations, which can crash Chrome on weaker hardware (see `docs/backdrop-blur-chrome-crash-fix.md`).
 
 ### Dark Mode Inputs
 
@@ -313,4 +313,4 @@ Links:             #2563eb (blue-600)
 4. **Opacity-based dark mode borders** — White at 10-15% instead of solid grays. Softer, more cohesive.
 5. **Warm dark mode** — `#262624` charcoal, not pure black. Matches the gold/cream warmth.
 6. **Gold glow effects** — `shadow-[0_0_Npx_var(--quiz-gold)]/opacity` for elevated brand elements.
-7. **Glassmorphism sparingly** — `backdrop-blur-sm` + 80% background opacity for sticky chrome only.
+7. **No backdrop-blur on sticky elements** — Use `bg-background/95` instead. `backdrop-blur` causes GPU crashes during animations (see `docs/backdrop-blur-chrome-crash-fix.md`).

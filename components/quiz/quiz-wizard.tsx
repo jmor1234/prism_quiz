@@ -449,7 +449,7 @@ export function QuizWizard({ config }: { config: VariantConfig }) {
               transition={
                 shouldReduceMotion
                   ? { duration: 0 }
-                  : { type: "spring", stiffness: 300, damping: 30 }
+                  : { type: "tween", duration: 0.3, ease: "easeOut" }
               }
             />
           </div>
@@ -498,10 +498,9 @@ export function QuizWizard({ config }: { config: VariantConfig }) {
               shouldReduceMotion
                 ? { duration: 0 }
                 : {
-                    type: "spring",
-                    stiffness: 300,
-                    damping: 30,
-                    opacity: { duration: 0.2 },
+                    type: "tween",
+                    duration: 0.25,
+                    ease: "easeOut",
                   }
             }
             className="w-full max-w-md"

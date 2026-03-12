@@ -3,11 +3,10 @@
 import { type ReactNode } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 
-const springTransition = {
-  type: "spring" as const,
-  stiffness: 300,
-  damping: 30,
-  opacity: { duration: 0.2 },
+const stepTransition = {
+  type: "tween" as const,
+  duration: 0.25,
+  ease: "easeOut" as const,
 };
 
 const noMotion = { duration: 0 };
@@ -31,7 +30,7 @@ export function StepTransition({
         initial={{ opacity: 0, x: offset, scale: 0.95 }}
         animate={{ opacity: 1, x: 0, scale: 1 }}
         exit={{ opacity: 0, x: -offset, scale: 0.95 }}
-        transition={shouldReduceMotion ? noMotion : springTransition}
+        transition={shouldReduceMotion ? noMotion : stepTransition}
         className="w-full max-w-md"
       >
         {children}

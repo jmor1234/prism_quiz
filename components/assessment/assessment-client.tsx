@@ -67,7 +67,7 @@ export function AssessmentClient() {
                   transition={
                     shouldReduceMotion
                       ? { duration: 0 }
-                      : { type: "spring", stiffness: 300, damping: 30 }
+                      : { type: "tween", duration: 0.3, ease: "easeOut" }
                   }
                 />
               </div>
