@@ -10,17 +10,17 @@ import type { IntakeStep } from "../types";
 
 export const maxDuration = 30;
 
-// Sonnet 4.6 pricing (per token)
-const PRICE_INPUT = 3 / 1_000_000;
-const PRICE_WRITE = 3.75 / 1_000_000;
-const PRICE_READ = 0.3 / 1_000_000;
-const PRICE_OUTPUT = 15 / 1_000_000;
+// Opus 4.6 pricing (per token)
+const PRICE_INPUT = 5 / 1_000_000;
+const PRICE_WRITE = 6.25 / 1_000_000;
+const PRICE_READ = 0.5 / 1_000_000;
+const PRICE_OUTPUT = 25 / 1_000_000;
 
 const intakeStepSchema = z.object({
   question: z
     .string()
-    .describe("The question to present. Concise, no em dashes. Present for in_progress and follow_up.")
-    .optional(),
+    .nullable()
+    .describe("The question to present. Concise, no em dashes. Null for transition and complete."),
   options: z
     .array(
       z.object({
@@ -28,16 +28,16 @@ const intakeStepSchema = z.object({
         label: z.string().describe("Display text shown as a selectable chip"),
       })
     )
-    .describe("Contextually relevant preset options. Present for in_progress and follow_up.")
-    .optional(),
+    .nullable()
+    .describe("Contextually relevant preset options. Null for transition and complete."),
   freeTextPlaceholder: z
     .string()
-    .describe("Contextual placeholder guiding what additional detail would be helpful. Present for in_progress and follow_up.")
-    .optional(),
+    .nullable()
+    .describe("Contextual placeholder guiding what additional detail would be helpful. Null for transition and complete."),
   transitionMessage: z
     .string()
-    .describe("The transition decision point message shown to the user. Present only for transition.")
-    .optional(),
+    .nullable()
+    .describe("The transition decision point message shown to the user. Null except for transition."),
   status: z
     .enum(["in_progress", "transition", "follow_up", "complete"])
     .describe(
@@ -48,8 +48,8 @@ const intakeStepSchema = z.object({
     .describe("Progress through the intake, 0 to 1. in_progress: 0–0.7, transition: ~0.75, follow_up: 0.75–0.95, complete: 1.0"),
   multiSelect: z
     .boolean()
-    .describe("Whether the user can select multiple options. Present for in_progress and follow_up.")
-    .optional(),
+    .nullable()
+    .describe("Whether the user can select multiple options. Null for transition and complete."),
 });
 
 const inputSchema = z.object({
@@ -118,7 +118,7 @@ export async function POST(req: Request) {
     const genStart = Date.now();
 
     const result = await generateText({
-      model: anthropic("claude-sonnet-4-6"),
+      model: anthropic("claude-opus-4-6"),
       output: Output.object({ schema: intakeStepSchema }),
       messages: [
         {
@@ -140,6 +140,7 @@ export async function POST(req: Request) {
     console.log(
       `[Intake] Complete · status: ${result.output.status} · progress: ${result.output.progressEstimate} · ${(genMs / 1000).toFixed(1)}s`
     );
+    console.log(`[Intake] Response:`, JSON.stringify(result.output, null, 2));
     console.log(
       `[Intake] Tokens: in: ${result.usage.inputTokens} · out: ${result.usage.outputTokens}`
     );

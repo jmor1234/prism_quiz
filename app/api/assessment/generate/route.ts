@@ -14,10 +14,10 @@ import { z } from "zod";
 export const maxDuration = 120;
 
 // Opus 4.6 pricing (per token)
-const PRICE_INPUT = 15 / 1_000_000;
-const PRICE_WRITE = 18.75 / 1_000_000;
-const PRICE_READ = 1.5 / 1_000_000;
-const PRICE_OUTPUT = 75 / 1_000_000;
+const PRICE_INPUT = 5 / 1_000_000;
+const PRICE_WRITE = 6.25 / 1_000_000;
+const PRICE_READ = 0.5 / 1_000_000;
+const PRICE_OUTPUT = 25 / 1_000_000;
 
 const inputSchema = z.object({
   name: z.string().max(100).optional(),

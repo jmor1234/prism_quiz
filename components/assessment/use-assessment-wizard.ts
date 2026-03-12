@@ -436,6 +436,13 @@ export function useAssessmentWizard() {
       }
 
       if (data.status === "transition") {
+        // Prevent double transition — treat as complete
+        if (stateRef.current.passedTransition) {
+          dispatch({ type: "INTAKE_COMPLETE" });
+          generateRef.current?.(steps);
+          return;
+        }
+
         dispatch({
           type: "INTAKE_TRANSITION",
           transitionMessage: data.transitionMessage,
@@ -457,12 +464,12 @@ export function useAssessmentWizard() {
       }
 
       const historyEntry: QuestionHistoryEntry = {
-        question: data.question,
-        options: data.options,
-        freeTextPlaceholder: data.freeTextPlaceholder,
+        question: data.question ?? "",
+        options: data.options ?? [],
+        freeTextPlaceholder: data.freeTextPlaceholder ?? "",
         status: data.status,
         progressEstimate: data.progressEstimate,
-        multiSelect: data.multiSelect,
+        multiSelect: data.multiSelect ?? true,
       };
 
       dispatch({ type: "INTAKE_SUCCESS", data: historyEntry });
