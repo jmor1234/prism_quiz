@@ -80,7 +80,7 @@ type WizardAction =
   | { type: "INTAKE_COMPLETE" }
   | { type: "INTAKE_ERROR"; error: string }
   | { type: "CONTINUE_FROM_TRANSITION"; steps: IntakeStep[] }
-  | { type: "SKIP_FROM_TRANSITION" }
+  | { type: "SKIP_FROM_TRANSITION"; steps: IntakeStep[] }
   | { type: "SUBMIT_NAME_AND_GENERATE" }
   | { type: "GENERATE_START" }
   | { type: "GENERATE_SUCCESS"; id: string; report: string }
@@ -195,7 +195,7 @@ function reducer(state: WizardState, action: WizardAction): WizardState {
       };
 
     case "SKIP_FROM_TRANSITION":
-      return { ...state, phase: "name_collect" };
+      return { ...state, phase: "name_collect", steps: action.steps };
 
     case "SUBMIT_NAME_AND_GENERATE":
       return { ...state, phase: "generating" };
@@ -613,7 +613,7 @@ export function useAssessmentWizard() {
     const syntheticStep: IntakeStep = {
       question: "[transition]",
       selectedOptions: ["continue"],
-      freeText: "",
+      freeText: s.transitionMessage ?? "",
     };
     const newSteps = [...s.steps, syntheticStep];
     dispatch({ type: "CONTINUE_FROM_TRANSITION", steps: newSteps });
@@ -625,10 +625,16 @@ export function useAssessmentWizard() {
     isSubmitting.current = true;
 
     const s = stateRef.current;
-    dispatch({ type: "SKIP_FROM_TRANSITION" });
+    const syntheticStep: IntakeStep = {
+      question: "[transition]",
+      selectedOptions: ["skip"],
+      freeText: s.transitionMessage ?? "",
+    };
+    const newSteps = [...s.steps, syntheticStep];
+    dispatch({ type: "SKIP_FROM_TRANSITION", steps: newSteps });
     setAssessmentStorage({
       name: s.name,
-      steps: s.steps,
+      steps: newSteps,
       questionHistory: s.questionHistory,
       intakeComplete: true,
     });

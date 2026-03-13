@@ -57,9 +57,9 @@ function bookingClickCount(engagement: AssessmentEngagement | null): number {
 // --- Components ---
 
 function IntakeStepsDisplay({ steps }: { steps: IntakeStep[] }) {
-  const filtered = steps.filter((s) => s.question !== "[transition]");
+  const hasContent = steps.some((s) => s.question !== "[transition]");
 
-  if (filtered.length === 0) {
+  if (!hasContent) {
     return (
       <p className="text-sm text-muted-foreground italic">
         No intake data available
@@ -69,28 +69,60 @@ function IntakeStepsDisplay({ steps }: { steps: IntakeStep[] }) {
 
   return (
     <div className="space-y-4">
-      {filtered.map((step, i) => (
-        <div key={i} className="space-y-1.5">
-          <p className="text-sm font-medium text-foreground">{step.question}</p>
-          {step.selectedOptions.length > 0 && (
-            <div className="flex flex-wrap gap-1.5">
-              {step.selectedOptions.map((opt) => (
+      {steps.map((step, i) => {
+        if (step.question === "[transition]") {
+          const continued = step.selectedOptions.includes("continue");
+          return (
+            <div
+              key={i}
+              className="rounded-lg border border-blue-500/20 bg-blue-500/5 p-3 space-y-2"
+            >
+              <div className="flex items-center gap-2">
                 <span
-                  key={opt}
-                  className="inline-block px-2.5 py-0.5 text-xs rounded-full bg-[var(--quiz-gold)]/10 text-[var(--quiz-gold-dark)] border border-[var(--quiz-gold)]/30"
+                  className={cn(
+                    "inline-block px-2 py-0.5 text-xs rounded-full font-medium",
+                    continued
+                      ? "bg-green-500/10 text-green-600 dark:text-green-400 border border-green-500/20"
+                      : "bg-orange-500/10 text-orange-600 dark:text-orange-400 border border-orange-500/20"
+                  )}
                 >
-                  {opt}
+                  {continued ? "Continued for deeper questions" : "Skipped to assessment"}
                 </span>
-              ))}
+              </div>
+              {step.freeText.trim() && (
+                <p className="text-sm text-muted-foreground italic pl-3 border-l-2 border-blue-500/30">
+                  {step.freeText}
+                </p>
+              )}
             </div>
-          )}
-          {step.freeText.trim() && (
-            <p className="text-sm text-muted-foreground pl-3 border-l-2 border-border">
-              {step.freeText}
+          );
+        }
+
+        return (
+          <div key={i} className="space-y-1.5">
+            <p className="text-sm font-medium text-foreground">
+              {step.question}
             </p>
-          )}
-        </div>
-      ))}
+            {step.selectedOptions.length > 0 && (
+              <div className="flex flex-wrap gap-1.5">
+                {step.selectedOptions.map((opt) => (
+                  <span
+                    key={opt}
+                    className="inline-block px-2.5 py-0.5 text-xs rounded-full bg-[var(--quiz-gold)]/10 text-[var(--quiz-gold-dark)] border border-[var(--quiz-gold)]/30"
+                  >
+                    {opt}
+                  </span>
+                ))}
+              </div>
+            )}
+            {step.freeText.trim() && (
+              <p className="text-sm text-muted-foreground pl-3 border-l-2 border-border">
+                {step.freeText}
+              </p>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }
