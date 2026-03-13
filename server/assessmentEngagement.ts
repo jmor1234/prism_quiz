@@ -52,7 +52,7 @@ export interface AssessmentEngagement {
   updatedAt: string;
 }
 
-const VALID_EVENT_TYPES = new Set(["booking_click"]);
+const VALID_EVENT_TYPES = new Set(["booking_click", "pdf_download"]);
 const DEDUP_WINDOW_MS = 5_000;
 
 // --- Internal helpers ---

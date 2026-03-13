@@ -136,6 +136,18 @@ export async function POST(req: Request) {
       throw new Error("Failed to generate structured output");
     }
 
+    const { status, question, options } = result.output;
+    if (
+      (status === "in_progress" || status === "follow_up") &&
+      (!question || !options || options.length === 0)
+    ) {
+      console.error(
+        "[Intake] Agent returned null question/options for active status:",
+        JSON.stringify(result.output)
+      );
+      throw new Error("Failed to generate a valid question. Please try again.");
+    }
+
     const genMs = Date.now() - genStart;
     console.log(
       `[Intake] Complete · status: ${result.output.status} · progress: ${result.output.progressEstimate} · ${(genMs / 1000).toFixed(1)}s`

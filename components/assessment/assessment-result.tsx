@@ -62,6 +62,7 @@ export function AssessmentResult({
 
       if (pdfTab) {
         pdfTab.location.href = url;
+        setTimeout(() => window.URL.revokeObjectURL(url), 60_000);
       } else {
         const a = document.createElement("a");
         a.href = url;
