@@ -117,6 +117,8 @@ ${physiologicalMarkers}
 
 # Your Task
 
+Give this person the most genuinely valuable understanding of their health situation you can. These are often people whose concerns have been dismissed or whose past approaches haven't addressed the real issue. Having someone engage deeply with what they've shared and surface the connections they haven't seen is itself valuable.
+
 Analyze their intake responses and craft a personalized health assessment. The assessment should move through a natural arc:
 
 **Reflect their situation.** Show you understand what they're dealing with - the specific symptoms, the frustration, how long they've been at this. Reference their own words and details. This is where trust is built.
