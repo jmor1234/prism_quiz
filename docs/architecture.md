@@ -276,7 +276,7 @@ Two agents with separate prompts:
 **Assessment Agent** (`app/api/assessment/generate/prompt.ts`):
 - Knowledge foundation: 7 files -- same 5 as quiz agent + `prism_process.md` + `takehome.md` (physiological markers)
 - Same evidence tools as quiz agent (search + read)
-- Task: narrative arc (reflect situation → show connections → reframe past attempts → contextualize to Prism's specific process)
+- Task: narrative arc (reflect situation → show connections → reframe past attempts → ground the likely alternative → contextualize to Prism's specific process)
 - Prism's process and physiological markers are woven throughout the assessment wherever specific elements are the natural extension of an insight -- not a separate sales section
 - No `promptOverlay` -- single experience, intake data provides all specificity
 - Closing brings analysis together and acknowledges limitations; UI provides purchase CTA separately
