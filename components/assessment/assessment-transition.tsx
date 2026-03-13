@@ -4,6 +4,7 @@ import { motion, useReducedMotion } from "framer-motion";
 import { ArrowRight, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ACCENT } from "@/components/quiz/quiz-theme";
+import { Response } from "@/components/ai-elements/response";
 
 export function AssessmentTransition({
   message,
@@ -54,9 +55,9 @@ export function AssessmentTransition({
           "bg-[var(--quiz-gold)]/[0.04]"
         )}
       >
-        <p className="text-foreground text-[15px] leading-[1.8] text-left">
-          {message}
-        </p>
+        <div className="text-foreground text-[15px] leading-[1.8] text-left [&_ol]:mt-3 [&_ol]:mb-1 [&_li]:mb-2">
+          <Response>{message}</Response>
+        </div>
       </motion.div>
 
       {/* Actions */}

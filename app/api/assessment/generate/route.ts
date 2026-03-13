@@ -9,9 +9,14 @@ import {
   getAssessmentResult,
 } from "@/server/assessmentResults";
 import { requestRateLimiter, extractIp } from "@/app/api/agent/lib/rateLimit";
+import { CacheManager } from "@/app/api/agent/lib/cacheManager";
 import { z } from "zod";
 
 export const maxDuration = 120;
+
+// Three-tier prompt caching: tools, system prompt, conversation history
+const cacheManager = new CacheManager();
+const cachedTools = cacheManager.prepareCachedTools(assessmentTools);
 
 // Opus 4.6 pricing (per token)
 const PRICE_INPUT = 5 / 1_000_000;
@@ -104,12 +109,24 @@ export async function POST(req: Request) {
     console.log(`[Assessment] Starting generation: ${recordId}`);
     const genStart = Date.now();
 
+    // System prompt is entirely stable (knowledge files + instructions) — cache it
     const result = await generateText({
       model: anthropic("claude-opus-4-6"),
-      system,
-      messages: [{ role: "user" as const, content: userMessage }],
-      tools: assessmentTools,
+      messages: [
+        {
+          role: "system" as const,
+          content: system,
+          providerOptions: {
+            anthropic: { cacheControl: { type: "ephemeral" as const } },
+          },
+        },
+        { role: "user" as const, content: userMessage },
+      ],
+      tools: cachedTools,
       stopWhen: stepCountIs(5),
+      prepareStep: ({ messages: stepMessages }) => ({
+        messages: cacheManager.applyHistoryCacheBreakpoint(stepMessages),
+      }),
       providerOptions: {
         anthropic: {
           thinking: { type: "adaptive" },

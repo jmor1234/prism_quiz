@@ -101,7 +101,10 @@ POST /api/assessment/generate { name?, steps }
     AssessmentResult renders markdown assessment with inline citations
             │
             ▼
-    Single purchase CTA → external purchase page
+    Save Your Assessment (PDF) | Take the Next Step With Prism
+            │                              │
+            ▼                              ▼
+    Opens PDF in new tab           Opens purchase page
 ```
 
 ---
@@ -157,7 +160,7 @@ app/assessment/page.tsx              Server component (metadata)
        ├─ AssessmentTransition       Transition decision point (personalized message + 2 CTAs)
        ├─ StepTransition             AnimatePresence direction-aware wrapper
        ├─ AssessmentLoading          SVG ring + dots during generation
-       └─ AssessmentResult           Markdown report + single purchase CTA
+       └─ AssessmentResult           Markdown report + PDF download + purchase CTA
 ```
 
 ### Assessment Wizard (`use-assessment-wizard.ts`)
@@ -203,14 +206,15 @@ The central state machine. Driven entirely by `VariantConfig`:
 ### API Routes
 
 ```
-POST /api/quiz                    Quiz submission + LLM generation (rate-limited)
+POST /api/quiz                    Quiz submission + LLM generation (rate-limited, cached)
 GET  /api/quiz/result?quizId=     Fetch stored result
 POST /api/quiz/pdf                Generate user-facing PDF
 POST /api/quiz/engagement         Engagement tracking (events + conversations)
 
 POST /api/assessment/intake       AI intake step generation (Opus 4.6, structured output, cached)
-POST /api/assessment/generate     Assessment generation (Opus 4.6, evidence tools, rate-limited)
-POST /api/assessment/engagement   Assessment engagement tracking (booking clicks)
+POST /api/assessment/generate     Assessment generation (Opus 4.6, evidence tools, rate-limited, cached)
+POST /api/assessment/pdf          Generate assessment PDF
+POST /api/assessment/engagement   Assessment engagement tracking (booking clicks, PDF downloads)
 
 POST /api/agent                   Streaming agent conversation (Opus 4.6, dual-mode: quiz/standalone)
 
@@ -226,7 +230,7 @@ POST /api/admin/chats/summary     Generate standalone chat summary (Sonnet 4.6)
 
 ### Prompt Architecture
 
-The prompt is split into a **system message** and a **user message**. The system message contains all stable context (knowledge, instructions, tools guidance). The user message contains only the quiz answers. This split enables Anthropic prompt caching across the multi-step tool loop: the ~84KB system message caches after step 1 and reads at 10% cost on subsequent steps.
+The prompt is split into a **system message** and a **user message**. The system message contains all stable context (knowledge, instructions, tools guidance). The user message contains only the quiz answers. Three-tier Anthropic prompt caching via `CacheManager`: tool schemas, system prompt (`cacheControl: ephemeral`, 5-min TTL), and conversation history (`prepareStep` → `applyHistoryCacheBreakpoint`). The ~21K token system message caches after step 1 and reads at 10% cost on subsequent steps. Measured: 95.3% cache hit rate, ~73% cost reduction per generation.
 
 ```
 System Message
@@ -277,7 +281,8 @@ Two agents with separate prompts:
 - No `promptOverlay` -- single experience, intake data provides all specificity
 - Closing brings analysis together and acknowledges limitations; UI provides purchase CTA separately
 - Input: `formatIntake(name, steps)` converts dynamic intake steps to markdown
-- Logging: tool usage summary, token usage, cache breakdown, cost
+- Three-tier prompt caching via `CacheManager`: tool schemas, ~25K system prompt (`cacheControl: ephemeral`), conversation history (`prepareStep` → `applyHistoryCacheBreakpoint`). Measured: 95.5% cache hit rate, ~69% cost reduction per generation.
+- Logging: tool usage summary, token usage, cache breakdown (read/write/uncached/hit%), cost with savings
 
 ### Evidence Tools
 
@@ -353,7 +358,7 @@ Three parallel tracking systems:
 
 **Quiz engagement** (`server/quizEngagement.ts`): Tracks `pdf_download`, `booking_click` (assessment or agent), `agent_opened`. Keyed by `quiz-engagement:{quizId}`. Visible in `/admin/results`.
 
-**Assessment engagement** (`server/assessmentEngagement.ts`): Tracks `booking_click` from assessment result page. Keyed by `assessment-engagement:{id}` (same Redis instance as assessment results). Visible in `/admin/assessments`.
+**Assessment engagement** (`server/assessmentEngagement.ts`): Tracks `booking_click` and `pdf_download` from assessment result page. Keyed by `assessment-engagement:{id}` (same Redis instance as assessment results). Visible in `/admin/assessments`.
 
 **Standalone chat** (`server/chatSessions.ts`): Tracks `booking_click` from chat. Keyed by `chat-sessions:{threadId}`. Visible in `/admin/results` (Conversations tab).
 
@@ -395,10 +400,11 @@ Backwards compatible: old records missing `name`/`steps` are normalized with emp
 
 ### PDF Generation
 
-Two PDF pipelines, both using Puppeteer with serverless-aware Chromium (`@sparticuz/chromium` on Vercel):
+Three PDF pipelines, all using Puppeteer with serverless-aware Chromium (`@sparticuz/chromium` on Vercel):
 
-- **User PDF:** markdown report → HTML (remark/rehype) → cover template → PDF
-- **Admin PDF:** variant config → config-driven answer rendering + report + conversation summary (if exists) → admin template → PDF
+- **Quiz User PDF** (`/api/quiz/pdf`): markdown report → HTML (remark/rehype) → cover template → PDF
+- **Assessment PDF** (`/api/assessment/pdf`): markdown report → HTML (remark/rehype) → content section template → PDF
+- **Admin PDF** (`/api/admin/results/pdf`): variant config → config-driven answer rendering + report + conversation summary (if exists) → admin template → PDF
 
 ---
 
@@ -505,9 +511,12 @@ app/
     │   │   ├── route.ts                Intake step generation (Opus 4.6, generateText + Output.object, cached)
     │   │   └── prompt.ts               Intake prompt + 3 knowledge file loader
     │   ├── generate/
-    │   │   ├── route.ts                Assessment generation (Opus 4.6, generateText + tools)
+    │   │   ├── route.ts                Assessment generation (Opus 4.6, generateText + tools, cached)
     │   │   ├── prompt.ts               Assessment prompt + 7 knowledge file loader
     │   │   └── tools.ts                Exa search + read tools
+    │   ├── pdf/
+    │   │   ├── route.ts                Assessment PDF generation
+    │   │   └── lib/assessmentTemplateBuilder.ts
     │   └── engagement/
     │       └── route.ts                Assessment engagement tracking endpoint
     ├── chat/

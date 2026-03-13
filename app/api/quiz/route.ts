@@ -10,9 +10,20 @@ import { upsertQuizSubmission, getQuizSubmission } from "@/server/quizSubmission
 import { saveQuizResult, getQuizResult } from "@/server/quizResults";
 import { buildQuizPrompt } from "./systemPrompt";
 import { requestRateLimiter, extractIp } from "../agent/lib/rateLimit";
+import { CacheManager } from "../agent/lib/cacheManager";
 
 // 120 seconds — tool calls (evidence retrieval) add latency
 export const maxDuration = 120;
+
+// Three-tier prompt caching: tools, system prompt, conversation history
+const cacheManager = new CacheManager();
+const cachedTools = cacheManager.prepareCachedTools(quizTools);
+
+// Opus 4.6 pricing (per token)
+const PRICE_INPUT = 5 / 1_000_000;
+const PRICE_WRITE = 6.25 / 1_000_000;
+const PRICE_READ = 0.5 / 1_000_000;
+const PRICE_OUTPUT = 25 / 1_000_000;
 
 export async function POST(req: Request) {
   // Rate limiting
@@ -150,12 +161,24 @@ export async function POST(req: Request) {
     console.log(`[Quiz] Starting generation for: ${recordId} (variant: ${variant})`);
     const genStart = Date.now();
 
+    // System prompt is stable per variant (knowledge files + instructions) — cache it
     const result = await generateText({
       model: anthropic("claude-opus-4-6"),
-      system,
-      messages: [{ role: "user" as const, content: userMessage }],
-      tools: quizTools,
+      messages: [
+        {
+          role: "system" as const,
+          content: system,
+          providerOptions: {
+            anthropic: { cacheControl: { type: "ephemeral" as const } },
+          },
+        },
+        { role: "user" as const, content: userMessage },
+      ],
+      tools: cachedTools,
       stopWhen: stepCountIs(5),
+      prepareStep: ({ messages: stepMessages }) => ({
+        messages: cacheManager.applyHistoryCacheBreakpoint(stepMessages),
+      }),
       providerOptions: {
         anthropic: {
           thinking: { type: "adaptive" },
@@ -192,6 +215,32 @@ export async function POST(req: Request) {
     );
     console.log(
       `[Quiz] Tokens: in: ${result.usage.inputTokens} · out: ${result.usage.outputTokens} · ${(genMs / 1000).toFixed(1)}s`
+    );
+
+    // Cache & cost breakdown
+    const d = result.usage.inputTokenDetails;
+    const cacheRead = d.cacheReadTokens ?? 0;
+    const cacheWrite = d.cacheWriteTokens ?? 0;
+    const noCache = d.noCacheTokens ?? 0;
+    const totalInput = result.usage.inputTokens ?? 0;
+    const totalOutput = result.usage.outputTokens ?? 0;
+    const hitRate =
+      totalInput > 0 ? ((cacheRead / totalInput) * 100).toFixed(1) : "0.0";
+
+    const costRead = cacheRead * PRICE_READ;
+    const costWrite = cacheWrite * PRICE_WRITE;
+    const costNoCache = noCache * PRICE_INPUT;
+    const costOutput = totalOutput * PRICE_OUTPUT;
+    const costTotal = costRead + costWrite + costNoCache + costOutput;
+    const costBaseline =
+      totalInput * PRICE_INPUT + totalOutput * PRICE_OUTPUT;
+    const savings = costBaseline - costTotal;
+
+    console.log(
+      `[Quiz] Cache: read: ${cacheRead} · write: ${cacheWrite} · uncached: ${noCache} · hit: ${hitRate}%`
+    );
+    console.log(
+      `[Quiz] Cost: in: $${(costRead + costWrite + costNoCache).toFixed(4)} · out: $${costOutput.toFixed(4)} · total: $${costTotal.toFixed(4)} · saved: $${savings.toFixed(4)}`
     );
 
     // Save result

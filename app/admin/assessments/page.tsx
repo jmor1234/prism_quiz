@@ -133,7 +133,7 @@ function EntryRow({
         {clicks > 0 && (
           <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs rounded-full bg-green-500/10 text-green-600 dark:text-green-400 border border-green-500/20">
             <ExternalLink className="w-3 h-3" />
-            {clicks}
+            Clicked to landing page
           </span>
         )}
 
@@ -185,7 +185,7 @@ function EntryRow({
                     className="flex items-center gap-2 text-xs text-muted-foreground"
                   >
                     <ExternalLink className="w-3 h-3" />
-                    <span>Booking click</span>
+                    <span>{event.type === "pdf_download" ? "PDF download" : "Booking click"}</span>
                     <span>{formatDate(event.timestamp)}</span>
                   </div>
                 ))}
