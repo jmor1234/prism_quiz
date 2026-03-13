@@ -177,6 +177,8 @@ export async function POST(req: Request) {
     // Save result
     await saveAssessmentResult({
       id: recordId,
+      name: name ?? "",
+      steps,
       report: result.text,
     });
 

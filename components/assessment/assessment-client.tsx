@@ -36,7 +36,7 @@ export function AssessmentClient() {
   }
 
   if (wizard.phase === "result" && wizard.result) {
-    return <AssessmentResult report={wizard.result.report} />;
+    return <AssessmentResult report={wizard.result.report} resultId={wizard.result.id} />;
   }
 
   // Wizard states (with header/footer)

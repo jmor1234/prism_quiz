@@ -115,6 +115,7 @@ POST /api/assessment/generate { name?, steps }
 /quiz                       → landing page (card grid of all variants + standalone chat link)
 /quiz/[variant]             → intro screen → quiz wizard (server component → client)
 /assessment                 → AI-driven intake wizard → assessment → purchase CTA
+/admin/assessments          → password-protected assessment submissions dashboard
 /explore/[quizId]           → post-quiz agent chat (server component → client)
 /chat                       → redirect to latest thread or create new
 /chat/[threadId]            → standalone agent chat with sidebar (server → client)
@@ -209,14 +210,16 @@ POST /api/quiz/engagement         Engagement tracking (events + conversations)
 
 POST /api/assessment/intake       AI intake step generation (Opus 4.6, structured output, cached)
 POST /api/assessment/generate     Assessment generation (Opus 4.6, evidence tools, rate-limited)
+POST /api/assessment/engagement   Assessment engagement tracking (booking clicks)
 
 POST /api/agent                   Streaming agent conversation (Opus 4.6, dual-mode: quiz/standalone)
 
 POST /api/chat/engagement         Standalone chat tracking (events + conversations)
 
-GET  /api/admin/results           Paginated submissions + engagement (password-protected)
+GET  /api/admin/results           Paginated quiz submissions + engagement (password-protected)
 POST /api/admin/results/pdf       Generate admin PDF export
 POST /api/admin/results/summary   Generate AI conversation summary (Sonnet 4.6)
+GET  /api/admin/assessments       Paginated assessment submissions + engagement (password-protected)
 GET  /api/admin/chats             Standalone chat sessions (password-protected)
 POST /api/admin/chats/summary     Generate standalone chat summary (Sonnet 4.6)
 ```
@@ -346,11 +349,13 @@ Single route (`/api/agent`) serves two modes based on whether `quizId` is presen
 
 ### Engagement Tracking
 
-Two parallel tracking systems, both visible in the admin dashboard (tab toggle: Quiz Results | Conversations).
+Three parallel tracking systems:
 
-**Quiz engagement** (`server/quizEngagement.ts`): Tracks `pdf_download`, `booking_click` (assessment or agent), `agent_opened`. Keyed by `quiz-engagement:{quizId}`.
+**Quiz engagement** (`server/quizEngagement.ts`): Tracks `pdf_download`, `booking_click` (assessment or agent), `agent_opened`. Keyed by `quiz-engagement:{quizId}`. Visible in `/admin/results`.
 
-**Standalone chat** (`server/chatSessions.ts`): Tracks `booking_click` from chat. Keyed by `chat-sessions:{threadId}`.
+**Assessment engagement** (`server/assessmentEngagement.ts`): Tracks `booking_click` from assessment result page. Keyed by `assessment-engagement:{id}` (same Redis instance as assessment results). Visible in `/admin/assessments`.
+
+**Standalone chat** (`server/chatSessions.ts`): Tracks `booking_click` from chat. Keyed by `chat-sessions:{threadId}`. Visible in `/admin/results` (Conversations tab).
 
 Both store conversation transcripts server-side (serialized user/assistant text only).
 
@@ -378,9 +383,13 @@ On save, submissions are dual-indexed to both the global and per-variant sorted 
 
 **Assessment storage** (separate Redis database via `UPSTASH_ASSESSMENT_REDIS_REST_URL`):
 ```
-Assessment results:  assessment-results:{uuid}  → { id, report, createdAt }
+Assessment results:      assessment-results:{uuid}      → { id, name, steps, report, createdAt }
+Assessment engagement:   assessment-engagement:{uuid}   → { assessmentId, events, updatedAt }
+Assessment index:        assessment-index                → sorted set (timestamp → uuid)
 ```
-Filesystem fallback: `storage/assessment-results/{uuid}.json`
+Filesystem fallback: `storage/assessment-results/{uuid}.json`, `storage/assessment-engagement/{uuid}.json`
+
+Backwards compatible: old records missing `name`/`steps` are normalized with empty defaults on read.
 
 **Client storage:** variant-scoped localStorage keys (`prism-quiz:{variant}`). V1→V2 migration for root-cause. Assessment uses `prism-assessment` key with versioned schema (v2) storing name, steps, questionHistory (with transition entries), intakeComplete flag, and result.
 
@@ -476,8 +485,10 @@ app/
 │   ├── page.tsx                        Server component (metadata)
 │   └── error.tsx                       Error boundary
 ├── admin/
-│   └── results/
-│       └── page.tsx                    Admin dashboard (Quiz Results | Conversations tabs)
+│   ├── results/
+│   │   └── page.tsx                    Quiz admin dashboard (Quiz Results | Conversations tabs)
+│   └── assessments/
+│       └── page.tsx                    Assessment admin dashboard (submissions + engagement)
 └── api/
     ├── quiz/
     │   ├── route.ts                    Submission + LLM generation (with tools)
@@ -493,10 +504,12 @@ app/
     │   ├── intake/
     │   │   ├── route.ts                Intake step generation (Opus 4.6, generateText + Output.object, cached)
     │   │   └── prompt.ts               Intake prompt + 3 knowledge file loader
-    │   └── generate/
-    │       ├── route.ts                Assessment generation (Opus 4.6, generateText + tools)
-    │       ├── prompt.ts               Assessment prompt + 7 knowledge file loader
-    │       └── tools.ts                Exa search + read tools
+    │   ├── generate/
+    │   │   ├── route.ts                Assessment generation (Opus 4.6, generateText + tools)
+    │   │   ├── prompt.ts               Assessment prompt + 7 knowledge file loader
+    │   │   └── tools.ts                Exa search + read tools
+    │   └── engagement/
+    │       └── route.ts                Assessment engagement tracking endpoint
     ├── chat/
     │   └── engagement/route.ts         Standalone chat tracking endpoint
     ├── agent/
@@ -516,11 +529,13 @@ app/
     │       └── retryConfig.ts          Retry config
     └── admin/
         ├── results/
-        │   ├── route.ts                Admin results listing (+ engagement join)
+        │   ├── route.ts                Admin quiz results listing (+ engagement join)
         │   ├── summary/route.ts        AI quiz conversation summary (Sonnet 4.6)
         │   └── pdf/
         │       ├── route.ts            Admin PDF export
         │       └── lib/adminPdfTemplate.ts
+        ├── assessments/
+        │   └── route.ts                Admin assessment listing (+ engagement join)
         └── chats/
             ├── route.ts                Admin standalone chat sessions listing
             └── summary/route.ts        AI standalone chat summary (Sonnet 4.6)
@@ -614,9 +629,11 @@ lib/
 └── utils.ts                            cn() helper
 
 server/
-├── quizSubmissions.ts                  Submission storage (Redis + filesystem)
-├── quizResults.ts                      Result storage (Redis + filesystem)
+├── quizSubmissions.ts                  Quiz submission storage (Redis + filesystem)
+├── quizResults.ts                      Quiz result storage (Redis + filesystem)
 ├── quizEngagement.ts                   Quiz engagement storage (Redis + filesystem)
+├── assessmentResults.ts                Assessment storage — name, steps, report (separate Redis + filesystem)
+├── assessmentEngagement.ts             Assessment engagement — booking clicks (separate Redis + filesystem)
 ├── chatSessions.ts                     Standalone chat storage (Redis + filesystem)
 └── assessmentResults.ts                Assessment result storage (separate Redis DB + filesystem)
 ```

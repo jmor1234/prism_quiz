@@ -10,10 +10,21 @@ import { ModeToggle } from "@/components/ui/mode-toggle";
 // Placeholder — will be replaced with actual purchase page URL
 const PURCHASE_URL = "/purchase";
 
+function trackBookingClick(assessmentId: string) {
+  fetch("/api/assessment/engagement", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ assessmentId, type: "booking_click" }),
+    keepalive: true,
+  }).catch(() => {});
+}
+
 export function AssessmentResult({
   report,
+  resultId,
 }: {
   report: string;
+  resultId: string;
 }) {
   const shouldReduceMotion = useReducedMotion();
   const transition = shouldReduceMotion ? { duration: 0 } : undefined;
@@ -75,6 +86,7 @@ export function AssessmentResult({
             href={PURCHASE_URL}
             target="_blank"
             rel="noopener noreferrer"
+            onClick={() => trackBookingClick(resultId)}
             className={cn(
               "flex items-center justify-center gap-3 w-full px-8 py-4 rounded-xl",
               "text-base font-semibold",
