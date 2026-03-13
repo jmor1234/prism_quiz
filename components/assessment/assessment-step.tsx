@@ -91,26 +91,44 @@ export function AssessmentStep({
 }
 
 const LOADING_MESSAGES = [
-  "Analyzing your answers...",
-  "Personalizing your next question...",
-  "Understanding your patterns...",
+  "Analyzing your responses\u2026",
+  "Looking at how your symptoms connect\u2026",
+  "Identifying the most relevant areas\u2026",
+  "Personalizing your next question\u2026",
+  "Fine-tuning the options for you\u2026",
+  "Almost ready\u2026",
 ];
+
+const PILL_WIDTHS = [110, 140, 120, 150];
+
+const shimmerPulse = (delay: number) => ({
+  animate: { opacity: [0.5, 0.85, 0.5] },
+  transition: {
+    duration: 1.8,
+    repeat: Infinity,
+    delay,
+    ease: "easeInOut" as const,
+  },
+});
 
 /**
  * Loading indicator shown while the next step is fetched from the API.
+ * Content skeleton mirrors the real AssessmentStep layout so the
+ * transition feels like a reveal rather than a replacement.
  */
 export function AssessmentStepSkeleton() {
   const [messageIndex, setMessageIndex] = useState(0);
 
   useEffect(() => {
     const interval = setInterval(() => {
-      setMessageIndex((i) => (i + 1) % LOADING_MESSAGES.length);
-    }, 2500);
+      setMessageIndex((i) => Math.min(i + 1, LOADING_MESSAGES.length - 1));
+    }, 2000);
     return () => clearInterval(interval);
   }, []);
 
   return (
-    <div className="flex flex-col items-center justify-center py-12 gap-6">
+    <div className="flex flex-col items-center justify-center py-12 gap-6 w-full max-w-md">
+      {/* Pulsing dots */}
       <div className="flex items-center gap-1.5">
         {[0, 1, 2].map((i) => (
           <motion.div
@@ -129,6 +147,8 @@ export function AssessmentStepSkeleton() {
           />
         ))}
       </div>
+
+      {/* Progressive message */}
       <div className="h-5 relative">
         <AnimatePresence mode="wait">
           <motion.p
@@ -142,6 +162,35 @@ export function AssessmentStepSkeleton() {
             {LOADING_MESSAGES[messageIndex]}
           </motion.p>
         </AnimatePresence>
+      </div>
+
+      {/* Content skeleton — mirrors AssessmentStep layout */}
+      <div className="w-full space-y-8 mt-2">
+        {/* Question line */}
+        <div className="flex justify-center">
+          <motion.div
+            className="h-5 w-[70%] rounded-full bg-foreground/15 dark:bg-muted"
+            {...shimmerPulse(0)}
+          />
+        </div>
+
+        {/* Option pills */}
+        <div className="flex flex-wrap justify-center gap-3">
+          {PILL_WIDTHS.map((w, i) => (
+            <motion.div
+              key={i}
+              className="h-11 rounded-full bg-foreground/10 border border-foreground/15 dark:bg-muted dark:border-border"
+              style={{ width: w }}
+              {...shimmerPulse(0.1 * (i + 1))}
+            />
+          ))}
+        </div>
+
+        {/* Textarea */}
+        <motion.div
+          className="h-20 w-full rounded-lg bg-foreground/10 border border-foreground/15 dark:bg-muted/80 dark:border-border"
+          {...shimmerPulse(0.5)}
+        />
       </div>
     </div>
   );
