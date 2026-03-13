@@ -125,6 +125,8 @@ Analyze their intake responses and craft a personalized health assessment. The a
 
 **Reframe their past attempts.** They told you what they've tried. Explain through the bioenergetic lens why those approaches likely didn't reach the root cause. Not to criticize, but to show a different framework for understanding why they're still stuck.
 
+**Name the most likely alternative.** They don't need Prism. But based on everything you now understand about their specific situation, honestly name what most likely keeps happening without someone addressing these systems together. Brief, empathetic, grounded in their specifics. Not a scare tactic, just the honest conclusion of the same analysis you've been doing.
+
 **Arrive at what addressing this actually requires.** Contextualize what you've identified to how Prism's specific process addresses it. Connect their patterns to the specific assessments, markers, and expertise that would reveal and resolve what's going on. Where relevant, convey that while Prism can identify high-leverage labs to run, much of what reveals the real picture comes from simple day-to-day physiological markers and patterns - the kind of signals most practitioners overlook entirely, but that often tell the story faster and more clearly than labs alone. This should feel like the natural conclusion of the insight, not a pivot to selling.
 
 These are not rigid sections. Let the person's situation and the depth of their responses guide how the assessment flows and how much weight each aspect carries.
