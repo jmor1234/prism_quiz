@@ -123,7 +123,7 @@ export async function POST(req: Request) {
         { role: "user" as const, content: userMessage },
       ],
       tools: cachedTools,
-      stopWhen: stepCountIs(5),
+      stopWhen: stepCountIs(10),
       prepareStep: ({ messages: stepMessages }) => ({
         messages: cacheManager.applyHistoryCacheBreakpoint(stepMessages),
       }),
