@@ -79,7 +79,7 @@ export function AssessmentClient() {
       </div>
 
       {/* Main content */}
-      <div className="flex-1 flex items-center justify-center px-4 py-8">
+      <div className="flex-1 flex items-center justify-center px-4 py-8 overflow-hidden">
         <StepTransition
           stepKey={
             wizard.phase === "intro"

@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { ACCENT, hintClass } from "@/components/quiz/quiz-theme";
 import { Textarea } from "@/components/ui/textarea";
@@ -101,20 +100,14 @@ const LOADING_MESSAGES = [
 
 const PILL_WIDTHS = [110, 140, 120, 150];
 
-const shimmerPulse = (delay: number) => ({
-  animate: { opacity: [0.5, 0.85, 0.5] },
-  transition: {
-    duration: 1.8,
-    repeat: Infinity,
-    delay,
-    ease: "easeInOut" as const,
-  },
-});
-
 /**
  * Loading indicator shown while the next step is fetched from the API.
  * Content skeleton mirrors the real AssessmentStep layout so the
  * transition feels like a reveal rather than a replacement.
+ *
+ * Uses pure CSS animations instead of framer-motion to avoid
+ * JS-driven infinite animation loops inside AnimatePresence exits,
+ * which can overwhelm Mac Chrome's Metal GPU compositor.
  */
 export function AssessmentStepSkeleton() {
   const [messageIndex, setMessageIndex] = useState(0);
@@ -128,68 +121,48 @@ export function AssessmentStepSkeleton() {
 
   return (
     <div className="flex flex-col items-center justify-center py-12 gap-6 w-full max-w-md">
-      {/* Pulsing dots */}
+      {/* Pulsing dots — CSS animation */}
       <div className="flex items-center gap-1.5">
         {[0, 1, 2].map((i) => (
-          <motion.div
+          <div
             key={i}
-            className="w-2 h-2 rounded-full bg-[var(--quiz-gold)]"
-            animate={{
-              scale: [1, 1.3, 1],
-              opacity: [0.4, 1, 0.4],
-            }}
-            transition={{
-              duration: 1,
-              repeat: Infinity,
-              delay: i * 0.2,
-              ease: "easeInOut",
-            }}
+            className="w-2 h-2 rounded-full bg-[var(--quiz-gold)] animate-[skeleton-dot_1s_ease-in-out_infinite]"
+            style={{ animationDelay: `${i * 0.2}s` }}
           />
         ))}
       </div>
 
-      {/* Progressive message */}
+      {/* Progressive message — simple crossfade via CSS */}
       <div className="h-5 relative">
-        <AnimatePresence mode="wait">
-          <motion.p
-            key={messageIndex}
-            initial={{ opacity: 0, y: 4 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -4 }}
-            transition={{ duration: 0.3 }}
-            className="text-sm text-muted-foreground"
-          >
-            {LOADING_MESSAGES[messageIndex]}
-          </motion.p>
-        </AnimatePresence>
+        <p className="text-sm text-muted-foreground animate-[skeleton-fade-in_0.3s_ease-out]" key={messageIndex}>
+          {LOADING_MESSAGES[messageIndex]}
+        </p>
       </div>
 
-      {/* Content skeleton — mirrors AssessmentStep layout */}
+      {/* Content skeleton — CSS shimmer pulse */}
       <div className="w-full space-y-8 mt-2">
         {/* Question line */}
         <div className="flex justify-center">
-          <motion.div
-            className="h-5 w-[70%] rounded-full bg-foreground/15 dark:bg-muted"
-            {...shimmerPulse(0)}
+          <div
+            className="h-5 w-[70%] rounded-full bg-foreground/15 dark:bg-muted animate-[skeleton-pulse_1.8s_ease-in-out_infinite]"
           />
         </div>
 
         {/* Option pills */}
         <div className="flex flex-wrap justify-center gap-3">
           {PILL_WIDTHS.map((w, i) => (
-            <motion.div
+            <div
               key={i}
-              className="h-11 rounded-full bg-foreground/10 border border-foreground/15 dark:bg-muted dark:border-border"
-              style={{ width: w }}
-              {...shimmerPulse(0.1 * (i + 1))}
+              className="h-11 rounded-full bg-foreground/10 border border-foreground/15 dark:bg-muted dark:border-border animate-[skeleton-pulse_1.8s_ease-in-out_infinite]"
+              style={{ width: w, animationDelay: `${0.1 * (i + 1)}s` }}
             />
           ))}
         </div>
 
         {/* Textarea */}
-        <motion.div
-          className="h-20 w-full rounded-lg bg-foreground/10 border border-foreground/15 dark:bg-muted/80 dark:border-border"
-          {...shimmerPulse(0.5)}
+        <div
+          className="h-20 w-full rounded-lg bg-foreground/10 border border-foreground/15 dark:bg-muted/80 dark:border-border animate-[skeleton-pulse_1.8s_ease-in-out_infinite]"
+          style={{ animationDelay: "0.5s" }}
         />
       </div>
     </div>
