@@ -54,7 +54,7 @@ export function AssessmentClient() {
   return (
     <div className="min-h-screen quiz-background flex flex-col pt-[env(safe-area-inset-top)]">
       {/* Header */}
-      <div className="sticky top-0 z-10 bg-background/95 border-b">
+      <div className="sticky top-0 z-10 bg-background border-b">
         <div className="flex items-center justify-between px-4 py-3">
           <div className="flex-1">
             {showProgress && (
@@ -155,7 +155,7 @@ export function AssessmentClient() {
 
       {/* Footer */}
       {(showBack || showNext) && (
-        <div className="sticky bottom-0 z-10 bg-background/95 border-t pb-[max(1rem,env(safe-area-inset-bottom))]">
+        <div className="sticky bottom-0 z-10 bg-background border-t pb-[max(1rem,env(safe-area-inset-bottom))]">
           <div className="flex items-center justify-between px-4 py-3 max-w-md mx-auto">
             <div>
               {showBack && (
