@@ -1,15 +1,9 @@
 "use client";
 
-import { type ReactNode } from "react";
-import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { type ReactNode, useRef } from "react";
+import { SwitchTransition, CSSTransition } from "react-transition-group";
 
-const stepTransition = {
-  type: "tween" as const,
-  duration: 0.25,
-  ease: "easeOut" as const,
-};
-
-const noMotion = { duration: 0 };
+const TIMEOUT = 250;
 
 export function StepTransition({
   stepKey,
@@ -20,21 +14,25 @@ export function StepTransition({
   direction: "forward" | "back";
   children: ReactNode;
 }) {
-  const shouldReduceMotion = useReducedMotion();
-  const offset = direction === "forward" ? 80 : -80;
+  const nodeRef = useRef<HTMLDivElement>(null);
 
   return (
-    <AnimatePresence mode="wait" initial={false}>
-      <motion.div
-        key={stepKey}
-        initial={{ opacity: 0, x: offset, scale: 0.95 }}
-        animate={{ opacity: 1, x: 0, scale: 1 }}
-        exit={{ opacity: 0, x: -offset, scale: 0.95 }}
-        transition={shouldReduceMotion ? noMotion : stepTransition}
-        className="w-full max-w-md"
-      >
-        {children}
-      </motion.div>
-    </AnimatePresence>
+    <div
+      className="w-full max-w-md"
+      style={{ "--step-x": direction === "forward" ? "80px" : "-80px" } as React.CSSProperties}
+    >
+      <SwitchTransition mode="out-in">
+        <CSSTransition
+          key={stepKey}
+          nodeRef={nodeRef}
+          timeout={TIMEOUT}
+          classNames="step"
+        >
+          <div ref={nodeRef}>
+            {children}
+          </div>
+        </CSSTransition>
+      </SwitchTransition>
+    </div>
   );
 }

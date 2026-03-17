@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { RefreshCw } from "lucide-react";
-import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import {
   getQuizStorage,
@@ -12,6 +12,7 @@ import {
 import { captureUTMParams } from "@/lib/utmStorage";
 import { Button } from "@/components/ui/button";
 import { ModeToggle } from "@/components/ui/mode-toggle";
+import { StepTransition } from "@/components/assessment/step-transition";
 import { QuestionStep } from "./question-step";
 import { NameStep } from "./questions/name-step";
 import { QuizLoading } from "./quiz-loading";
@@ -476,52 +477,23 @@ export function QuizWizard({ config }: { config: VariantConfig }) {
 
       {/* Main content */}
       <main className="flex-1 flex items-center justify-center px-4 py-8 overflow-hidden">
-        <AnimatePresence mode="wait" initial={false}>
-          <motion.div
-            key={step}
-            initial={{
-              opacity: 0,
-              x: direction === "forward" ? 80 : -80,
-              scale: 0.95,
-            }}
-            animate={{
-              opacity: 1,
-              x: 0,
-              scale: 1,
-            }}
-            exit={{
-              opacity: 0,
-              x: direction === "forward" ? -80 : 80,
-              scale: 0.95,
-            }}
-            transition={
-              shouldReduceMotion
-                ? { duration: 0 }
-                : {
-                    type: "tween",
-                    duration: 0.25,
-                    ease: "easeOut",
-                  }
-            }
-            className="w-full max-w-md"
-          >
-            {isNameStep ? (
-              <NameStep
-                config={config.nameField}
-                value={name}
-                onChange={setName}
-              />
-            ) : (
-              <QuestionStep
-                config={config.questions[step]}
-                value={answers[config.questions[step].id]}
-                onChange={(v) =>
-                  updateAnswer(config.questions[step].id, v)
-                }
-              />
-            )}
-          </motion.div>
-        </AnimatePresence>
+        <StepTransition stepKey={step} direction={direction}>
+          {isNameStep ? (
+            <NameStep
+              config={config.nameField}
+              value={name}
+              onChange={setName}
+            />
+          ) : (
+            <QuestionStep
+              config={config.questions[step]}
+              value={answers[config.questions[step].id]}
+              onChange={(v) =>
+                updateAnswer(config.questions[step].id, v)
+              }
+            />
+          )}
+        </StepTransition>
       </main>
 
       {/* Footer navigation */}

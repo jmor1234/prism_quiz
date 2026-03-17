@@ -223,6 +223,33 @@
   to { opacity: 1; transform: translateY(0); }
 }
 
+/* Step transition — compositor-thread animation (replaces framer-motion JS loop) */
+.step-enter {
+  opacity: 0;
+  transform: translateX(var(--step-x)) scale(0.95);
+}
+.step-enter-active {
+  opacity: 1;
+  transform: translateX(0) scale(1);
+  transition: opacity 250ms ease-out, transform 250ms ease-out;
+}
+.step-exit {
+  opacity: 1;
+  transform: translateX(0) scale(1);
+}
+.step-exit-active {
+  opacity: 0;
+  transform: translateX(calc(var(--step-x) * -1)) scale(0.95);
+  transition: opacity 250ms ease-out, transform 250ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .step-enter-active,
+  .step-exit-active {
+    transition-duration: 0ms;
+  }
+}
+
 /* Animation delays for staggered effects */
 .animation-delay-50 {
   animation-delay: 50ms;
