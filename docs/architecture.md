@@ -2,7 +2,7 @@
 
 ## System Summary
 
-A config-driven health assessment platform with two entry paths. The **quiz flow** serves warm audiences with condition-specific quizzes leading to booking calls. The **assessment flow** serves cold traffic from paid ads with an AI-driven intake leading to direct purchase.
+A config-driven health assessment platform with two entry paths. The **quiz flow** serves warm audiences with condition-specific quizzes leading to booking calls. The **assessment flow** serves cold traffic from paid ads with a 5-question intake leading to a brief personalized assessment and direct purchase CTA.
 
 **Stack:** Next.js 15 (App Router), TypeScript, TailwindCSS v4, Framer Motion, Claude Opus 4.6, Claude Sonnet 4.6, AI SDK v6, Exa v2 (semantic search), Gemini Flash (extraction), Upstash Redis, Puppeteer (PDF), Dexie (IndexedDB)
 
@@ -63,48 +63,32 @@ User clicks paid ad → /assessment
 Intro screen (framing + "Get Started")
     │
     ▼
-Q1: Static health goals (multi-select chips + free text)
+5 static preset questions (instant navigation, no API calls between steps)
+    Q1: What have you been dealing with? (multi-select)
+    Q2: What have you tried so far? (multi-select)
+    Q3: How long has this been going on? (single-select)
+    Q4: Where are things at right now? (multi-select)
+    Q5: Do you feel like you can figure this out on your own? (single-select)
+    │  ← Each: chip options + optional free text
+    │  ← Progress bar + "X of 5" indicator
     │
     ▼
-POST /api/assessment/intake { steps: [Q1] }
-    │
-    ├─► Opus 4.6 generates next question + contextual options
-    ├─► Returns { question, options, freeTextPlaceholder, status, progressEstimate, multiSelect, transitionMessage }
-    │   (nullable fields — question fields null for transition/complete, transitionMessage null except transition)
-    │
-    ▼
-Q2+: Dynamic questions (agent-generated, personalized to accumulated context)
-    │  ← Client sends full step history on each call
-    │  ← Agent threads user's words into subsequent questions
-    │
-    ▼ (loop: in_progress → transition → follow_up → complete)
-    │
-    ├── "in_progress": core 5 areas still being covered
-    ├── "transition": personalized decision point — user chooses to continue or get assessment now
-    ├── "follow_up": user opted in, targeted deeper questions on threads identified at transition
-    └── "complete": proceed to name collection
-            │
-            ▼
 Name collection screen (optional name input + "Generate My Assessment")
-            │
-            ▼
+    │
+    ▼
 POST /api/assessment/generate { name?, steps }
     │
     ├─► Validate input
-    ├─► Build system prompt (knowledge + narrative arc instructions)
-    ├─► Call Claude Opus 4.6 with evidence tools (search + read)
-    │     └─► Up to 5 agentic steps
+    ├─► Build system prompt (4 knowledge files + task instructions)
+    ├─► Call Claude Opus 4.6 (single-turn, no tools, no thinking)
     ├─► Save result to Redis/filesystem
     └─► Return { id, report }
             │
             ▼
-    AssessmentResult renders markdown assessment with inline citations
+    AssessmentResult renders 2-paragraph assessment (editorial layout)
             │
             ▼
-    Save Your Assessment (PDF) | Take the Next Step With Prism
-            │                              │
-            ▼                              ▼
-    Opens PDF in new tab           Opens purchase page
+    Take the Next Step With Prism → booking URL (UTM-tagged via localStorage)
 ```
 
 ---
@@ -117,7 +101,7 @@ POST /api/assessment/generate { name?, steps }
 /                           → redirect to /quiz (via next.config)
 /quiz                       → landing page (card grid of all variants + standalone chat link)
 /quiz/[variant]             → intro screen → quiz wizard (server component → client)
-/assessment                 → AI-driven intake wizard → assessment → purchase CTA
+/assessment                 → 5 static questions → AI assessment → purchase CTA
 /admin/assessments          → password-protected assessment submissions dashboard
 /explore/[quizId]           → post-quiz agent chat (server component → client)
 /chat                       → redirect to latest thread or create new
@@ -150,33 +134,28 @@ app/quiz/[variant]/twitter-image.tsx    Re-exports OG image for Twitter
             ├─ QuizLoading           SVG progress ring + pulsing dots
             └─ QuizResult            Assessment display + CTA + PDF download
 
-app/assessment/page.tsx              Server component (metadata)
+app/assessment/page.tsx              Server component (metadata, passes bookingUrl from env)
   └─ AssessmentClient                "use client" orchestrator
-       ├─ useAssessmentWizard        Core hook (useReducer state machine)
-       ├─ IntroScreen                Framing screen (no name) + Get Started button
-       ├─ AssessmentStep             Unified chips + free text (Q1 static + Q2+ dynamic)
+       ├─ useAssessmentWizard        Core hook (useReducer state machine, 5 static questions)
+       ├─ IntroScreen                Framing screen + Get Started button
+       ├─ AssessmentStep             Chips + free text (reused for all 5 questions)
        ├─ NameCollectScreen          Pre-generation name collection (optional) + Generate button
-       ├─ AssessmentStepSkeleton     Loading placeholder between API calls
-       ├─ AssessmentTransition       Transition decision point (personalized message + 2 CTAs)
-       ├─ StepTransition             AnimatePresence direction-aware wrapper
-       ├─ AssessmentLoading          SVG ring + dots during generation
-       └─ AssessmentResult           Markdown report + PDF download + purchase CTA
+       ├─ StepTransition             CSS transition wrapper (react-transition-group)
+       ├─ AssessmentLoading          SVG ring + CSS-animated dots during generation
+       └─ AssessmentResult           Editorial 2-paragraph report + single purchase CTA (UTM-tagged)
 ```
 
 ### Assessment Wizard (`use-assessment-wizard.ts`)
 
-A `useReducer`-based state machine driving the AI-powered intake flow:
+A `useReducer`-based state machine driving 5 static preset questions with no API calls between steps:
 
-- **State machine phases:** `intro` → `goals` → `loading_step` ↔ `answering` → `transition` → `loading_step` ↔ `answering` → `name_collect` → `generating` → `result` (with `error` reachable from any async phase). Name collected at end (optional) — both skip-from-transition and complete-after-follow-up route through `name_collect`.
-- **Stateless intake agent:** Client accumulates full `IntakeStep[]` history, sends all of it on each API call. Agent sees entire context fresh each time.
-- **Dynamic questions:** After Q1 (static health goal chips), every subsequent question + options are generated by the intake agent (Opus 4.6) based on accumulated context. Agent decides per-question whether multi-select or single-select (`multiSelect` boolean in schema).
-- **4-status model:** `in_progress` (core areas) → `transition` (personalized decision point) → `follow_up` (targeted depth) → `complete`. Schema uses `.nullable()` fields — question fields null for transition/complete, transitionMessage null except transition.
-- **Transition interstitial:** When agent returns `transition` status, a dedicated screen shows the agent's personalized message with two CTAs: continue for deeper questions, or get assessment now. Transition happens once — state machine prevents double transition.
-- **Back navigation:** Stored `questionHistory[]` of API responses enables restoring previous questions + answers. Back disabled after transition (`passedTransition` flag).
-- **Synthetic step signal:** Both transition choices ("continue" and "skip") create a synthetic `[transition]` step with the user's choice in `selectedOptions` and the agent's transition message in `freeText`. This flows through to server storage and the admin dashboard. Prompt formatters (`formatIntake`, `formatStepsForPrompt`) filter it out so it never reaches either agent.
-- **Double-click guard:** `isSubmitting` ref prevents duplicate step submissions on all async actions.
-- **Persistence:** `lib/assessmentStorage.ts` with versioned schema (v2), graceful `QuotaExceededError` handling. Transition state persisted and restorable on refresh. `intakeComplete` flag distinguishes mid-intake from name collection screen on hydration.
-- **Animation:** Framer Motion tween transitions mask API latency between steps (skeleton → real content swap)
+- **Static questions:** All 5 questions defined in `ASSESSMENT_QUESTIONS` array with question text, chip options (`value`/`label`), placeholder, and `multiSelect` flag. Current question derived from `ASSESSMENT_QUESTIONS[stepIndex]` — not stored in state.
+- **State machine phases:** `intro` → `answering` (steps 0-4) → `name_collect` → `generating` → `result` (with `error` reachable from generation).
+- **Synchronous navigation:** `next()` saves the current answer into `answers[stepIndex]`, builds an `IntakeStep`, and advances to the next question instantly. No API calls, no loading states between questions. Only async call is `generateAssessment()` at the end.
+- **Back navigation:** Saves current answer, decrements `stepIndex`, restores previous answer from `answers[]`. Step 0 goes back to intro.
+- **Progress:** Computed as `(stepIndex + 1) / 5`. UI shows progress bar + "X of 5" indicator.
+- **Persistence:** `lib/assessmentStorage.ts` with versioned schema (v3) storing `name`, `steps`, `answers[]`, `stepIndex`, `resultId`, `result`. Graceful `QuotaExceededError` handling. Hydration restores to the step the user was on.
+- **Animation:** CSS transitions via react-transition-group (`StepTransition` wrapper) for step navigation. No framer-motion in the step lifecycle.
 
 ### Quiz Wizard Engine (`quiz-wizard.tsx`)
 
@@ -211,10 +190,8 @@ GET  /api/quiz/result?quizId=     Fetch stored result
 POST /api/quiz/pdf                Generate user-facing PDF
 POST /api/quiz/engagement         Engagement tracking (events + conversations)
 
-POST /api/assessment/intake       AI intake step generation (Opus 4.6, structured output, cached)
-POST /api/assessment/generate     Assessment generation (Opus 4.6, evidence tools, rate-limited, cached)
-POST /api/assessment/pdf          Generate assessment PDF
-POST /api/assessment/engagement   Assessment engagement tracking (booking clicks, PDF downloads)
+POST /api/assessment/generate     Assessment generation (Opus 4.6, single-turn, no tools, rate-limited, cached)
+POST /api/assessment/engagement   Assessment engagement tracking (booking clicks)
 
 POST /api/agent                   Streaming agent conversation (Opus 4.6, dual-mode: quiz/standalone)
 
@@ -259,57 +236,29 @@ The `promptOverlay` steers interpretation toward condition-specific mechanisms. 
 
 ### Assessment Prompt Architecture
 
-Two agents with separate prompts:
+Single agent, single-turn generation (`app/api/assessment/generate/prompt.ts`):
 
-**Intake Agent** (`app/api/assessment/intake/prompt.ts`):
-- Model: Claude Opus 4.6 via `generateText` + `Output.object()` (structured output, modern AI SDK pattern)
-- System prompt: role, context (cold traffic), 5 core areas, 4 status modes (in_progress/transition/follow_up/complete), voice (quiz not conversation, no em dashes)
-- Prompt/schema separation: prompt carries intent per mode (what the agent's job is), schema carries contract (field shapes, nullability, when fields are present). No overlap.
-- Schema uses `.nullable()` instead of `.optional()` — forces the constrained grammar to address every field (prevents the model from silently skipping content fields)
-- Knowledge: 3 files -- `knowledge.md` (bioenergetic framework), `intake_intelligence.md` (symptom probing guide), `prism_process.md` (context for what information is worth gathering)
-- Prompt caching: system message marked with `cacheControl: ephemeral` (5-min TTL). Calls 2-10 in a session hit cache at ~97-99% hit rate.
-- User message: formatted accumulated steps (or "Begin the intake" if empty). Synthetic `[transition]` steps rendered as "[User chose to continue for more targeted questions]"
-- Output schema: `{ question, options[], freeTextPlaceholder, transitionMessage, status, progressEstimate, multiSelect }` (all nullable except status and progressEstimate)
-- No tools, no thinking -- fast structured generation
-- Logging: full response JSON, token usage, cache breakdown (read/write/uncached/hit%), cost with savings
+- Model: Claude Opus 4.6 via `generateText` (no tools, no thinking, no multi-step)
+- Knowledge: 4 files -- `knowledge.md` (bioenergetic framework), `metabolism_deep_dive.md` (energy metabolism reasoning), `gut_deep_dive.md` (gut health reasoning), `prism_process.md` (Prism's process)
+- Task: 2 paragraphs + closing sentence
+  - P1: Connect symptoms through bioenergetic lens, show the pattern, mirror their language
+  - P2: Bridge to Prism's process as the natural conclusion of the analysis
+  - Closing: warm invitation to take the next step (no UI element references)
+- Constraints: plain prose only (no headings, bullets, diagrams, citations), phone-readable in ~1 minute, warm/direct/professional, "we" as Prism
+- Input: `formatIntake(name, steps)` converts 5 static question answers to markdown
+- System prompt caching: `cacheControl: ephemeral` on system message (knowledge files are stable)
+- Max duration: 60s (typically completes in 10-20s)
+- Logging: token usage, cache breakdown (read/write/uncached/hit%), cost with savings
 
-**Assessment Agent** (`app/api/assessment/generate/prompt.ts`):
-- Knowledge foundation: 7 files -- same 5 as quiz agent + `prism_process.md` + `takehome.md` (physiological markers)
-- Same evidence tools as quiz agent (search + read)
-- Task: narrative arc (reflect situation → show connections → reframe past attempts → ground the likely alternative → contextualize to Prism's specific process)
-- Prism's process and physiological markers are woven throughout the assessment wherever specific elements are the natural extension of an insight -- not a separate sales section
-- No `promptOverlay` -- single experience, intake data provides all specificity
-- Closing brings analysis together and acknowledges limitations; UI provides purchase CTA separately
-- Input: `formatIntake(name, steps)` converts dynamic intake steps to markdown
-- Three-tier prompt caching via `CacheManager`: tool schemas, ~25K system prompt (`cacheControl: ephemeral`), conversation history (`prepareStep` → `applyHistoryCacheBreakpoint`). Measured: 95.5% cache hit rate, ~69% cost reduction per generation.
-- Logging: tool usage summary, token usage, cache breakdown (read/write/uncached/hit%), cost with savings
+### Evidence Tools (Quiz + Conversational Agent only)
 
-### Evidence Tools
-
-Two tools built on Exa's semantic search API give the agent real-time access to scientific literature during assessment generation. Prism is an evidence-based brand -- inline citations ground the agent's bioenergetic reasoning in real research.
+Two tools built on Exa's semantic search API give the quiz and conversational agents real-time access to scientific literature. The assessment flow does not use tools (speed over depth).
 
 ```
-Tools (passed to generateText)
+Tools (passed to generateText in quiz + agent routes)
 ├── search    Exa semantic search, 3 results with highlights, category: research paper
 └── read      Exa focused excerpts from a known URL, query-filtered highlights
 ```
-
-**Separation of concerns:**
-- **System prompt** (`# Evidence` section): why to cite, citation format (`[phrase](URL)`), source quality (peer-reviewed only), fabrication rule
-- **Tool descriptions**: how each tool works, when to use each, operational guidance (e.g., parallel calls for different angles)
-- No overlap between prompt and tool descriptions
-
-**Agent configuration** (`generateText` in `route.ts`):
-- Model: Claude Opus 4.6
-- Tools: search + read (Exa-backed)
-- Steps: up to 5 (`stopWhen: stepCountIs(5)`)
-- Thinking: adaptive (model decides per-step), low effort (knowledge base does the heavy lifting)
-- Context management: keep all thinking blocks across steps
-- Max duration: 120s (tool calls add latency)
-
-**Tool logging:**
-- Each tool logs query, results, latency, and estimated tokens on execution
-- Route logs a post-generation summary: tool counts, total tokens injected, step count, input/output tokens, wall-clock duration, cache breakdown (read/write/uncached/hit%), cost with savings
 
 ### Conversational Agent
 
@@ -358,7 +307,7 @@ Three parallel tracking systems:
 
 **Quiz engagement** (`server/quizEngagement.ts`): Tracks `pdf_download`, `booking_click` (assessment or agent), `agent_opened`. Keyed by `quiz-engagement:{quizId}`. Visible in `/admin/results`.
 
-**Assessment engagement** (`server/assessmentEngagement.ts`): Tracks `booking_click` and `pdf_download` from assessment result page. Keyed by `assessment-engagement:{id}` (same Redis instance as assessment results). Visible in `/admin/assessments`.
+**Assessment engagement** (`server/assessmentEngagement.ts`): Tracks `booking_click` from assessment result page. Keyed by `assessment-engagement:{id}` (same Redis instance as assessment results). Visible in `/admin/assessments`.
 
 **Standalone chat** (`server/chatSessions.ts`): Tracks `booking_click` from chat. Keyed by `chat-sessions:{threadId}`. Visible in `/admin/results` (Conversations tab).
 
@@ -396,14 +345,13 @@ Filesystem fallback: `storage/assessment-results/{uuid}.json`, `storage/assessme
 
 Backwards compatible: old records missing `name`/`steps` are normalized with empty defaults on read.
 
-**Client storage:** variant-scoped localStorage keys (`prism-quiz:{variant}`). V1→V2 migration for root-cause. Assessment uses `prism-assessment` key with versioned schema (v2) storing name, steps, questionHistory (with transition entries), intakeComplete flag, and result.
+**Client storage:** variant-scoped localStorage keys (`prism-quiz:{variant}`). V1→V2 migration for root-cause. Assessment uses `prism-assessment` key with versioned schema (v3) storing name, steps, answers[], stepIndex, and result.
 
 ### PDF Generation
 
-Three PDF pipelines, all using Puppeteer with serverless-aware Chromium (`@sparticuz/chromium` on Vercel):
+Two PDF pipelines, using Puppeteer with serverless-aware Chromium (`@sparticuz/chromium` on Vercel):
 
 - **Quiz User PDF** (`/api/quiz/pdf`): markdown report → HTML (remark/rehype) → cover template → PDF
-- **Assessment PDF** (`/api/assessment/pdf`): markdown report → HTML (remark/rehype) → content section template → PDF
 - **Admin PDF** (`/api/admin/results/pdf`): variant config → config-driven answer rendering + report + conversation summary (if exists) → admin template → PDF
 
 ---
@@ -507,16 +455,9 @@ app/
     │       └── lib/quizTemplateBuilder.ts
     ├── assessment/
     │   ├── types.ts                    Shared IntakeStep type
-    │   ├── intake/
-    │   │   ├── route.ts                Intake step generation (Opus 4.6, generateText + Output.object, cached)
-    │   │   └── prompt.ts               Intake prompt + 3 knowledge file loader
     │   ├── generate/
-    │   │   ├── route.ts                Assessment generation (Opus 4.6, generateText + tools, cached)
-    │   │   ├── prompt.ts               Assessment prompt + 7 knowledge file loader
-    │   │   └── tools.ts                Exa search + read tools
-    │   ├── pdf/
-    │   │   ├── route.ts                Assessment PDF generation
-    │   │   └── lib/assessmentTemplateBuilder.ts
+    │   │   ├── route.ts                Assessment generation (Opus 4.6, single-turn, no tools, cached)
+    │   │   └── prompt.ts               Assessment prompt + 4 knowledge file loader
     │   └── engagement/
     │       └── route.ts                Assessment engagement tracking endpoint
     ├── chat/
@@ -586,14 +527,13 @@ components/
 │   └── loader.tsx                      Loading spinner
 ├── assessment/
 │   ├── assessment-client.tsx           "use client" orchestrator (phase switch + layout)
-│   ├── use-assessment-wizard.ts        Core hook (useReducer state machine + API calls)
+│   ├── use-assessment-wizard.ts        Core hook (useReducer state machine, 5 static questions)
 │   ├── intro-screen.tsx                Framing screen + Get Started button
 │   ├── name-collect-screen.tsx        Pre-generation optional name collection
-│   ├── assessment-step.tsx             Unified chips + free text question UI
-│   ├── assessment-transition.tsx       Transition decision point (message + continue/skip CTAs)
-│   ├── step-transition.tsx             AnimatePresence direction-aware wrapper
-│   ├── assessment-loading.tsx          Generation loading screen
-│   └── assessment-result.tsx           Report display + single purchase CTA
+│   ├── assessment-step.tsx             Chips + free text question UI
+│   ├── step-transition.tsx             CSS transition wrapper (react-transition-group)
+│   ├── assessment-loading.tsx          Generation loading screen (CSS-animated dots)
+│   └── assessment-result.tsx           Editorial 2-paragraph report + single purchase CTA (UTM-tagged)
 └── chat-sidebar.tsx                    Standalone chat thread list (CRUD)
 
 hooks/
