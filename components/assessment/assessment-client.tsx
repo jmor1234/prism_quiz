@@ -16,7 +16,7 @@ import { AssessmentLoading } from "./assessment-loading";
 import { AssessmentResult } from "./assessment-result";
 import { NameCollectScreen } from "./name-collect-screen";
 
-export function AssessmentClient() {
+export function AssessmentClient({ bookingUrl }: { bookingUrl: string }) {
   const wizard = useAssessmentWizard();
   const shouldReduceMotion = useReducedMotion();
 
@@ -35,7 +35,7 @@ export function AssessmentClient() {
   }
 
   if (wizard.phase === "result" && wizard.result) {
-    return <AssessmentResult report={wizard.result.report} resultId={wizard.result.id} />;
+    return <AssessmentResult report={wizard.result.report} resultId={wizard.result.id} bookingUrl={bookingUrl} />;
   }
 
   // Wizard states (with header/footer)

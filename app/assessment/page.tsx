@@ -8,5 +8,6 @@ export const metadata: Metadata = {
 };
 
 export default function AssessmentPage() {
-  return <AssessmentClient />;
+  const bookingUrl = process.env.PRISM_BOOKING_LINK ?? "/purchase";
+  return <AssessmentClient bookingUrl={bookingUrl} />;
 }

@@ -5,9 +5,7 @@ import { ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ACCENT } from "@/components/quiz/quiz-theme";
 import { ModeToggle } from "@/components/ui/mode-toggle";
-
-// Placeholder — will be replaced with actual purchase page URL
-const PURCHASE_URL = "/purchase";
+import { buildBookingUrl } from "@/lib/utmStorage";
 
 function trackEngagement(assessmentId: string, type: string) {
   fetch("/api/assessment/engagement", {
@@ -31,12 +29,15 @@ function GoldRule() {
 export function AssessmentResult({
   report,
   resultId,
+  bookingUrl,
 }: {
   report: string;
   resultId: string;
+  bookingUrl: string;
 }) {
   const shouldReduceMotion = useReducedMotion();
   const dur = shouldReduceMotion ? 0 : undefined;
+  const ctaUrl = buildBookingUrl(bookingUrl);
 
   // Split report into paragraphs for styled rendering
   const paragraphs = report
@@ -118,7 +119,7 @@ export function AssessmentResult({
             transition={{ duration: dur ?? 0.5, delay: shouldReduceMotion ? 0 : 0.35 }}
           >
             <a
-              href={PURCHASE_URL}
+              href={ctaUrl}
               target="_blank"
               rel="noopener noreferrer"
               onClick={() => trackEngagement(resultId, "booking_click")}
