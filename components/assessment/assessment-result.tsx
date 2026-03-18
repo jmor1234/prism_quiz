@@ -1,13 +1,9 @@
 "use client";
 
-import { useCallback, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
-import { CheckCircle2, ArrowRight, FileDown } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ACCENT } from "@/components/quiz/quiz-theme";
-import { Response } from "@/components/ai-elements/response";
-import { Loader } from "@/components/ai-elements/loader";
-import { Button } from "@/components/ui/button";
 import { ModeToggle } from "@/components/ui/mode-toggle";
 
 // Placeholder — will be replaced with actual purchase page URL
@@ -22,6 +18,16 @@ function trackEngagement(assessmentId: string, type: string) {
   }).catch(() => {});
 }
 
+function GoldRule() {
+  return (
+    <div className="flex items-center justify-center gap-3 py-1">
+      <div className="h-px flex-1 bg-gradient-to-r from-transparent via-[var(--quiz-gold)]/40 to-transparent" />
+      <div className="w-1.5 h-1.5 rotate-45 bg-[var(--quiz-gold)]/60" />
+      <div className="h-px flex-1 bg-gradient-to-r from-transparent via-[var(--quiz-gold)]/40 to-transparent" />
+    </div>
+  );
+}
+
 export function AssessmentResult({
   report,
   resultId,
@@ -30,163 +36,109 @@ export function AssessmentResult({
   resultId: string;
 }) {
   const shouldReduceMotion = useReducedMotion();
-  const transition = shouldReduceMotion ? { duration: 0 } : undefined;
-  const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
+  const dur = shouldReduceMotion ? 0 : undefined;
 
-  const downloadPdf = useCallback(async () => {
-    trackEngagement(resultId, "pdf_download");
-    setIsDownloadingPdf(true);
-
-    // Open a new tab synchronously (within user gesture context) so mobile
-    // browsers don't block it. We'll direct it to the PDF once generated.
-    const pdfTab = window.open("", "_blank");
-
-    try {
-      const response = await fetch("/api/assessment/pdf", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ assessmentId: resultId }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response
-          .json()
-          .catch(() => ({ error: response.statusText }));
-        throw new Error(
-          errorData.error || `PDF generation failed: ${response.statusText}`
-        );
-      }
-
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-
-      if (pdfTab) {
-        pdfTab.location.href = url;
-        setTimeout(() => window.URL.revokeObjectURL(url), 60_000);
-      } else {
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = `prism-assessment-${resultId.slice(0, 8)}.pdf`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        window.URL.revokeObjectURL(url);
-      }
-    } catch (err) {
-      console.error("[Assessment PDF] Download error:", err);
-      if (pdfTab) pdfTab.close();
-      alert(
-        `Failed to download PDF: ${err instanceof Error ? err.message : "Unknown error"}`
-      );
-    } finally {
-      setIsDownloadingPdf(false);
-    }
-  }, [resultId]);
+  // Split report into paragraphs for styled rendering
+  const paragraphs = report
+    .split(/\n\n+/)
+    .map((p) => p.trim())
+    .filter(Boolean);
 
   return (
     <div className="min-h-screen quiz-background flex flex-col">
-      <header className="sticky top-0 z-10 bg-background/95 border-b">
+      <header className="sticky top-0 z-10 bg-background border-b">
         <div className="max-w-2xl mx-auto px-4 py-3 flex justify-end">
           <ModeToggle />
         </div>
       </header>
 
-      <main className="flex-1 px-4 py-8">
-        <div className="max-w-2xl mx-auto space-y-6">
-        {/* Success banner */}
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={transition}
-          className={cn(
-            "flex items-center gap-3 p-4 rounded-xl",
-            "border border-[var(--quiz-gold)]/50 bg-[var(--quiz-gold)]/10"
-          )}
-        >
-          <CheckCircle2 className="w-5 h-5 text-[var(--quiz-gold-dark)] shrink-0" />
-          <p className="text-sm font-medium">
-            Your personalized health assessment is ready
-          </p>
-        </motion.div>
+      <main className="flex-1 px-5 py-10 sm:px-6">
+        <div className="max-w-xl mx-auto">
 
-        {/* Info about links */}
-        <motion.p
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ ...transition, delay: shouldReduceMotion ? 0 : 0.1 }}
-          className="text-sm text-blue-600 dark:text-blue-400 text-center underline italic font-semibold"
-        >
-          Underlined text links to cited research sources and will open in a new
-          tab.
-        </motion.p>
-
-        {/* Assessment report */}
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ ...transition, delay: shouldReduceMotion ? 0 : 0.15 }}
-          className="rounded-lg border bg-card p-6 shadow-sm"
-        >
-          <Response variant="report">{report}</Response>
-        </motion.div>
-
-        {/* Save Your Assessment */}
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ ...transition, delay: shouldReduceMotion ? 0 : 0.25 }}
-          className="flex flex-col items-center gap-1"
-        >
-          <Button
-            variant="outline"
-            onClick={downloadPdf}
-            disabled={isDownloadingPdf}
-            className="gap-2 transition-all duration-300 hover:-translate-y-0.5"
+          {/* Header */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: dur ?? 0.6 }}
+            className="text-center mb-8"
           >
-            {isDownloadingPdf ? (
-              <>
-                <Loader className="h-4 w-4" />
-                Generating PDF…
-              </>
-            ) : (
-              <>
-                <FileDown className="h-4 w-4" />
-                Save Your Assessment
-              </>
-            )}
-          </Button>
-          <span className="text-xs text-muted-foreground">
-            Download a PDF copy to reference or share
-          </span>
-        </motion.div>
+            <p className="text-[11px] font-semibold tracking-[0.25em] uppercase text-[var(--quiz-gold-dark)] mb-3">
+              Prism Health
+            </p>
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
+              Your Health Assessment
+            </h1>
+            <div className="mt-4 max-w-xs mx-auto">
+              <GoldRule />
+            </div>
+          </motion.div>
 
-        {/* Purchase CTA */}
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ ...transition, delay: shouldReduceMotion ? 0 : 0.4 }}
-        >
-          <a
-            href={PURCHASE_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={() => trackEngagement(resultId, "booking_click")}
-            className={cn(
-              "flex items-center justify-center gap-3 w-full px-8 py-4 rounded-xl",
-              "text-base font-semibold",
-              "transition-all duration-300 ease-out",
-              "hover:-translate-y-0.5 hover:shadow-lg active:translate-y-0",
-              ACCENT.base,
-              ACCENT.text
-            )}
+          {/* Assessment prose */}
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: dur ?? 0.6, delay: shouldReduceMotion ? 0 : 0.15 }}
+            className="space-y-6"
           >
-            Take the Next Step With Prism
-            <ArrowRight className="w-5 h-5" />
-          </a>
-          <p className="text-center text-sm text-muted-foreground mt-3">
-            Start your root-cause health journey today
-          </p>
-        </motion.div>
+            {paragraphs.map((paragraph, i) => (
+              <div key={i}>
+                {i > 0 && i < paragraphs.length - 1 && (
+                  <div className="flex justify-center mb-6">
+                    <div className="w-1 h-1 rounded-full bg-[var(--quiz-gold)]/50" />
+                  </div>
+                )}
+                <p
+                  className={cn(
+                    "text-[16px] sm:text-[17px] leading-[1.85] font-[450] text-foreground/85",
+                    // Last paragraph (closing sentence) gets a distinct treatment
+                    i === paragraphs.length - 1 && paragraphs.length > 1 &&
+                      "text-[15px] sm:text-[16px] text-foreground/60 italic mt-8"
+                  )}
+                >
+                  {paragraph}
+                </p>
+              </div>
+            ))}
+          </motion.div>
+
+          {/* Separator before CTA */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: dur ?? 0.4, delay: shouldReduceMotion ? 0 : 0.3 }}
+            className="my-10 max-w-xs mx-auto"
+          >
+            <GoldRule />
+          </motion.div>
+
+          {/* CTA */}
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: dur ?? 0.5, delay: shouldReduceMotion ? 0 : 0.35 }}
+          >
+            <a
+              href={PURCHASE_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={() => trackEngagement(resultId, "booking_click")}
+              className={cn(
+                "flex items-center justify-center gap-3 w-full px-8 py-4 rounded-xl",
+                "text-base font-semibold",
+                "transition-all duration-300 ease-out",
+                "hover:-translate-y-0.5 hover:shadow-lg active:translate-y-0",
+                ACCENT.base,
+                ACCENT.text
+              )}
+            >
+              Take the Next Step With Prism
+              <ArrowRight className="w-5 h-5" />
+            </a>
+            <p className="text-center text-sm text-muted-foreground mt-3">
+              Start your root-cause health journey today
+            </p>
+          </motion.div>
+
         </div>
       </main>
     </div>

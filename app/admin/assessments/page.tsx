@@ -13,6 +13,7 @@ import {
 import { cn } from "@/lib/utils";
 import { Response } from "@/components/ai-elements/response";
 import type { IntakeStep } from "@/app/api/assessment/types";
+import { ASSESSMENT_QUESTIONS } from "@/components/assessment/use-assessment-wizard";
 
 // --- Types ---
 
@@ -52,6 +53,20 @@ function shortId(id: string): string {
 function bookingClickCount(engagement: AssessmentEngagement | null): number {
   if (!engagement) return 0;
   return engagement.events.filter((e) => e.type === "booking_click").length;
+}
+
+// Build a lookup: question text → { value → label }
+const optionLabelMap = new Map<string, Map<string, string>>();
+for (const q of ASSESSMENT_QUESTIONS) {
+  const valueToLabel = new Map<string, string>();
+  for (const opt of q.options) {
+    valueToLabel.set(opt.value, opt.label);
+  }
+  optionLabelMap.set(q.question, valueToLabel);
+}
+
+function resolveOptionLabel(question: string, value: string): string {
+  return optionLabelMap.get(question)?.get(value) ?? value;
 }
 
 // --- Components ---
@@ -110,7 +125,7 @@ function IntakeStepsDisplay({ steps }: { steps: IntakeStep[] }) {
                     key={opt}
                     className="inline-block px-2.5 py-0.5 text-xs rounded-full bg-[var(--quiz-gold)]/10 text-[var(--quiz-gold-dark)] border border-[var(--quiz-gold)]/30"
                   >
-                    {opt}
+                    {resolveOptionLabel(step.question, opt)}
                   </span>
                 ))}
               </div>

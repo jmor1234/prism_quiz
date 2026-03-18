@@ -15,8 +15,8 @@ export function AssessmentLoading() {
       aria-live="polite"
     >
       <motion.div
-        initial={{ opacity: 0, scale: 0.9 }}
-        animate={{ opacity: 1, scale: 1 }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
         className="flex flex-col items-center"
       >
         <div className="relative" style={{ width: ringSize, height: ringSize }} aria-hidden="true">
@@ -64,25 +64,16 @@ export function AssessmentLoading() {
               strokeDasharray={circumference}
               initial={{ strokeDashoffset: circumference }}
               animate={{ strokeDashoffset: circumference * 0.1 }}
-              transition={{ duration: 60, ease: "easeInOut" }}
+              transition={{ duration: 20, ease: "easeInOut" }}
             />
           </svg>
 
           <div className="absolute inset-0 flex items-center justify-center gap-1.5">
             {[0, 1, 2].map((i) => (
-              <motion.div
+              <div
                 key={i}
-                className="w-2.5 h-2.5 rounded-full bg-[var(--quiz-gold)]"
-                animate={{
-                  scale: [1, 1.3, 1],
-                  opacity: [0.5, 1, 0.5],
-                }}
-                transition={{
-                  duration: 1,
-                  repeat: Infinity,
-                  delay: i * 0.2,
-                  ease: "easeInOut",
-                }}
+                className="w-2.5 h-2.5 rounded-full bg-[var(--quiz-gold)] animate-[assessment-dot-pulse_1s_ease-in-out_infinite]"
+                style={{ animationDelay: `${i * 0.2}s` }}
               />
             ))}
           </div>
@@ -98,7 +89,7 @@ export function AssessmentLoading() {
             Generating your personalized assessment
           </p>
           <p className="mt-2 text-sm text-muted-foreground">
-            This typically takes about a minute...
+            This usually takes around 15 seconds...
           </p>
         </motion.div>
       </motion.div>

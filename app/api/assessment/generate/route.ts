@@ -1,22 +1,16 @@
 // app/api/assessment/generate/route.ts
 
 import { anthropic } from "@ai-sdk/anthropic";
-import { generateText, stepCountIs } from "ai";
-import { assessmentTools } from "./tools";
+import { generateText } from "ai";
 import { buildAssessmentPrompt } from "./prompt";
 import {
   saveAssessmentResult,
   getAssessmentResult,
 } from "@/server/assessmentResults";
 import { requestRateLimiter, extractIp } from "@/app/api/agent/lib/rateLimit";
-import { CacheManager } from "@/app/api/agent/lib/cacheManager";
 import { z } from "zod";
 
-export const maxDuration = 120;
-
-// Three-tier prompt caching: tools, system prompt, conversation history
-const cacheManager = new CacheManager();
-const cachedTools = cacheManager.prepareCachedTools(assessmentTools);
+export const maxDuration = 60;
 
 // Opus 4.6 pricing (per token)
 const PRICE_INPUT = 5 / 1_000_000;
@@ -104,12 +98,11 @@ export async function POST(req: Request) {
     // Build prompt
     const { system, userMessage } = await buildAssessmentPrompt(name, steps);
 
-    // Generate assessment with evidence tools
+    // Generate assessment (single-turn, no tools)
     recordId = resultId ?? crypto.randomUUID();
     console.log(`[Assessment] Starting generation: ${recordId}`);
     const genStart = Date.now();
 
-    // System prompt is entirely stable (knowledge files + instructions) — cache it
     const result = await generateText({
       model: anthropic("claude-opus-4-6"),
       messages: [
@@ -122,44 +115,11 @@ export async function POST(req: Request) {
         },
         { role: "user" as const, content: userMessage },
       ],
-      tools: cachedTools,
-      stopWhen: stepCountIs(10),
-      prepareStep: ({ messages: stepMessages }) => ({
-        messages: cacheManager.applyHistoryCacheBreakpoint(stepMessages),
-      }),
-      providerOptions: {
-        anthropic: {
-          thinking: { type: "adaptive" },
-          effort: "low",
-          contextManagement: {
-            edits: [
-              {
-                type: "clear_thinking_20251015",
-                keep: "all",
-              },
-            ],
-          },
-        },
-      },
     });
 
-    // Log tool usage summary
     const genMs = Date.now() - genStart;
-    const toolCounts: Record<string, number> = {};
-    let totalToolTokens = 0;
-    for (const step of result.steps) {
-      for (const tc of step.toolCalls) {
-        toolCounts[tc.toolName] = (toolCounts[tc.toolName] ?? 0) + 1;
-      }
-      for (const tr of step.toolResults) {
-        totalToolTokens += Math.round(JSON.stringify(tr).length / 4);
-      }
-    }
-    const toolSummary = Object.entries(toolCounts)
-      .map(([name, count]) => `${count} ${name}`)
-      .join(" + ");
     console.log(
-      `[Assessment] Complete: ${recordId} · ${toolSummary || "no tools"} · ~${totalToolTokens} tok to agent · ${result.steps.length} steps · ${(genMs / 1000).toFixed(1)}s`
+      `[Assessment] Complete: ${recordId} · ${(genMs / 1000).toFixed(1)}s`
     );
     console.log(
       `[Assessment] Tokens: in: ${result.usage.inputTokens} · out: ${result.usage.outputTokens}`

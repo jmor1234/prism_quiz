@@ -11,8 +11,7 @@ import { captureUTMParams } from "@/lib/utmStorage";
 import { useAssessmentWizard } from "./use-assessment-wizard";
 import { StepTransition } from "./step-transition";
 import { IntroScreen } from "./intro-screen";
-import { AssessmentStep, AssessmentStepSkeleton } from "./assessment-step";
-import { AssessmentTransition } from "./assessment-transition";
+import { AssessmentStep } from "./assessment-step";
 import { AssessmentLoading } from "./assessment-loading";
 import { AssessmentResult } from "./assessment-result";
 import { NameCollectScreen } from "./name-collect-screen";
@@ -40,16 +39,8 @@ export function AssessmentClient() {
   }
 
   // Wizard states (with header/footer)
-  const showProgress =
-    wizard.phase === "goals" ||
-    wizard.phase === "answering" ||
-    wizard.phase === "loading_step" ||
-    wizard.phase === "transition";
-  const showBack =
-    (wizard.phase === "goals" || wizard.phase === "answering") &&
-    !wizard.passedTransition;
-  const showNext =
-    wizard.phase === "goals" || wizard.phase === "answering";
+  const showProgress = wizard.phase === "answering";
+  const showNav = wizard.phase === "answering";
 
   return (
     <div className="min-h-screen quiz-background flex flex-col pt-[env(safe-area-inset-top)]">
@@ -58,19 +49,24 @@ export function AssessmentClient() {
         <div className="flex items-center justify-between px-4 py-3">
           <div className="flex-1">
             {showProgress && (
-              <div className="h-2 bg-muted rounded-full overflow-hidden max-w-xs">
-                <motion.div
-                  className="h-full bg-[var(--quiz-gold)] rounded-full shadow-[0_0_8px_var(--quiz-gold)]/50"
-                  initial={{ width: 0 }}
-                  animate={{
-                    width: `${Math.max(wizard.progressEstimate * 100, wizard.phase === "goals" ? 5 : 0)}%`,
-                  }}
-                  transition={
-                    shouldReduceMotion
-                      ? { duration: 0 }
-                      : { type: "tween", duration: 0.3, ease: "easeOut" }
-                  }
-                />
+              <div className="flex items-center gap-3">
+                <div className="h-2 bg-muted rounded-full overflow-hidden max-w-xs flex-1">
+                  <motion.div
+                    className="h-full bg-[var(--quiz-gold)] rounded-full shadow-[0_0_8px_var(--quiz-gold)]/50"
+                    initial={{ width: 0 }}
+                    animate={{
+                      width: `${wizard.progressEstimate * 100}%`,
+                    }}
+                    transition={
+                      shouldReduceMotion
+                        ? { duration: 0 }
+                        : { type: "tween", duration: 0.3, ease: "easeOut" }
+                    }
+                  />
+                </div>
+                <span className="text-xs text-muted-foreground whitespace-nowrap">
+                  {wizard.stepIndex + 1} of {wizard.totalQuestions}
+                </span>
               </div>
             )}
           </div>
@@ -84,8 +80,6 @@ export function AssessmentClient() {
           stepKey={
             wizard.phase === "intro"
               ? "intro"
-              : wizard.phase === "transition"
-              ? "transition"
               : wizard.phase === "name_collect"
               ? "name_collect"
               : wizard.stepIndex
@@ -96,9 +90,7 @@ export function AssessmentClient() {
             <IntroScreen onStart={wizard.start} />
           )}
 
-          {wizard.phase === "loading_step" && <AssessmentStepSkeleton />}
-
-          {(wizard.phase === "goals" || wizard.phase === "answering") && (
+          {wizard.phase === "answering" && (
             <AssessmentStep
               question={wizard.currentQuestion}
               options={wizard.currentOptions}
@@ -108,14 +100,6 @@ export function AssessmentClient() {
               multiSelect={wizard.currentMultiSelect}
               onToggleOption={wizard.toggleOption}
               onFreeTextChange={wizard.setFreeText}
-            />
-          )}
-
-          {wizard.phase === "transition" && wizard.transitionMessage && (
-            <AssessmentTransition
-              message={wizard.transitionMessage}
-              onContinue={wizard.continueFromTransition}
-              onSkip={wizard.skipFromTransition}
             />
           )}
 
@@ -154,42 +138,38 @@ export function AssessmentClient() {
       </div>
 
       {/* Footer */}
-      {(showBack || showNext) && (
+      {showNav && (
         <div className="sticky bottom-0 z-10 bg-background border-t pb-[max(1rem,env(safe-area-inset-bottom))]">
           <div className="flex items-center justify-between px-4 py-3 max-w-md mx-auto">
             <div>
-              {showBack && (
-                <button
-                  type="button"
-                  onClick={wizard.back}
-                  className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  <ArrowLeft className="w-4 h-4" />
-                  Back
-                </button>
-              )}
+              <button
+                type="button"
+                onClick={wizard.back}
+                className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                Back
+              </button>
             </div>
 
             <div>
-              {showNext && (
-                <button
-                  type="button"
-                  onClick={wizard.next}
-                  disabled={!wizard.isValid}
-                  className={cn(
-                    "flex items-center gap-1.5 px-6 py-2.5 rounded-full",
-                    "text-sm font-semibold",
-                    "transition-all duration-300 ease-out",
-                    "hover:-translate-y-0.5 hover:shadow-lg active:translate-y-0",
-                    "disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:hover:shadow-none",
-                    ACCENT.base,
-                    ACCENT.text
-                  )}
-                >
-                  Next
-                  <ArrowRight className="w-4 h-4" />
-                </button>
-              )}
+              <button
+                type="button"
+                onClick={wizard.next}
+                disabled={!wizard.isValid}
+                className={cn(
+                  "flex items-center gap-1.5 px-6 py-2.5 rounded-full",
+                  "text-sm font-semibold",
+                  "transition-all duration-300 ease-out",
+                  "hover:-translate-y-0.5 hover:shadow-lg active:translate-y-0",
+                  "disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:hover:shadow-none",
+                  ACCENT.base,
+                  ACCENT.text
+                )}
+              >
+                Next
+                <ArrowRight className="w-4 h-4" />
+              </button>
             </div>
           </div>
         </div>
