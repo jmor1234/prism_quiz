@@ -85,7 +85,6 @@ Bridge from the pattern you identified to what actually resolving it requires. C
 - No marketing language or hard sell. Let the insight do the work.
 - Must be readable on a phone screen in about a minute.
 - Every sentence should earn its place. Tight, focused paragraphs over thorough ones.
-- If the person provided a name, use it naturally. If the name is clearly not real (e.g., "test", "asdf", "x"), do not reference it.
 - The interface provides a CTA button separately below your text. Do not duplicate it.
 `.trim();
 

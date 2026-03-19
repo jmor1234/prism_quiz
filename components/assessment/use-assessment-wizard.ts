@@ -96,14 +96,12 @@ const TOTAL_QUESTIONS = ASSESSMENT_QUESTIONS.length;
 export type WizardPhase =
   | "intro"
   | "answering"
-  | "name_collect"
   | "generating"
   | "result"
   | "error";
 
 export type WizardState = {
   phase: WizardPhase;
-  name: string;
   steps: IntakeStep[];
   answers: { selectedOptions: string[]; freeText: string }[];
   selectedOptions: string[];
@@ -119,13 +117,12 @@ export type WizardState = {
 
 type WizardAction =
   | { type: "HYDRATE"; state: Partial<WizardState> }
-  | { type: "SET_NAME"; name: string }
   | { type: "START" }
   | { type: "TOGGLE_OPTION"; value: string }
   | { type: "SET_FREE_TEXT"; text: string }
   | { type: "NEXT" }
   | { type: "BACK" }
-  | { type: "SUBMIT_NAME_AND_GENERATE" }
+  | { type: "START_GENERATING" }
   | { type: "GENERATE_SUCCESS"; id: string; report: string }
   | { type: "GENERATE_ERROR"; error: string }
   | { type: "RESET" };
@@ -134,7 +131,6 @@ type WizardAction =
 
 const initialState: WizardState = {
   phase: "intro",
-  name: "",
   steps: [],
   answers: [],
   selectedOptions: [],
@@ -150,9 +146,6 @@ function reducer(state: WizardState, action: WizardAction): WizardState {
   switch (action.type) {
     case "HYDRATE":
       return { ...state, ...action.state, isHydrated: true };
-
-    case "SET_NAME":
-      return { ...state, name: action.name };
 
     case "START":
       return { ...state, phase: "answering", direction: "forward", stepIndex: 0 };
@@ -192,10 +185,10 @@ function reducer(state: WizardState, action: WizardAction): WizardState {
       const newSteps = [...state.steps.slice(0, state.stepIndex), newStep];
 
       if (state.stepIndex === TOTAL_QUESTIONS - 1) {
-        // Last question — go to name collection
+        // Last question — go straight to generating
         return {
           ...state,
-          phase: "name_collect",
+          phase: "generating",
           steps: newSteps,
           answers: newAnswers,
           direction: "forward",
@@ -239,7 +232,7 @@ function reducer(state: WizardState, action: WizardAction): WizardState {
       };
     }
 
-    case "SUBMIT_NAME_AND_GENERATE":
+    case "START_GENERATING":
       return { ...state, phase: "generating" };
 
     case "GENERATE_SUCCESS":
@@ -271,7 +264,7 @@ function persist(
   pendingResultId?: string,
 ) {
   setAssessmentStorage({
-    name: state.name,
+    name: "",
     steps: state.steps,
     answers: state.answers,
     stepIndex: state.stepIndex,
@@ -301,7 +294,6 @@ export function useAssessmentWizard() {
           type: "HYDRATE",
           state: {
             phase: "result",
-            name: stored.name,
             steps: stored.steps,
             answers: stored.answers,
             result: stored.result,
@@ -318,7 +310,6 @@ export function useAssessmentWizard() {
           type: "HYDRATE",
           state: {
             phase: "error",
-            name: stored.name,
             steps: stored.steps,
             answers: stored.answers,
             stepIndex: stored.stepIndex,
@@ -336,7 +327,6 @@ export function useAssessmentWizard() {
           type: "HYDRATE",
           state: {
             phase: "answering",
-            name: stored.name,
             steps: stored.steps,
             answers: stored.answers,
             stepIndex: idx,
@@ -354,12 +344,8 @@ export function useAssessmentWizard() {
   // --- Async: generate assessment ---
 
   const generateAssessment = useCallback(async (steps: IntakeStep[]) => {
-    dispatch({ type: "SUBMIT_NAME_AND_GENERATE" });
-
     try {
-      const s = stateRef.current;
       const payload: Record<string, unknown> = { steps };
-      if (s.name.trim()) payload.name = s.name.trim();
       if (pendingResultId.current) payload.resultId = pendingResultId.current;
 
       const res = await fetch("/api/assessment/generate", {
@@ -397,10 +383,6 @@ export function useAssessmentWizard() {
 
   // --- Synchronous action wrappers ---
 
-  const setName = useCallback((name: string) => {
-    dispatch({ type: "SET_NAME", name });
-  }, []);
-
   const start = useCallback(() => {
     dispatch({ type: "START" });
   }, []);
@@ -414,28 +396,37 @@ export function useAssessmentWizard() {
   }, []);
 
   const next = useCallback(() => {
+    // Check if this is the last question — if so, trigger generation after dispatch
+    const s = stateRef.current;
+    const isLastQuestion = s.stepIndex === TOTAL_QUESTIONS - 1;
+
     dispatch({ type: "NEXT" });
 
-    // Persist after advancing
-    // Use a microtask to read the updated state after dispatch
-    queueMicrotask(() => {
+    if (isLastQuestion) {
+      // Build the final steps array (same logic as reducer)
+      const q = ASSESSMENT_QUESTIONS[s.stepIndex];
+      const newStep: IntakeStep = {
+        question: q.question,
+        selectedOptions: s.selectedOptions,
+        freeText: s.freeText,
+      };
+      const finalSteps = [...s.steps.slice(0, s.stepIndex), newStep];
       persist(stateRef.current);
-    });
-  }, []);
+      generateAssessment(finalSteps);
+    } else {
+      queueMicrotask(() => persist(stateRef.current));
+    }
+  }, [generateAssessment]);
 
   const back = useCallback(() => {
     dispatch({ type: "BACK" });
     queueMicrotask(() => persist(stateRef.current));
   }, []);
 
-  const submitNameAndGenerate = useCallback(() => {
-    const s = stateRef.current;
-    generateAssessment(s.steps);
-  }, [generateAssessment]);
-
   const retry = useCallback(() => {
     const s = stateRef.current;
     if (s.phase === "error") {
+      dispatch({ type: "START_GENERATING" });
       generateAssessment(s.steps);
     } else {
       dispatch({ type: "RESET" });
@@ -468,13 +459,11 @@ export function useAssessmentWizard() {
     progressEstimate,
     totalQuestions: TOTAL_QUESTIONS,
     isValid,
-    setName,
     start,
     toggleOption,
     setFreeText,
     next,
     back,
-    submitNameAndGenerate,
     retry,
     reset,
   };

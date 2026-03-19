@@ -14,7 +14,6 @@ import { IntroScreen } from "./intro-screen";
 import { AssessmentStep } from "./assessment-step";
 import { AssessmentLoading } from "./assessment-loading";
 import { AssessmentResult } from "./assessment-result";
-import { NameCollectScreen } from "./name-collect-screen";
 
 export function AssessmentClient({ bookingUrl }: { bookingUrl: string }) {
   const wizard = useAssessmentWizard();
@@ -80,8 +79,6 @@ export function AssessmentClient({ bookingUrl }: { bookingUrl: string }) {
           stepKey={
             wizard.phase === "intro"
               ? "intro"
-              : wizard.phase === "name_collect"
-              ? "name_collect"
               : wizard.stepIndex
           }
           direction={wizard.direction}
@@ -100,14 +97,6 @@ export function AssessmentClient({ bookingUrl }: { bookingUrl: string }) {
               multiSelect={wizard.currentMultiSelect}
               onToggleOption={wizard.toggleOption}
               onFreeTextChange={wizard.setFreeText}
-            />
-          )}
-
-          {wizard.phase === "name_collect" && (
-            <NameCollectScreen
-              name={wizard.name}
-              onNameChange={wizard.setName}
-              onGenerate={wizard.submitNameAndGenerate}
             />
           )}
 
