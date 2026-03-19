@@ -73,10 +73,7 @@ Intro screen (framing + "Get Started")
     │  ← Progress bar + "X of 5" indicator
     │
     ▼
-Name collection screen (optional name input + "Generate My Assessment")
-    │
-    ▼
-POST /api/assessment/generate { name?, steps }
+POST /api/assessment/generate { steps }
     │
     ├─► Validate input
     ├─► Build system prompt (4 knowledge files + task instructions)
@@ -139,7 +136,6 @@ app/assessment/page.tsx              Server component (metadata, passes bookingU
        ├─ useAssessmentWizard        Core hook (useReducer state machine, 5 static questions)
        ├─ IntroScreen                Framing screen + Get Started button
        ├─ AssessmentStep             Chips + free text (reused for all 5 questions)
-       ├─ NameCollectScreen          Pre-generation name collection (optional) + Generate button
        ├─ StepTransition             CSS transition wrapper (react-transition-group)
        ├─ AssessmentLoading          SVG ring + CSS-animated dots during generation
        └─ AssessmentResult           Editorial 2-paragraph report + single purchase CTA (UTM-tagged)
@@ -150,7 +146,7 @@ app/assessment/page.tsx              Server component (metadata, passes bookingU
 A `useReducer`-based state machine driving 5 static preset questions with no API calls between steps:
 
 - **Static questions:** All 5 questions defined in `ASSESSMENT_QUESTIONS` array with question text, chip options (`value`/`label`), placeholder, and `multiSelect` flag. Current question derived from `ASSESSMENT_QUESTIONS[stepIndex]` — not stored in state.
-- **State machine phases:** `intro` → `answering` (steps 0-4) → `name_collect` → `generating` → `result` (with `error` reachable from generation).
+- **State machine phases:** `intro` → `answering` (steps 0-4) → `generating` → `result` (with `error` reachable from generation). No name collection — Q5 Next goes straight to generation.
 - **Synchronous navigation:** `next()` saves the current answer into `answers[stepIndex]`, builds an `IntakeStep`, and advances to the next question instantly. No API calls, no loading states between questions. Only async call is `generateAssessment()` at the end.
 - **Back navigation:** Saves current answer, decrements `stepIndex`, restores previous answer from `answers[]`. Step 0 goes back to intro.
 - **Progress:** Computed as `(stepIndex + 1) / 5`. UI shows progress bar + "X of 5" indicator.
@@ -529,7 +525,6 @@ components/
 │   ├── assessment-client.tsx           "use client" orchestrator (phase switch + layout)
 │   ├── use-assessment-wizard.ts        Core hook (useReducer state machine, 5 static questions)
 │   ├── intro-screen.tsx                Framing screen + Get Started button
-│   ├── name-collect-screen.tsx        Pre-generation optional name collection
 │   ├── assessment-step.tsx             Chips + free text question UI
 │   ├── step-transition.tsx             CSS transition wrapper (react-transition-group)
 │   ├── assessment-loading.tsx          Generation loading screen (CSS-animated dots)
