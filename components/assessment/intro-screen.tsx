@@ -19,7 +19,8 @@ export function IntroScreen({ onStart }: { onStart: () => void }) {
       <p className="text-muted-foreground text-lg">
         Most health struggles aren&apos;t isolated problems. They connect
         through your body&apos;s deeper systems. Answer a few questions and
-        we&apos;ll show you the patterns most approaches miss.
+        we&apos;ll show you the patterns most approaches miss and how
+        we&apos;ll be able to build a protocol to help.
       </p>
 
       <button
