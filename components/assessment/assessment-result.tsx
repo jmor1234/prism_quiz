@@ -93,23 +93,13 @@ export function AssessmentResult({
                     "text-[16px] sm:text-[17px] leading-[1.85] font-[450] text-foreground/85",
                     // Last paragraph (closing sentence) gets a distinct treatment
                     i === paragraphs.length - 1 && paragraphs.length > 1 &&
-                      "text-[15px] sm:text-[16px] text-foreground/60 italic mt-8"
+                      "text-[15px] sm:text-[16px] font-semibold text-foreground/90 mt-10 mb-4"
                   )}
                 >
                   {paragraph}
                 </p>
               </div>
             ))}
-          </motion.div>
-
-          {/* Separator before CTA */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: dur ?? 0.4, delay: shouldReduceMotion ? 0 : 0.3 }}
-            className="my-10 max-w-xs mx-auto"
-          >
-            <GoldRule />
           </motion.div>
 
           {/* CTA */}
