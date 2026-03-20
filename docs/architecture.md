@@ -76,7 +76,7 @@ Intro screen (framing + "Get Started")
 POST /api/assessment/generate { steps }
     │
     ├─► Validate input
-    ├─► Build system prompt (4 knowledge files + task instructions)
+    ├─► Build system prompt (3 knowledge files + task instructions)
     ├─► Call Claude Opus 4.6 (single-turn, no tools, no thinking)
     ├─► Save result to Redis/filesystem
     └─► Return { id, report }
@@ -235,12 +235,12 @@ The `promptOverlay` steers interpretation toward condition-specific mechanisms. 
 Single agent, single-turn generation (`app/api/assessment/generate/prompt.ts`):
 
 - Model: Claude Opus 4.6 via `generateText` (no tools, no thinking, no multi-step)
-- Knowledge: 4 files -- `knowledge.md` (bioenergetic framework), `metabolism_deep_dive.md` (energy metabolism reasoning), `gut_deep_dive.md` (gut health reasoning), `prism_process.md` (Prism's process)
-- Task: 2 paragraphs + closing sentence
-  - P1: Connect symptoms through bioenergetic lens, show the pattern, mirror their language
-  - P2: Bridge to Prism's process as the natural conclusion of the analysis
-  - Closing: warm invitation to take the next step (no UI element references)
-- Constraints: plain prose only (no headings, bullets, diagrams, citations), phone-readable in ~1 minute, warm/direct/professional, "we" as Prism
+- Knowledge: 3 files -- `knowledge.md` (bioenergetic framework), `metabolism_deep_dive.md` (energy metabolism reasoning), `gut_deep_dive.md` (gut health reasoning). No process details — the landing page handles that.
+- Task: 2 paragraphs + closing sentence (conversion-focused, not educational)
+  - P1: Connect symptoms through bioenergetic lens, then land on the daily life toll and trajectory — make them feel it
+  - P2: Why they can't solve this alone, what continuing the current path means — create conviction to act
+  - Closing: direct them to learn about the program (landing page handles process, team, pricing)
+- Constraints: plain prose, phone-readable in ~1 minute, "we" as Prism, tough love tone — honest about severity, not hype
 - Input: `formatIntake(name, steps)` converts 5 static question answers to markdown
 - System prompt caching: `cacheControl: ephemeral` on system message (knowledge files are stable)
 - Max duration: 60s (typically completes in 10-20s)
@@ -453,7 +453,7 @@ app/
     │   ├── types.ts                    Shared IntakeStep type
     │   ├── generate/
     │   │   ├── route.ts                Assessment generation (Opus 4.6, single-turn, no tools, cached)
-    │   │   └── prompt.ts               Assessment prompt + 4 knowledge file loader
+    │   │   └── prompt.ts               Assessment prompt + 3 knowledge file loader
     │   └── engagement/
     │       └── route.ts                Assessment engagement tracking endpoint
     ├── chat/
