@@ -1,0 +1,51 @@
+{
+  "id": "14a40381-1471-4cda-a2e4-56e893676658",
+  "createdAt": "2026-03-20T12:53:16.866Z",
+  "name": "",
+  "steps": [
+    {
+      "question": "What have you been dealing with?",
+      "selectedOptions": [
+        "energy",
+        "digestion",
+        "allergies",
+        "brain_fog"
+      ],
+      "freeText": ""
+    },
+    {
+      "question": "What have you tried so far?",
+      "selectedOptions": [
+        "supplements",
+        "diet",
+        "self_research",
+        "lab_testing"
+      ],
+      "freeText": ""
+    },
+    {
+      "question": "How long has this been going on?",
+      "selectedOptions": [
+        "1_3yr"
+      ],
+      "freeText": ""
+    },
+    {
+      "question": "Where are things at right now?",
+      "selectedOptions": [
+        "up_and_down",
+        "daily_life",
+        "nothing_lasting"
+      ],
+      "freeText": ""
+    },
+    {
+      "question": "Do you feel like you can figure this out on your own?",
+      "selectedOptions": [
+        "not_sure"
+      ],
+      "freeText": ""
+    }
+  ],
+  "report": "You're dealing with low energy, digestive issues, allergies, and brain fog, and after one to three years of supplements, dietary changes, lab work, and your own research, things still go up and down with nothing that actually holds. That's not a coincidence. These four problems aren't separate issues requiring four separate fixes. They share a common root: when your gut is compromised, it drives inflammation throughout your body, which directly impairs your cells' ability to produce energy, leaves your brain running on fumes, and destabilizes your immune system into the kind of overreactive state that shows up as allergies. The reason your results have been inconsistent is that each time you address one piece, the others pull it back down. A supplement might nudge your energy for a week, but if your gut is still feeding inflammation into the system, that gain disappears. Meanwhile your daily life is being shaped by this. The fog makes everything harder than it should be. The fatigue limits what you're willing to commit to. The digestive issues dictate what and when you eat. And the allergies remind you constantly that something deeper is off. Without addressing the full pattern, this doesn't plateau. It slowly gets worse.\n\nYou've clearly done more than most people would. The testing, the research, the willingness to try different things. That effort hasn't been wasted, but it has shown you something important: this kind of interconnected problem doesn't respond to isolated interventions, no matter how well-intentioned. The gut dysfunction drives the inflammation, the inflammation suppresses your metabolism, the weakened metabolism can't support proper gut repair, and the cycle continues. Breaking that cycle requires working on all of these systems at the same time, in the right sequence, with people who understand how they influence each other. That's not something you can piece together from articles and supplement labels, and continuing to try means more months of the same up and down pattern while the underlying issue quietly deepens.\n\nOn the next page, you'll see exactly how we work with people in your situation and what the path forward looks like."
+}

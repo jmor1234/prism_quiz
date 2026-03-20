@@ -78,11 +78,11 @@ export const ASSESSMENT_QUESTIONS: QuestionConfig[] = [
   {
     question: "Do you feel like you can figure this out on your own?",
     options: [
-      { value: "yes_info", label: "Yes, I just need the right info" },
-      { value: "maybe_difficult", label: "I think so, but it's been difficult" },
-      { value: "not_sure", label: "I'm not sure anymore" },
-      { value: "probably_not", label: "Probably not on my own" },
       { value: "need_guidance", label: "No, I need expert guidance" },
+      { value: "probably_not", label: "Probably not on my own" },
+      { value: "not_sure", label: "I'm not sure anymore" },
+      { value: "maybe_difficult", label: "I think so, but it's been difficult" },
+      { value: "yes_info", label: "Yes, I just need the right info" },
     ],
     placeholder: "Anything else you want us to know?",
     multiSelect: false,
