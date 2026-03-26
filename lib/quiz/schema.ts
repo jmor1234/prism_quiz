@@ -57,7 +57,7 @@ export function buildSubmissionSchema(variant: VariantConfig) {
 
   return z.object({
     variant: z.literal(variant.slug),
-    name: z.string().min(1),
+    name: z.string().optional().default(""),
     answers: z.object(answerFields),
   });
 }

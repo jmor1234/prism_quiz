@@ -14,7 +14,6 @@ import { Button } from "@/components/ui/button";
 import { ModeToggle } from "@/components/ui/mode-toggle";
 import { StepTransition } from "@/components/assessment/step-transition";
 import { QuestionStep } from "./question-step";
-import { NameStep } from "./questions/name-step";
 import { QuizLoading } from "./quiz-loading";
 import { QuizResult } from "./quiz-result";
 import type {
@@ -242,13 +241,12 @@ function generateTestData(config: VariantConfig): {
 // --- Main component ---
 
 export function QuizWizard({ config }: { config: VariantConfig }) {
-  const totalSteps = config.questions.length + 1; // +1 for name step
+  const totalSteps = config.questions.length;
 
   // Form state
   const [answers, setAnswers] = useState<QuizAnswers>(() =>
     buildInitialAnswers(config)
   );
-  const [name, setName] = useState("");
   const [status, setStatus] = useState<SubmitStatus>("idle");
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<{
@@ -308,11 +306,8 @@ export function QuizWizard({ config }: { config: VariantConfig }) {
   }
 
   // Validation
-  const isNameStep = step === config.questions.length;
   const isLastStep = step === totalSteps - 1;
-  const isCurrentStepValid = isNameStep
-    ? name.trim().length > 0
-    : isQuestionValid(config.questions[step], answers[config.questions[step].id]);
+  const isCurrentStepValid = isQuestionValid(config.questions[step], answers[config.questions[step].id]);
   const progressPercent = ((step + 1) / totalSteps) * 100;
 
   // Submit handler
@@ -325,7 +320,7 @@ export function QuizWizard({ config }: { config: VariantConfig }) {
       ? { submissionId: pendingSubmissionId }
       : {
           variant: config.slug,
-          name,
+          name: "",
           answers,
         };
 
@@ -366,7 +361,7 @@ export function QuizWizard({ config }: { config: VariantConfig }) {
       setError(message);
       setStatus("error");
     }
-  }, [pendingSubmissionId, config.slug, name, answers]);
+  }, [pendingSubmissionId, config.slug, answers]);
 
   // Update a single answer
   function updateAnswer(questionId: string, value: unknown) {
@@ -376,7 +371,6 @@ export function QuizWizard({ config }: { config: VariantConfig }) {
   // Fill test data (dev only)
   function fillTestData() {
     const testData = generateTestData(config);
-    setName(testData.name);
     setAnswers(testData.answers);
     setStep(totalSteps - 1);
   }
@@ -478,21 +472,13 @@ export function QuizWizard({ config }: { config: VariantConfig }) {
       {/* Main content */}
       <main className="flex-1 flex items-center justify-center px-4 py-8 overflow-hidden">
         <StepTransition stepKey={step} direction={direction}>
-          {isNameStep ? (
-            <NameStep
-              config={config.nameField}
-              value={name}
-              onChange={setName}
-            />
-          ) : (
-            <QuestionStep
-              config={config.questions[step]}
-              value={answers[config.questions[step].id]}
-              onChange={(v) =>
-                updateAnswer(config.questions[step].id, v)
-              }
-            />
-          )}
+          <QuestionStep
+            config={config.questions[step]}
+            value={answers[config.questions[step].id]}
+            onChange={(v) =>
+              updateAnswer(config.questions[step].id, v)
+            }
+          />
         </StepTransition>
       </main>
 

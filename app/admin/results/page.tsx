@@ -491,7 +491,7 @@ function EntryRow({
             <ChevronRight className="h-4 w-4 text-[var(--quiz-gold-dark)] shrink-0" />
           </motion.div>
           <span className="font-medium flex-1">
-            {entry.name}
+            {entry.name || "Anonymous"}
             <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-muted text-muted-foreground">
               {getVariant(entry.variant)?.name ?? entry.variant}
             </span>

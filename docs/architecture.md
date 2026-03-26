@@ -37,7 +37,7 @@ POST /api/quiz { variant, name, answers }
     QuizResult renders markdown assessment with inline citations
             │
             ▼
-    Save Your Assessment (PDF) | Talk to Our Team | Go Deeper on Your Results
+    Save Your Assessment (PDF) | Talk to Our Team (gold CTA)
             │                              │
             ▼                              ▼
     Opens booking URL              Navigates to /explore/{quizId}
@@ -127,9 +127,8 @@ app/quiz/[variant]/twitter-image.tsx    Re-exports OG image for Twitter
             │   ├─ MultiSelectQuestion   Pill-style multi-select buttons
             │   ├─ SingleSelectQuestion  Radio-style single select
             │   └─ FreeTextQuestion      Textarea with hint
-            ├─ NameStep              Name input (always last question step)
             ├─ QuizLoading           SVG progress ring + pulsing dots
-            └─ QuizResult            Assessment display + CTA + PDF download
+            └─ QuizResult            Assessment display + gold booking CTA + PDF download (no explore link)
 
 app/assessment/page.tsx              Server component (metadata, passes bookingUrl from env)
   └─ AssessmentClient                "use client" orchestrator
@@ -159,9 +158,9 @@ The central state machine. Driven entirely by `VariantConfig`:
 
 - **State:** `answers: Record<string, unknown>` initialized from config via `buildInitialAnswers()`
 - **Intro:** `started` boolean — shows headline/subtitle/Start before questions begin
-- **Navigation:** step counter, total = `questions.length + 1` (questions + name); back from step 0 returns to intro
+- **Navigation:** step counter, total = `questions.length`; back from step 0 returns to intro. No name collection step.
 - **Validation:** per-type via `isQuestionValid()` — gates the Next button
-- **Submit:** POST `{ variant, name, answers }` to `/api/quiz`
+- **Submit:** POST `{ variant, answers }` to `/api/quiz` (name sent as empty string for backward compat)
 - **Retry:** if submission fails, stores `submissionId` in localStorage for retry
 - **Persistence:** variant-scoped localStorage (`prism-quiz:{variant}`)
 - **Dev tools:** "Fill Test" button generates random valid data per question type
@@ -500,7 +499,6 @@ components/
 │       ├── multi-select-question.tsx
 │       ├── single-select-question.tsx
 │       ├── free-text-question.tsx
-│       └── name-step.tsx
 ├── ui/                                 Radix UI primitives + shadcn
 │   ├── button.tsx
 │   ├── input.tsx

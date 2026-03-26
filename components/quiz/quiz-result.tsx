@@ -1,11 +1,12 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { Calendar, CheckCircle2, FileDown, MessageSquare } from "lucide-react";
+import { ArrowRight, CheckCircle2, FileDown } from "lucide-react";
 import { motion, useReducedMotion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { buildBookingUrl } from "@/lib/utmStorage";
 import { trackEvent } from "@/lib/tracking";
+import { ACCENT } from "@/components/quiz/quiz-theme";
 import { Response } from "@/components/ai-elements/response";
 import { Loader } from "@/components/ai-elements/loader";
 import { Button } from "@/components/ui/button";
@@ -76,7 +77,7 @@ export function QuizResult({
 
   return (
     <div className="min-h-screen quiz-background flex flex-col">
-      <header className="sticky top-0 z-10 bg-background/95 border-b">
+      <header className="sticky top-0 z-10 bg-background border-b">
         <div className="max-w-2xl mx-auto px-4 py-3 flex justify-end">
           <ModeToggle />
         </div>
@@ -103,7 +104,7 @@ export function QuizResult({
             Underlined text links to cited research sources and will open in a new tab.
           </p>
 
-          {/* Content area */}
+          {/* Assessment content */}
           <motion.div
             initial={shouldReduceMotion ? {} : { opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -113,11 +114,44 @@ export function QuizResult({
             <Response variant="report">{result.report}</Response>
           </motion.div>
 
-          {/* Save Your Assessment */}
+          {/* Booking CTA — prominent, right after assessment */}
           <motion.div
             initial={shouldReduceMotion ? {} : { opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: staggerDelay * 2 }}
+          >
+            <a
+              href={variant.ctaUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => {
+                e.preventDefault();
+                trackEvent(result.id, "booking_click", "assessment");
+                const url = buildBookingUrl(variant.ctaUrl);
+                window.open(url, "_blank", "noopener,noreferrer");
+              }}
+              className={cn(
+                "flex items-center justify-center gap-3 w-full px-8 py-4 rounded-xl",
+                "text-base font-semibold",
+                "transition-all duration-300 ease-out",
+                "hover:-translate-y-0.5 hover:shadow-lg active:translate-y-0",
+                ACCENT.base,
+                ACCENT.text
+              )}
+            >
+              Talk to Our Team
+              <ArrowRight className="w-5 h-5" />
+            </a>
+            <p className="text-center text-sm text-muted-foreground mt-3">
+              Free intro call to discuss your results and how we can help
+            </p>
+          </motion.div>
+
+          {/* PDF download */}
+          <motion.div
+            initial={shouldReduceMotion ? {} : { opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: staggerDelay * 3 }}
             className="flex flex-col items-center gap-1"
           >
             <Button
@@ -141,59 +175,6 @@ export function QuizResult({
             <span className="text-xs text-muted-foreground">
               Download a PDF copy to reference or share
             </span>
-          </motion.div>
-
-          {/* Action cards */}
-          <motion.div
-            initial={shouldReduceMotion ? {} : { opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: staggerDelay * 3 }}
-            className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full"
-          >
-            {/* Talk to Our Team */}
-            <a
-              href={variant.ctaUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={(e) => {
-                e.preventDefault();
-                trackEvent(result.id, "booking_click", "assessment");
-                const url = buildBookingUrl(variant.ctaUrl);
-                window.open(url, "_blank", "noopener,noreferrer");
-              }}
-              className={cn(
-                "flex flex-col items-center gap-2 rounded-lg border p-5 text-center",
-                "border-[var(--quiz-gold)]/50 hover:border-[var(--quiz-gold)]",
-                "hover:bg-[var(--quiz-gold)]/10",
-                "transition-all duration-300 hover:-translate-y-0.5"
-              )}
-            >
-              <Calendar className="h-5 w-5 text-[var(--quiz-gold-dark)]" aria-hidden="true" />
-              <span className="text-base font-semibold">Talk to Our Team</span>
-              <span className="text-xs text-muted-foreground">
-                Free intro call to discuss your results and how we can help
-              </span>
-            </a>
-
-            {/* Go Deeper on Your Results */}
-            <a
-              href={`/explore/${result.id}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={() => trackEvent(result.id, "agent_opened", "assessment")}
-              className={cn(
-                "flex flex-col items-center gap-2 rounded-lg border p-5 text-center",
-                "border-[var(--quiz-gold)]/50 hover:border-[var(--quiz-gold)]",
-                "hover:bg-[var(--quiz-gold)]/10",
-                "transition-all duration-300 hover:-translate-y-0.5"
-              )}
-            >
-              <MessageSquare className="h-5 w-5 text-[var(--quiz-gold-dark)]" aria-hidden="true" />
-              <span className="text-base font-semibold">Go Deeper on Your Results With Our AI Assistant</span>
-              <span className="text-xs text-muted-foreground">
-                Ask questions and explore your patterns with real-time research
-              </span>
-            </a>
           </motion.div>
         </div>
       </main>

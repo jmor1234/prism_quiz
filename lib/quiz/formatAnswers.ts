@@ -88,7 +88,9 @@ export function formatAnswers(
 ): string {
   const lines: string[] = [];
 
-  lines.push(`**Name:** ${name}`);
+  if (name && name.trim()) {
+    lines.push(`**Name:** ${name}`);
+  }
 
   for (const q of variant.questions) {
     const value = answers[q.id];
