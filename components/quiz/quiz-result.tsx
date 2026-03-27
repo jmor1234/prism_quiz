@@ -139,7 +139,7 @@ export function QuizResult({
                 ACCENT.text
               )}
             >
-              Talk to Our Team
+              Book a Free Call With Us
               <ArrowRight className="w-5 h-5" />
             </a>
             <p className="text-center text-sm text-muted-foreground mt-3">
