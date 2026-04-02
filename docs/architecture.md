@@ -4,7 +4,7 @@
 
 A config-driven health assessment platform with two entry paths. The **quiz flow** serves warm audiences with condition-specific quizzes leading to booking calls. The **assessment flow** serves cold traffic from paid ads with a 5-question intake leading to a brief personalized assessment and direct purchase CTA.
 
-**Stack:** Next.js 15 (App Router), TypeScript, TailwindCSS v4, Framer Motion, Claude Opus 4.6, Claude Sonnet 4.6, AI SDK v6, Exa v2 (semantic search), Gemini Flash (extraction), Upstash Redis, Puppeteer (PDF), Dexie (IndexedDB)
+**Stack:** Next.js 15 (App Router), TypeScript, TailwindCSS v4, Framer Motion, Claude Sonnet 4.6, AI SDK v6, Exa v2 (semantic search), Gemini Flash (extraction), Upstash Redis, Puppeteer (PDF), Dexie (IndexedDB)
 
 ---
 
@@ -28,7 +28,7 @@ POST /api/quiz { variant, name, answers }
     ├─► Validate against dynamic Zod schema (built from config)
     ├─► Save submission to Redis/filesystem
     ├─► Build system prompt (knowledge + instructions) + user message (answers)
-    ├─► Call Claude Opus 4.6 with evidence tools (search + read)
+    ├─► Call Claude Sonnet 4.6 with evidence tools (search + read)
     │     └─► Agent searches Exa for research, optionally reads sources
     │         └─► Up to 5 agentic steps (tool calls + final generation)
     └─► Return { id, report }
@@ -47,7 +47,7 @@ POST /api/quiz { variant, name, answers }
                                           │
                                           ▼
                                    Multi-turn streaming conversation
-                                   (Opus 4.6, Exa tools, evidence-based)
+                                   (Sonnet 4.6, Exa tools, evidence-based)
                                           │
                                           ▼
                                    Conversation saved to IndexedDB + server
@@ -77,7 +77,7 @@ POST /api/assessment/generate { steps }
     │
     ├─► Validate input
     ├─► Build system prompt (3 knowledge files + task instructions)
-    ├─► Call Claude Opus 4.6 (single-turn, no tools, no thinking)
+    ├─► Call Claude Sonnet 4.6 (single-turn, no tools, no thinking)
     ├─► Save result to Redis/filesystem
     └─► Return { id, report }
             │
@@ -185,10 +185,10 @@ GET  /api/quiz/result?quizId=     Fetch stored result
 POST /api/quiz/pdf                Generate user-facing PDF
 POST /api/quiz/engagement         Engagement tracking (events + conversations)
 
-POST /api/assessment/generate     Assessment generation (Opus 4.6, single-turn, no tools, rate-limited, cached)
+POST /api/assessment/generate     Assessment generation (Sonnet 4.6, single-turn, no tools, rate-limited, cached)
 POST /api/assessment/engagement   Assessment engagement tracking (booking clicks)
 
-POST /api/agent                   Streaming agent conversation (Opus 4.6, dual-mode: quiz/standalone)
+POST /api/agent                   Streaming agent conversation (Sonnet 4.6, dual-mode: quiz/standalone)
 
 POST /api/chat/engagement         Standalone chat tracking (events + conversations)
 
@@ -233,7 +233,7 @@ The `promptOverlay` steers interpretation toward condition-specific mechanisms. 
 
 Single agent, single-turn generation (`app/api/assessment/generate/prompt.ts`):
 
-- Model: Claude Opus 4.6 via `generateText` (no tools, no thinking, no multi-step)
+- Model: Claude Sonnet 4.6 via `generateText` (no tools, no thinking, no multi-step)
 - Knowledge: 3 files -- `knowledge.md` (bioenergetic framework), `metabolism_deep_dive.md` (energy metabolism reasoning), `gut_deep_dive.md` (gut health reasoning). No process details — the landing page handles that.
 - Task: 2 paragraphs + closing sentence (conversion-focused, not educational)
   - P1: Connect symptoms through bioenergetic lens, then land on the daily life toll and trajectory — make them feel it
@@ -263,7 +263,7 @@ Single route (`/api/agent`) serves two modes based on whether `quizId` is presen
 **Standalone mode** (`/chat/{threadId}`): Agent starts from zero. Discovery posture. Accessible from quiz index page.
 
 **Shared configuration** (`app/api/agent/route.ts`):
-- Model: Claude Opus 4.6 with adaptive thinking, low effort
+- Model: Claude Sonnet 4.6 with adaptive thinking, low effort
 - Tools: search + read + extract_findings (Exa v2 backed)
 - Steps: up to 10 (`stopWhen: stepCountIs(10)`)
 - Three-tier prompt caching (tool schemas, stable system prompt, conversation history)
@@ -451,14 +451,14 @@ app/
     ├── assessment/
     │   ├── types.ts                    Shared IntakeStep type
     │   ├── generate/
-    │   │   ├── route.ts                Assessment generation (Opus 4.6, single-turn, no tools, cached)
+    │   │   ├── route.ts                Assessment generation (Sonnet 4.6, single-turn, no tools, cached)
     │   │   └── prompt.ts               Assessment prompt + 3 knowledge file loader
     │   └── engagement/
     │       └── route.ts                Assessment engagement tracking endpoint
     ├── chat/
     │   └── engagement/route.ts         Standalone chat tracking endpoint
     ├── agent/
-    │   ├── route.ts                    Streaming agent (Opus 4.6, dual-mode, caching, logging)
+    │   ├── route.ts                    Streaming agent (Sonnet 4.6, dual-mode, caching, logging)
     │   ├── systemPrompt.ts             Shared sections + dual prompt builders
     │   ├── tools/
     │   │   ├── index.ts                Exports agentTools

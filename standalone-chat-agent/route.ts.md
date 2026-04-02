@@ -80,7 +80,7 @@ export async function POST(req: Request) {
   const stream = createUIMessageStream({
     execute: async ({ writer }) => {
       const result = streamText({
-        model: anthropic('claude-opus-4-6'),
+        model: anthropic('claude-sonnet-4-6'),
         messages: initialMessages,
         tools: cachedTools,
         stopWhen: stepCountIs(50),
