@@ -104,7 +104,7 @@ export async function POST(req: Request) {
     const genStart = Date.now();
 
     const result = await generateText({
-      model: anthropic("claude-opus-4-6"),
+      model: anthropic("claude-sonnet-4-6"),
       messages: [
         {
           role: "system" as const,

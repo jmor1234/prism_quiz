@@ -163,7 +163,7 @@ export async function POST(req: Request) {
 
     // System prompt is stable per variant (knowledge files + instructions) — cache it
     const result = await generateText({
-      model: anthropic("claude-opus-4-6"),
+      model: anthropic("claude-sonnet-4-6"),
       messages: [
         {
           role: "system" as const,
