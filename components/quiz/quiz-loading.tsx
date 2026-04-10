@@ -71,21 +71,15 @@ export function QuizLoading() {
             />
           </svg>
 
-          {/* Pulsing dots in center */}
+          {/* Pulsing dots in center — CSS @keyframes (compositor thread) */}
           <div className="absolute inset-0 flex items-center justify-center gap-1.5">
             {[0, 1, 2].map((i) => (
-              <motion.div
+              <div
                 key={i}
                 className="w-2.5 h-2.5 rounded-full bg-[var(--quiz-gold)]"
-                animate={{
-                  scale: [1, 1.3, 1],
-                  opacity: [0.5, 1, 0.5],
-                }}
-                transition={{
-                  duration: 1,
-                  repeat: Infinity,
-                  delay: i * 0.2,
-                  ease: "easeInOut",
+                style={{
+                  animation: "assessment-dot-pulse 1s ease-in-out infinite",
+                  animationDelay: `${i * 200}ms`,
                 }}
               />
             ))}
