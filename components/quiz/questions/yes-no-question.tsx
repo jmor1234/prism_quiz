@@ -3,22 +3,48 @@
 import { cn } from "@/lib/utils";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { ACCENT, questionClass, hintClass } from "../quiz-theme";
-import type { YesNoQuestionConfig, YesNoWithFollowUp, OptionConfig } from "@/lib/quiz/types";
+import type {
+  YesNoQuestionConfig,
+  YesNoWithFollowUp,
+  YesNoAnswer,
+  OptionConfig,
+} from "@/lib/quiz/types";
 
 // --- YesNoToggle (reusable sub-component) ---
+//
+// Renders Yes/No by default. When `allowUnsure` is true, an "Unsure" button
+// appears between them. Selected state uses the same gold accent for all
+// three — the label and position carry the meaning.
+
+function answerToToggleValue(value: YesNoAnswer): string {
+  if (value === null) return "";
+  if (value === "unsure") return "unsure";
+  return value ? "yes" : "no";
+}
+
+function toggleValueToAnswer(v: string): YesNoAnswer {
+  if (v === "yes") return true;
+  if (v === "no") return false;
+  if (v === "unsure") return "unsure";
+  return null;
+}
 
 function YesNoToggle({
   value,
   onChange,
+  allowUnsure,
 }: {
-  value: boolean | null;
-  onChange: (v: boolean) => void;
+  value: YesNoAnswer;
+  onChange: (v: YesNoAnswer) => void;
+  allowUnsure?: boolean;
 }) {
   const baseStyles = cn(
-    "px-12 h-14 text-base font-medium !rounded-full border-2",
+    "h-14 text-base font-medium !rounded-full border-2",
     "transition-[transform,box-shadow,border-color,background-color] duration-300 ease-out",
     "hover:-translate-y-0.5 hover:shadow-md active:translate-y-0 active:shadow-sm"
   );
+  // Three buttons need slightly tighter horizontal padding to fit comfortably
+  const px = allowUnsure ? "px-8" : "px-12";
   const unselectedStyles = cn(
     "border-border bg-background shadow-sm",
     "hover:shadow-md hover:border-[var(--quiz-gold)]/50 hover:bg-[var(--quiz-cream)]/50",
@@ -36,25 +62,30 @@ function YesNoToggle({
     <div className="flex justify-center">
       <ToggleGroup
         type="single"
-        value={value === null ? "" : value ? "yes" : "no"}
-        onValueChange={(v) => v && onChange(v === "yes")}
-        className="gap-4"
+        value={answerToToggleValue(value)}
+        onValueChange={(v) => {
+          if (!v) return;
+          onChange(toggleValueToAnswer(v));
+        }}
+        className="gap-3 sm:gap-4 flex-wrap justify-center"
       >
         <ToggleGroupItem
           value="yes"
-          className={cn(
-            baseStyles,
-            value === true ? selectedStyles : unselectedStyles
-          )}
+          className={cn(baseStyles, px, value === true ? selectedStyles : unselectedStyles)}
         >
           Yes
         </ToggleGroupItem>
+        {allowUnsure && (
+          <ToggleGroupItem
+            value="unsure"
+            className={cn(baseStyles, px, value === "unsure" ? selectedStyles : unselectedStyles)}
+          >
+            Unsure
+          </ToggleGroupItem>
+        )}
         <ToggleGroupItem
           value="no"
-          className={cn(
-            baseStyles,
-            value === false ? selectedStyles : unselectedStyles
-          )}
+          className={cn(baseStyles, px, value === false ? selectedStyles : unselectedStyles)}
         >
           No
         </ToggleGroupItem>
@@ -130,8 +161,8 @@ export function YesNoQuestion({
   onChange,
 }: {
   config: YesNoQuestionConfig;
-  value: boolean | null | YesNoWithFollowUp;
-  onChange: (value: boolean | null | YesNoWithFollowUp) => void;
+  value: YesNoAnswer | YesNoWithFollowUp;
+  onChange: (value: YesNoAnswer | YesNoWithFollowUp) => void;
 }) {
   if (config.conditionalFollowUp) {
     const compound = value as YesNoWithFollowUp;
@@ -143,10 +174,12 @@ export function YesNoQuestion({
         <h2 className={questionClass}>{config.question}</h2>
         <YesNoToggle
           value={answer}
+          allowUnsure={config.allowUnsure}
           onChange={(v) =>
             onChange({
               answer: v,
-              followUp: v ? followUp : [],
+              // followUp options are only relevant on Yes; clear otherwise
+              followUp: v === true ? followUp : [],
             })
           }
         />
@@ -170,7 +203,8 @@ export function YesNoQuestion({
     <div className="space-y-8">
       <h2 className={questionClass}>{config.question}</h2>
       <YesNoToggle
-        value={value as boolean | null}
+        value={value as YesNoAnswer}
+        allowUnsure={config.allowUnsure}
         onChange={(v) => onChange(v)}
       />
     </div>

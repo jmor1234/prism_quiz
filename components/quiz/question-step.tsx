@@ -1,11 +1,12 @@
 "use client";
 
-import type { QuestionConfig, YesNoWithFollowUp } from "@/lib/quiz/types";
+import type { QuestionConfig, YesNoWithFollowUp, YesNoWithText } from "@/lib/quiz/types";
 import { SliderQuestion } from "./questions/slider-question";
 import { YesNoQuestion } from "./questions/yes-no-question";
 import { MultiSelectQuestion } from "./questions/multi-select-question";
 import { SingleSelectQuestion } from "./questions/single-select-question";
 import { FreeTextQuestion } from "./questions/free-text-question";
+import { YesNoWithTextQuestion } from "./questions/yes-no-with-text-question";
 
 export function QuestionStep({
   config,
@@ -54,6 +55,14 @@ export function QuestionStep({
         <FreeTextQuestion
           config={config}
           value={value as string}
+          onChange={onChange}
+        />
+      );
+    case "yes_no_with_text":
+      return (
+        <YesNoWithTextQuestion
+          config={config}
+          value={value as YesNoWithText}
           onChange={onChange}
         />
       );

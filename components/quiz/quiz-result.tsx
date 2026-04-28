@@ -5,7 +5,7 @@ import { ArrowRight, CheckCircle2, FileDown } from "lucide-react";
 import { motion, useReducedMotion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { buildBookingUrl } from "@/lib/utmStorage";
-import { trackEvent } from "@/lib/tracking";
+import { trackEvent, trackBestlifeEvent } from "@/lib/tracking";
 import { ACCENT } from "@/components/quiz/quiz-theme";
 import { Response } from "@/components/ai-elements/response";
 import { Loader } from "@/components/ai-elements/loader";
@@ -24,8 +24,13 @@ export function QuizResult({
   const staggerDelay = shouldReduceMotion ? 0 : 0.15;
   const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
 
+  // best-life-care uses fully separate engagement + PDF endpoints
+  const isBestLife = variant.slug === "best-life-care";
+  const trackQuizEvent = isBestLife ? trackBestlifeEvent : trackEvent;
+  const pdfEndpoint = isBestLife ? "/api/bestlife/pdf" : "/api/quiz/pdf";
+
   const downloadPdf = useCallback(async () => {
-    trackEvent(result.id, "pdf_download", "assessment");
+    trackQuizEvent(result.id, "pdf_download", "assessment");
     setIsDownloadingPdf(true);
 
     // Open a new tab synchronously (within user gesture context) so mobile
@@ -33,7 +38,7 @@ export function QuizResult({
     const pdfTab = window.open("", "_blank");
 
     try {
-      const response = await fetch("/api/quiz/pdf", {
+      const response = await fetch(pdfEndpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ quizId: result.id }),
@@ -73,7 +78,7 @@ export function QuizResult({
     } finally {
       setIsDownloadingPdf(false);
     }
-  }, [result.id]);
+  }, [result.id, trackQuizEvent, pdfEndpoint]);
 
   return (
     <div className="min-h-screen quiz-background flex flex-col">
@@ -126,7 +131,7 @@ export function QuizResult({
               rel="noopener noreferrer"
               onClick={(e) => {
                 e.preventDefault();
-                trackEvent(result.id, "booking_click", "assessment");
+                trackQuizEvent(result.id, "booking_click", "assessment");
                 const url = buildBookingUrl(variant.ctaUrl);
                 window.open(url, "_blank", "noopener,noreferrer");
               }}

@@ -4,6 +4,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { listQuizEntries, searchQuizEntriesByName } from "@/server/quizSubmissions";
 import { getEngagementBatch } from "@/server/quizEngagement";
 
+// Variants whose data lives in a separate storage namespace and must never
+// be surfaced through this admin (each has its own dedicated /admin page).
+const EXCLUDED_VARIANTS = new Set(["best-life-care"]);
+
 /**
  * GET /api/admin/results
  * 
@@ -42,6 +46,12 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get("search")?.trim();
     const variant = searchParams.get("variant") ?? undefined;
 
+    // Reject variant filters pointing at excluded namespaces (their data
+    // doesn't live in this storage anyway, but be explicit).
+    if (variant && EXCLUDED_VARIANTS.has(variant)) {
+      return NextResponse.json({ entries: [], nextCursor: null });
+    }
+
     // If search is provided, search across entries (no pagination)
     let entries;
     let nextCursor: string | null = null;
@@ -54,6 +64,11 @@ export async function GET(request: NextRequest) {
       entries = result.entries;
       nextCursor = result.nextCursor;
     }
+
+    // Defensive exclusion: even if an excluded variant somehow ended up in
+    // the standard quiz storage (legacy data, manual write, etc.), strip it
+    // from the response so it can never leak into this admin.
+    entries = entries.filter((e) => !EXCLUDED_VARIANTS.has(e.variant));
 
     // Batch-fetch engagement data for all entries
     const engagementMap = await getEngagementBatch(entries.map((e: { id: string }) => e.id));

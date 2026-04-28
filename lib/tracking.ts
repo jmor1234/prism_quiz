@@ -43,6 +43,49 @@ export function saveConversationRemote(
   }
 }
 
+// --- Best-life-care tracking (separate engagement namespace) ---
+
+/**
+ * Fire-and-forget engagement event tracking for the best-life-care quiz.
+ * Posts to /api/bestlife/engagement so events land in the bestlife-engagement
+ * Redis namespace (kept fully separate from the standard quiz engagement).
+ */
+export function trackBestlifeEvent(
+  quizId: string,
+  type: string,
+  source: string
+): void {
+  try {
+    fetch("/api/bestlife/engagement", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ quizId, event: { type, source } }),
+      keepalive: true,
+    }).catch(() => {});
+  } catch {
+    // Swallow errors
+  }
+}
+
+/**
+ * Fire-and-forget conversation save for the best-life-care quiz.
+ */
+export function saveBestlifeConversationRemote(
+  quizId: string,
+  messages: SerializedMessage[]
+): void {
+  try {
+    fetch("/api/bestlife/engagement", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ quizId, conversation: messages }),
+      keepalive: true,
+    }).catch(() => {});
+  } catch {
+    // Swallow errors
+  }
+}
+
 // --- Standalone chat tracking ---
 
 /**

@@ -2,9 +2,13 @@
 
 ## System Summary
 
-A config-driven health assessment platform with two entry paths. The **quiz flow** serves warm audiences with condition-specific quizzes leading to booking calls. The **assessment flow** serves cold traffic from paid ads with a 5-question intake leading to a brief personalized assessment and direct purchase CTA.
+A config-driven health assessment platform with three pillars:
 
-**Stack:** Next.js 15 (App Router), TypeScript, TailwindCSS v4, Framer Motion, Claude Sonnet 4.6, AI SDK v6, Exa v2 (semantic search), Gemini Flash (extraction), Upstash Redis, Puppeteer (PDF), Dexie (IndexedDB)
+- **Quiz flow** (`/quiz/{variant}`) — warm audiences with condition-specific quizzes (12 variants) leading to booking calls. Standard storage namespace (`quiz-*`).
+- **Assessment flow** (`/assessment`) — cold traffic from paid ads, 5-question intake, brief personalized 2-paragraph assessment, direct purchase CTA. Separate Redis database via `UPSTASH_ASSESSMENT_REDIS_REST_URL`.
+- **Best-life-care intake** (`/quiz/best-life-care`) — extended 38-question deep health intake with fully isolated storage namespace (`bestlife-*` keys, same Redis instance) and dedicated admin (`/admin/best-life-care`). Reuses the same `/api/quiz` route, prompt scaffolding, Exa tools, and 3-tier caching as standard variants — the route branches storage by variant. No chat handoff in v1.
+
+**Stack:** Next.js 15 (App Router), TypeScript, TailwindCSS v4, Framer Motion, Claude Sonnet 4.6 (adaptive thinking, low effort), AI SDK v6, Exa v2 (semantic search), Gemini Flash (extraction), Upstash Redis, Puppeteer (PDF), Dexie (IndexedDB)
 
 ---
 
@@ -18,40 +22,46 @@ Server component resolves VariantConfig from registry
     │
     ▼
 QuizWizard renders questions from config
+(forward navigation auto-skips and auto-fills questions whose
+hideWhen rule matches; back navigation skips backward likewise)
     │
     ▼
-User answers 11 questions + name
+User answers N questions per variant config (11 for standard, 38 for best-life-care)
     │
     ▼
-POST /api/quiz { variant, name, answers }
+POST /api/quiz { variant, answers, [submissionId for retry] }
     │
+    ├─► Resolve storage namespace by variant
+    │     ├─► best-life-care → bestlife-* keyspace
+    │     └─► all others     → standard quiz-* keyspace
     ├─► Validate against dynamic Zod schema (built from config)
     ├─► Save submission to Redis/filesystem
     ├─► Build system prompt (knowledge + instructions) + user message (answers)
     ├─► Call Claude Sonnet 4.6 with evidence tools (search + read)
     │     └─► Agent searches Exa for research, optionally reads sources
-    │         └─► Up to 5 agentic steps (tool calls + final generation)
+    │         └─► Up to 10 agentic steps (tool calls + final generation)
     └─► Return { id, report }
             │
             ▼
     QuizResult renders markdown assessment with inline citations
+    (variant-aware: tracking + PDF endpoint branch on variant.slug)
             │
             ▼
-    Save Your Assessment (PDF) | Talk to Our Team (gold CTA)
+    Save Your Assessment (PDF) | Book a Free Call (gold CTA)
             │                              │
             ▼                              ▼
-    Opens booking URL              Navigates to /explore/{quizId}
-    (UTM-tagged)                          │
-                                          ▼
-                                   Agent auto-triggers first message
-                                          │
-                                          ▼
-                                   Multi-turn streaming conversation
-                                   (Sonnet 4.6, Exa tools, evidence-based)
-                                          │
-                                          ▼
-                                   Conversation saved to IndexedDB + server
-                                   Engagement events tracked
+    /api/{quiz|bestlife}/pdf        Opens booking URL (UTM-tagged)
+            │
+            ▼
+    /explore/{quizId} (standard variants only — not best-life-care in v1)
+            │
+            ▼
+    Multi-turn streaming agent conversation
+    (Sonnet 4.6, Exa tools, evidence-based)
+            │
+            ▼
+    Conversation saved to IndexedDB + server
+    Engagement events tracked
 ```
 
 ### Assessment Flow (Cold Traffic → Direct Purchase)
@@ -98,12 +108,17 @@ POST /api/assessment/generate { steps }
 /                           → redirect to /quiz (via next.config)
 /quiz                       → landing page (card grid of all variants + standalone chat link)
 /quiz/[variant]             → intro screen → quiz wizard (server component → client)
+                              Includes /quiz/best-life-care (38-question deep intake)
 /assessment                 → 5 static questions → AI assessment → purchase CTA
 /admin/assessments          → password-protected assessment submissions dashboard
+/admin/results              → password-protected admin dashboard (Quiz Results | Conversations tabs)
+                              Defensively excludes best-life-care submissions
+/admin/best-life-care       → password-protected dedicated dashboard for best-life-care submissions
+                              (same ADMIN_PASSWORD env var, isolated from /admin/results)
 /explore/[quizId]           → post-quiz agent chat (server component → client)
+                              Standard variants only — best-life-care has no chat handoff in v1
 /chat                       → redirect to latest thread or create new
 /chat/[threadId]            → standalone agent chat with sidebar (server → client)
-/admin/results              → password-protected admin dashboard (Quiz Results | Conversations tabs)
 ```
 
 ### Component Hierarchy
@@ -122,13 +137,17 @@ app/quiz/[variant]/twitter-image.tsx    Re-exports OG image for Twitter
        └─ QuizWizard                 Core engine — takes VariantConfig
             ├─ Intro screen (inline)  Headline + subtitle + Start button (before questions)
             ├─ QuestionStep          Dispatcher → routes to type-specific component
-            │   ├─ SliderQuestion        Range slider with value display
-            │   ├─ YesNoQuestion         Toggle + optional conditional follow-up
-            │   ├─ MultiSelectQuestion   Pill-style multi-select buttons
-            │   ├─ SingleSelectQuestion  Radio-style single select
-            │   └─ FreeTextQuestion      Textarea with hint
+            │   ├─ SliderQuestion           Range slider with value display
+            │   ├─ YesNoQuestion            Toggle (Yes/No) + optional 3rd "Unsure" button (allowUnsure)
+            │   │                           + optional conditional follow-up multi-select
+            │   ├─ MultiSelectQuestion      Pill-style multi-select buttons
+            │   ├─ SingleSelectQuestion     Radio-style single select
+            │   ├─ FreeTextQuestion         Textarea with hint
+            │   └─ YesNoWithTextQuestion    Toggle + conditional textarea (shown on Yes/Unsure, hidden on No)
             ├─ QuizLoading           SVG progress ring + pulsing dots
-            └─ QuizResult            Assessment display + gold booking CTA + PDF download (no explore link)
+            └─ QuizResult            Assessment display + gold booking CTA + PDF download
+                                     Variant-aware: tracking + PDF endpoint branch on variant.slug
+                                     (best-life-care → /api/bestlife/*, others → /api/quiz/*)
 
 app/assessment/page.tsx              Server component (metadata, passes bookingUrl from env)
   └─ AssessmentClient                "use client" orchestrator
@@ -156,14 +175,16 @@ A `useReducer`-based state machine driving 5 static preset questions with no API
 
 The central state machine. Driven entirely by `VariantConfig`:
 
-- **State:** `answers: Record<string, unknown>` initialized from config via `buildInitialAnswers()`
+- **State:** `answers: Record<string, unknown>` initialized from config via `buildInitialAnswers()` → `initialAnswerFor(q)` (per-type fresh value, also reused by the cascade-reset below)
 - **Intro:** `started` boolean — shows headline/subtitle/Start before questions begin
-- **Navigation:** step counter, total = `questions.length`; back from step 0 returns to intro. No name collection step.
-- **Validation:** per-type via `isQuestionValid()` — gates the Next button
-- **Submit:** POST `{ variant, answers }` to `/api/quiz` (name sent as empty string for backward compat)
+- **Navigation with hideWhen:** `findNextVisibleStep()` walks forward from the next step, auto-filling any hidden question with its `setAnswerTo` value, until landing on a visible one (or returns null to trigger submit). `findPrevVisibleStep()` walks backward past hidden questions. Cascading is automatic: an auto-filled value can satisfy the next question's hideWhen rule.
+- **Cascade-reset:** when the user manually changes an answer via `updateAnswer()`, downstream questions whose `hideWhen` references it are recursively reset to their initial values — prevents stale auto-fills from showing pre-selected on questions that just became visible.
+- **Validation:** per-type via `isQuestionValid()` — gates the Next button. Auto-filled hidden questions always pass (their `setAnswerTo` is schema-valid).
+- **Submit:** POST `{ variant, answers }` to `/api/quiz` (variant always sent — drives storage routing). On retry, sends `{ variant, submissionId }`. Name sent as empty string (collected later by intake agent if needed).
+- **Last-step detection:** `isLastVisibleStep` = `findNextVisibleStep() === null`. Drives the Next vs. "Get Your Assessment" button label.
 - **Retry:** if submission fails, stores `submissionId` in localStorage for retry
 - **Persistence:** variant-scoped localStorage (`prism-quiz:{variant}`)
-- **Dev tools:** "Fill Test" button generates random valid data per question type
+- **Dev tools:** "Fill Test" button generates random valid data per question type and lands on the last visible step
 - **Animation:** Framer Motion spring transitions + `useReducedMotion` support
 
 ### Styling
@@ -180,24 +201,37 @@ The central state machine. Driven entirely by `VariantConfig`:
 ### API Routes
 
 ```
-POST /api/quiz                    Quiz submission + LLM generation (rate-limited, cached)
-GET  /api/quiz/result?quizId=     Fetch stored result
-POST /api/quiz/pdf                Generate user-facing PDF
-POST /api/quiz/engagement         Engagement tracking (events + conversations)
+POST /api/quiz                            Quiz submission + LLM generation (rate-limited, cached)
+                                          Branches storage by variant: best-life-care → bestlife-*,
+                                          all others → standard quiz-*. Same prompt/tools/caching
+                                          for every variant.
+GET  /api/quiz/result?quizId=             Fetch stored result (standard quiz storage)
+POST /api/quiz/pdf                        Generate user-facing PDF (standard quiz storage)
+POST /api/quiz/engagement                 Engagement tracking (events + conversations) [standard]
 
-POST /api/assessment/generate     Assessment generation (Sonnet 4.6, single-turn, no tools, rate-limited, cached)
-POST /api/assessment/engagement   Assessment engagement tracking (booking clicks)
+POST /api/bestlife/result                 Fetch stored result (best-life-care storage)
+POST /api/bestlife/pdf                    Generate user-facing PDF (best-life-care storage)
+POST /api/bestlife/engagement             Engagement tracking [best-life-care]
+                                          (parallel routes exist because /api/quiz/{result,pdf,engagement}
+                                          only receive quizId — they can't know which keyspace to read)
 
-POST /api/agent                   Streaming agent conversation (Sonnet 4.6, dual-mode: quiz/standalone)
+POST /api/assessment/generate             Assessment generation (Sonnet 4.6, single-turn, no tools, cached)
+POST /api/assessment/engagement           Assessment engagement tracking (booking clicks)
 
-POST /api/chat/engagement         Standalone chat tracking (events + conversations)
+POST /api/agent                           Streaming agent conversation (Sonnet 4.6, dual-mode: quiz/standalone)
 
-GET  /api/admin/results           Paginated quiz submissions + engagement (password-protected)
-POST /api/admin/results/pdf       Generate admin PDF export
-POST /api/admin/results/summary   Generate AI conversation summary (Sonnet 4.6)
-GET  /api/admin/assessments       Paginated assessment submissions + engagement (password-protected)
-GET  /api/admin/chats             Standalone chat sessions (password-protected)
-POST /api/admin/chats/summary     Generate standalone chat summary (Sonnet 4.6)
+POST /api/chat/engagement                 Standalone chat tracking (events + conversations)
+
+GET  /api/admin/results                   Paginated quiz submissions + engagement (password-protected)
+                                          Defensively excludes best-life-care from listings + dropdown
+POST /api/admin/results/pdf               Admin PDF export (standard storage)
+POST /api/admin/results/summary           AI conversation summary (Sonnet 4.6) [standard]
+GET  /api/admin/assessments               Paginated assessment submissions + engagement (password-protected)
+GET  /api/admin/best-life-care            Paginated best-life-care submissions + engagement
+POST /api/admin/best-life-care/pdf        Admin PDF export (best-life-care storage)
+POST /api/admin/best-life-care/summary    AI conversation summary [best-life-care, parity for future use]
+GET  /api/admin/chats                     Standalone chat sessions (password-protected)
+POST /api/admin/chats/summary             Generate standalone chat summary (Sonnet 4.6)
 ```
 
 ### Prompt Architecture
@@ -316,6 +350,7 @@ Both store conversation transcripts server-side (serialized user/assistant text 
 
 **Dual-mode:** Upstash Redis in production, filesystem JSON in local dev.
 
+**Standard quiz storage** (12 variants share this namespace):
 ```
 Submissions:    quiz-submissions:{uuid}     → { id, createdAt, variant, name, answers }
 Results:        quiz-results:{uuid}         → { quizId, report, createdAt }
@@ -328,7 +363,18 @@ Index:          quiz-index                  → sorted set (timestamp → uuid) 
 
 On save, submissions are dual-indexed to both the global and per-variant sorted sets. Listing with a variant filter uses the per-variant index (Redis) or filters in-memory (filesystem).
 
-**Backward compatibility:** `normalizeRecord()` on every read converts pre-variant submissions to the new shape. No data migration needed. Old entries only exist in the global index.
+**Best-life-care storage** (fully isolated, same Redis instance, separate key prefix):
+```
+Submissions:    bestlife-submissions:{uuid}  → { id, createdAt, variant, name, answers }
+Results:        bestlife-results:{uuid}      → { id, report, createdAt }
+Engagement:     bestlife-engagement:{uuid}   → { quizId, events, conversation, summary, updatedAt }
+Index:          bestlife-index               → sorted set (timestamp → uuid)
+```
+Filesystem fallback: `storage/bestlife-{submissions,results,engagement}/{uuid}.json`.
+
+Same `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` env vars as the standard quiz — no new infrastructure required. The `/api/quiz` route branches storage by variant via a small `getStorage(variant)` helper. The `/admin/results` API defensively filters out `best-life-care` records (belt-and-suspenders since they should never land in `quiz-*` keys anyway).
+
+**Backward compatibility:** `normalizeRecord()` on every standard quiz read converts pre-variant submissions to the new shape. No data migration needed. Old entries only exist in the global index. The bestlife storage modules don't need this since the namespace is new.
 
 **Assessment storage** (separate Redis database via `UPSTASH_ASSESSMENT_REDIS_REST_URL`):
 ```
@@ -367,15 +413,22 @@ VariantConfig
 └── promptOverlay                    LLM condition-specific guidance
 ```
 
-### QuestionConfig — 5 types
+### QuestionConfig — 6 types
 
 | Type | UI Component | Initial State | Validation |
 |------|-------------|--------------|------------|
 | `slider` | Range slider + value display | `default` value | Always valid |
-| `yes_no` | Toggle (+ optional follow-up) | `null` or `{ answer: null, followUp: [] }` | Answer selected |
+| `yes_no` | 2-button toggle (+ optional 3rd "Unsure" via `allowUnsure`, + optional follow-up multi-select) | `null` or `{ answer: null, followUp: [] }` | Answer selected (`!== null`) |
 | `multi_select` | Pill buttons | `[]` | At least 1 (unless `required: false`) |
 | `single_select` | Radio-style buttons | `null` | Option selected |
 | `free_text` | Textarea | `""` | Non-empty (unless `required: false`) |
+| `yes_no_with_text` | Toggle (Yes/No, + optional Unsure) + conditional textarea | `{ answer: null, text: "" }` | Answer selected (`!== null`); text always optional |
+
+**Cross-cutting optional fields** (available on every type):
+
+- **`hideWhen?: { questionId, is, setAnswerTo }`** — declarative conditional skip. When the upstream question's answer matches `is` (string or string[]), the wizard skips this question and auto-fills its answer with `setAnswerTo`. Cascades naturally through the answer graph. Schema-, prompt-, and admin-compatible (auto-filled values render normally everywhere). Used in best-life-care to hide the wake-up cascade (Q3-Q5) when the user reports they don't wake up, and to hide Q11 when Q10 is N/A.
+
+- **`allowUnsure?: boolean`** *(yes_no and yes_no_with_text only)* — adds a third "Unsure" button between Yes and No. Answer type widens to `boolean | "unsure"`. For `yes_no_with_text`, the textarea shows on Yes OR Unsure (hidden only on No), since notes are useful when the user is uncertain. Used in best-life-care on Q23 (mental health history), Q24 (white tongue coating), Q28 (trigger foods).
 
 ### How config flows through the system
 
@@ -403,7 +456,9 @@ getAllVariants()          → VariantConfig[]
 getAllVariantSlugs()      → string[]
 ```
 
-12 variants registered: `root-cause`, `gut`, `fatigue`, `hormones-women`, `testosterone`, `sleep`, `thyroid`, `brain-fog`, `weight`, `skin`, `anxiety`, `allergies`.
+13 variants registered: `root-cause`, `gut`, `fatigue`, `hormones-women`, `testosterone`, `sleep`, `thyroid`, `brain-fog`, `weight`, `skin`, `anxiety`, `allergies`, `best-life-care`.
+
+`best-life-care` is structurally a registered variant (so it gets the same routing, SEO, prompt, tools, caching, and wizard engine as the others) but is treated as a separate pillar at the storage and admin layers. Its 38 questions include the engine's full feature set: contextual Likert options (per-question phrasing instead of generic "bothersome"), 4 `hideWhen` cascades for skip-and-fill flow, 3 `allowUnsure` opt-ins, 4 `yes_no_with_text` questions for yes/no-plus-elaboration prompts.
 
 ---
 
@@ -436,8 +491,10 @@ app/
 ├── admin/
 │   ├── results/
 │   │   └── page.tsx                    Quiz admin dashboard (Quiz Results | Conversations tabs)
-│   └── assessments/
-│       └── page.tsx                    Assessment admin dashboard (submissions + engagement)
+│   ├── assessments/
+│   │   └── page.tsx                    Assessment admin dashboard (submissions + engagement)
+│   └── best-life-care/
+│       └── page.tsx                    Dedicated best-life-care admin (no chat tab, no variant filter)
 └── api/
     ├── quiz/
     │   ├── route.ts                    Submission + LLM generation (with tools)
@@ -455,6 +512,10 @@ app/
     │   │   └── prompt.ts               Assessment prompt + 3 knowledge file loader
     │   └── engagement/
     │       └── route.ts                Assessment engagement tracking endpoint
+    ├── bestlife/                       Parallel routes for best-life-care (variant-naive endpoints)
+    │   ├── result/route.ts             Result fetch from bestlife-results storage
+    │   ├── pdf/route.ts                User-facing PDF (reuses shared template builder)
+    │   └── engagement/route.ts         Engagement tracking → bestlife-engagement
     ├── chat/
     │   └── engagement/route.ts         Standalone chat tracking endpoint
     ├── agent/
@@ -481,6 +542,10 @@ app/
         │       └── lib/adminPdfTemplate.ts
         ├── assessments/
         │   └── route.ts                Admin assessment listing (+ engagement join)
+        ├── best-life-care/             Dedicated admin endpoints for best-life-care
+        │   ├── route.ts                Listing (+ engagement join from bestlife storage)
+        │   ├── summary/route.ts        AI summary (parity with /admin/results — used if chat is added later)
+        │   └── pdf/route.ts            Admin PDF export (reuses shared adminPdfTemplate)
         └── chats/
             ├── route.ts                Admin standalone chat sessions listing
             └── summary/route.ts        AI standalone chat summary (Sonnet 4.6)
@@ -495,10 +560,11 @@ components/
 │   ├── question-step.tsx               Question type dispatcher
 │   └── questions/
 │       ├── slider-question.tsx
-│       ├── yes-no-question.tsx
+│       ├── yes-no-question.tsx                    (supports allowUnsure 3-button mode)
 │       ├── multi-select-question.tsx
 │       ├── single-select-question.tsx
 │       ├── free-text-question.tsx
+│       └── yes-no-with-text-question.tsx          (toggle + conditional textarea on Yes/Unsure)
 ├── ui/                                 Radix UI primitives + shadcn
 │   ├── button.tsx
 │   ├── input.tsx
@@ -540,8 +606,10 @@ lib/
 │   ├── schema.ts                       Dynamic Zod schema builder
 │   ├── formatAnswers.ts                Answer formatter for prompts
 │   └── variants/
-│       ├── index.ts                    Registry (12 variants)
-│       └── [12 variant configs]
+│       ├── index.ts                    Registry (13 variants)
+│       ├── best-life-care.ts           38-question deep intake (uses hideWhen, allowUnsure,
+│       │                               yes_no_with_text, contextual Likert options)
+│       └── [12 standard variant configs]
 ├── agent/
 │   └── thread-store.ts                 Post-quiz Dexie IndexedDB (keyed by quizId)
 ├── chat/
@@ -574,8 +642,10 @@ server/
 ├── quizSubmissions.ts                  Quiz submission storage (Redis + filesystem)
 ├── quizResults.ts                      Quiz result storage (Redis + filesystem)
 ├── quizEngagement.ts                   Quiz engagement storage (Redis + filesystem)
-├── assessmentResults.ts                Assessment storage — name, steps, report (separate Redis + filesystem)
-├── assessmentEngagement.ts             Assessment engagement — booking clicks (separate Redis + filesystem)
-├── chatSessions.ts                     Standalone chat storage (Redis + filesystem)
-└── assessmentResults.ts                Assessment result storage (separate Redis DB + filesystem)
+├── bestLifeSubmissions.ts              Best-life-care submission storage (bestlife-* keys, same Redis)
+├── bestLifeResults.ts                  Best-life-care result storage (bestlife-* keys)
+├── bestLifeEngagement.ts               Best-life-care engagement storage (bestlife-* keys)
+├── assessmentResults.ts                Assessment storage — name, steps, report (separate Redis DB + filesystem)
+├── assessmentEngagement.ts             Assessment engagement — booking clicks (separate Redis DB + filesystem)
+└── chatSessions.ts                     Standalone chat storage (Redis + filesystem)
 ```

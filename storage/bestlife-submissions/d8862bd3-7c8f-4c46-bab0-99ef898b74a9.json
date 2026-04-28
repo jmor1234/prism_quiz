@@ -1,0 +1,61 @@
+{
+  "id": "d8862bd3-7c8f-4c46-bab0-99ef898b74a9",
+  "createdAt": "2026-04-28T16:11:28.301Z",
+  "variant": "best-life-care",
+  "name": "",
+  "answers": {
+    "lowAppetite": "1",
+    "wakeUpDuringSleep": "4",
+    "wakeUpTiming": "both",
+    "wakeUpReasons": [
+      "eat",
+      "drink"
+    ],
+    "wakeUpHotSweaty": "yes",
+    "noDreams": "5",
+    "troubleFallingAsleep": "3",
+    "nonRestfulSleep": "3",
+    "coldExtremities": "4",
+    "menstrualCramps": "4",
+    "irregularMenstruationPMS": "2",
+    "chronicCongestionWithoutMucus": "2",
+    "mucusBuildup": "4",
+    "dentalProblems": "5",
+    "irritability": "3",
+    "brainFog": "4",
+    "afternoonCrash": "2",
+    "hyperAware": "1",
+    "heartPoundingBreathing": "3",
+    "anhedonia": "5",
+    "lowLibido": "4",
+    "skinIssues": "5",
+    "mentalHealthHistory": {
+      "answer": true,
+      "text": ""
+    },
+    "whiteTongueCoating": false,
+    "constipation": "2",
+    "bloating": "1",
+    "diarrhea": "4",
+    "triggerFoods": {
+      "answer": "unsure",
+      "text": ""
+    },
+    "acidReflux": "1",
+    "symptomsAfterEating": "4",
+    "loosePoorlyFormedStools": true,
+    "pastAttempts": {
+      "answer": false,
+      "text": ""
+    },
+    "diagnosedConditions": {
+      "answer": false,
+      "text": ""
+    },
+    "diet": "usually fasting through lunch than a sandwich, usually a meat and starch dinner. eat out on the weekend usually more.",
+    "lifestyle": "usually dont have time during the week, i get a little running outside in on the weekends when its not cold out in the winter.",
+    "topImprovementGoal": "just feel better and cleaner energy day to day",
+    "traceToEvent": "not exactly.",
+    "additionalContext": "i take magnesium and vitamin D"
+  }
+}

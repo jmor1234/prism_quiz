@@ -1,7 +1,7 @@
 // app/api/admin/results/pdf/lib/adminPdfTemplate.ts
 
 import { getVariant } from "@/lib/quiz/variants";
-import type { QuestionConfig, YesNoWithFollowUp } from "@/lib/quiz/types";
+import type { QuestionConfig, YesNoWithFollowUp, YesNoWithText } from "@/lib/quiz/types";
 import { isOtherValue, getOtherText } from "@/lib/quiz/otherOption";
 
 interface AdminPdfData {
@@ -74,9 +74,10 @@ function formatAnswerValue(q: QuestionConfig, value: unknown): string {
 
     case "yes_no": {
       if (q.conditionalFollowUp) {
-        const compound = typeof value === "boolean"
+        const compound = typeof value === "boolean" || value === "unsure"
           ? { answer: value, followUp: [] as string[] }
           : (value as YesNoWithFollowUp | undefined);
+        if (compound?.answer === "unsure") return "Unsure";
         if (!compound || compound.answer !== true) return "No";
         if (!compound.followUp?.length) return "Yes";
         const reasons = compound.followUp
@@ -87,6 +88,7 @@ function formatAnswerValue(q: QuestionConfig, value: unknown): string {
           .join(", ");
         return `Yes (${escapeHtml(reasons)})`;
       }
+      if (value === "unsure") return "Unsure";
       return value ? "Yes" : "No";
     }
 
@@ -114,18 +116,40 @@ function formatAnswerValue(q: QuestionConfig, value: unknown): string {
 
     case "free_text":
       return ""; // handled separately
+
+    case "yes_no_with_text": {
+      const compound = value as YesNoWithText | undefined;
+      if (compound?.answer === "unsure") return "Unsure";
+      if (compound?.answer === true) return "Yes";
+      if (compound?.answer === false) return "No";
+      return "—";
+    }
   }
 }
 
 function buildAnswersSection(questions: QuestionConfig[], answers: Record<string, unknown>): string {
   const tableQuestions = questions.filter((q) => q.type !== "free_text");
   const freeTextQuestions = questions.filter((q) => q.type === "free_text");
+  const yesNoTextQuestions = questions.filter((q) => q.type === "yes_no_with_text");
 
   const tableRows = tableQuestions
     .map((q) => {
       const label = q.promptLabel ?? q.question;
       return `<tr><th>${escapeHtml(label)}</th><td>${formatAnswerValue(q, answers[q.id])}</td></tr>`;
     })
+    .join("\n");
+
+  const yesNoTextSections = yesNoTextQuestions
+    .map((q) => {
+      const compound = answers[q.id] as YesNoWithText | undefined;
+      const text = (compound?.text ?? "").trim();
+      const showText =
+        compound?.answer === true || compound?.answer === "unsure";
+      if (!showText || !text) return "";
+      const label = q.promptLabel ?? q.question;
+      return `<h3>${escapeHtml(label)} — Details</h3>\n<div class="freetext-answer">${escapeHtml(text)}</div>`;
+    })
+    .filter(Boolean)
     .join("\n");
 
   const freeTextSections = freeTextQuestions
@@ -138,6 +162,7 @@ function buildAnswersSection(questions: QuestionConfig[], answers: Record<string
   return `
     <h2>Quiz Responses</h2>
     <table class="answers-table"><tbody>${tableRows}</tbody></table>
+    ${yesNoTextSections}
     ${freeTextSections}
   `;
 }

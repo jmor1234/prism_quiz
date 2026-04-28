@@ -5,6 +5,7 @@ import type {
   VariantConfig,
   QuizAnswers,
   YesNoWithFollowUp,
+  YesNoWithText,
 } from "./types";
 import { isOtherValue, getOtherText } from "./otherOption";
 
@@ -33,6 +34,7 @@ function formatSingleAnswer(q: QuestionConfig, value: unknown): string {
     case "yes_no": {
       if (q.conditionalFollowUp) {
         const compound = value as YesNoWithFollowUp;
+        if (compound.answer === "unsure") return `**${label}:** Unsure`;
         if (compound.answer) {
           const followUp =
             compound.followUp && compound.followUp.length > 0
@@ -49,6 +51,7 @@ function formatSingleAnswer(q: QuestionConfig, value: unknown): string {
         }
         return `**${label}:** No`;
       }
+      if (value === "unsure") return `**${label}:** Unsure`;
       return `**${label}:** ${value ? "Yes" : "No"}`;
     }
 
@@ -78,6 +81,18 @@ function formatSingleAnswer(q: QuestionConfig, value: unknown): string {
 
     case "free_text":
       return `**${label}:**\n${value}`;
+
+    case "yes_no_with_text": {
+      const compound = value as YesNoWithText;
+      const text = (compound?.text ?? "").trim();
+      if (compound?.answer === true) {
+        return text ? `**${label}:** Yes\n${text}` : `**${label}:** Yes`;
+      }
+      if (compound?.answer === "unsure") {
+        return text ? `**${label}:** Unsure\n${text}` : `**${label}:** Unsure`;
+      }
+      return `**${label}:** No`;
+    }
   }
 }
 

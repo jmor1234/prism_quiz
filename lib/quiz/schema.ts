@@ -9,17 +9,21 @@ function questionToZodField(q: QuestionConfig): z.ZodTypeAny {
     case "slider":
       return z.number().min(q.min).max(q.max);
 
-    case "yes_no":
+    case "yes_no": {
+      const answerSchema = q.allowUnsure
+        ? z.union([z.boolean(), z.literal("unsure")])
+        : z.boolean();
       if (q.conditionalFollowUp) {
         const validValues = q.conditionalFollowUp.options.map((o) => o.value);
         return z.object({
-          answer: z.boolean(),
+          answer: answerSchema,
           followUp: z
             .array(z.enum(validValues as [string, ...string[]]))
             .optional(),
         });
       }
-      return z.boolean();
+      return answerSchema;
+    }
 
     case "multi_select": {
       const validValues = q.options.map((o) => o.value);
@@ -46,6 +50,14 @@ function questionToZodField(q: QuestionConfig): z.ZodTypeAny {
 
     case "free_text":
       return q.required !== false ? z.string().min(1) : z.string();
+
+    case "yes_no_with_text":
+      return z.object({
+        answer: q.allowUnsure
+          ? z.union([z.boolean(), z.literal("unsure")])
+          : z.boolean(),
+        text: z.string().max(2000),
+      });
   }
 }
 

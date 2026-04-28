@@ -8,6 +8,21 @@ export interface OptionConfig {
   promptLabel?: string; // used in formatAnswers for prompt (defaults to label.toLowerCase())
 }
 
+// --- Conditional display ---
+
+// When set, the question is skipped in the wizard if the referenced
+// upstream question's answer matches one of the listed values. The wizard
+// auto-fills this question's answer with `setAnswerTo` when hidden, so
+// schema validation and prompt formatting continue to work unchanged.
+//
+// The referenced question MUST appear earlier in `variant.questions` than
+// the question carrying this rule (forward references will never trigger).
+export interface HideWhenConfig {
+  questionId: string;
+  is: string | string[];
+  setAnswerTo: unknown;
+}
+
 // --- Question type configs ---
 
 export interface SliderQuestionConfig {
@@ -16,6 +31,7 @@ export interface SliderQuestionConfig {
   question: string;
   hint?: string;
   promptLabel?: string;
+  hideWhen?: HideWhenConfig;
   min: number;
   max: number;
   default: number;
@@ -30,6 +46,10 @@ export interface YesNoQuestionConfig {
   question: string;
   hint?: string;
   promptLabel?: string;
+  hideWhen?: HideWhenConfig;
+  // When true, renders a third "Unsure" button alongside Yes/No. The answer
+  // value widens to include the literal "unsure".
+  allowUnsure?: boolean;
   conditionalFollowUp?: {
     prompt: string;
     options: OptionConfig[];
@@ -42,6 +62,7 @@ export interface MultiSelectQuestionConfig {
   question: string;
   hint?: string;
   promptLabel?: string;
+  hideWhen?: HideWhenConfig;
   options: OptionConfig[];
   required?: boolean; // default true
   allowOther?: boolean; // default true — set false to disable
@@ -53,6 +74,7 @@ export interface SingleSelectQuestionConfig {
   question: string;
   hint?: string;
   promptLabel?: string;
+  hideWhen?: HideWhenConfig;
   options: OptionConfig[];
   allowOther?: boolean; // default true — set false to disable
 }
@@ -63,9 +85,26 @@ export interface FreeTextQuestionConfig {
   question: string;
   hint?: string;
   promptLabel?: string;
+  hideWhen?: HideWhenConfig;
   placeholder: string;
   rows?: number; // default 4
   required?: boolean; // default true
+}
+
+export interface YesNoWithTextQuestionConfig {
+  type: "yes_no_with_text";
+  id: string;
+  question: string;
+  hint?: string;
+  promptLabel?: string;
+  hideWhen?: HideWhenConfig;
+  // When true, renders a third "Unsure" button. Textarea remains visible
+  // for both Yes and Unsure (hidden only on No), since notes are useful
+  // when the user picks "Unsure" too.
+  allowUnsure?: boolean;
+  textPrompt?: string; // hint shown above the textarea (e.g., "If yes, please list…")
+  placeholder?: string;
+  rows?: number; // default 3
 }
 
 export type QuestionConfig =
@@ -73,7 +112,8 @@ export type QuestionConfig =
   | YesNoQuestionConfig
   | MultiSelectQuestionConfig
   | SingleSelectQuestionConfig
-  | FreeTextQuestionConfig;
+  | FreeTextQuestionConfig
+  | YesNoWithTextQuestionConfig;
 
 // --- Variant config ---
 
@@ -104,9 +144,18 @@ export interface VariantConfig {
 
 // --- Answer types ---
 
+// Tri-state for yes_no questions that opt in to allowUnsure.
+// Two-state questions only ever produce true/false/null.
+export type YesNoAnswer = boolean | "unsure" | null;
+
 export type YesNoWithFollowUp = {
-  answer: boolean | null;
+  answer: YesNoAnswer;
   followUp: string[];
+};
+
+export type YesNoWithText = {
+  answer: YesNoAnswer;
+  text: string;
 };
 
 export type QuizAnswers = Record<string, unknown>;

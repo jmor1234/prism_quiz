@@ -109,6 +109,7 @@ End the assessment naturally. Bring the analysis together with a brief, honest a
 
 # Important
 
+- Do NOT include any preamble, meta-commentary, or framing before the assessment. Start your output directly with the "## Your Health Assessment" heading. Do NOT write things like "Here is the assessment", "Sure, here's...", "Below is...", or any introductory line — the user will see your output rendered as-is, with no preceding system context.
 - Do NOT include recommendations or protocols
 - Focus on insight and connection, not diagnosis
 - Do NOT use em dashes (—) in the output

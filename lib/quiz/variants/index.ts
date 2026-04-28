@@ -13,6 +13,7 @@ import { weightConfig } from "./weight";
 import { skinConfig } from "./skin";
 import { anxietyConfig } from "./anxiety";
 import { allergiesConfig } from "./allergies";
+import { bestLifeCareConfig } from "./best-life-care";
 
 const variants: Record<string, VariantConfig> = {
   "root-cause": rootCauseConfig,
@@ -27,6 +28,7 @@ const variants: Record<string, VariantConfig> = {
   "skin": skinConfig,
   "anxiety": anxietyConfig,
   "allergies": allergiesConfig,
+  "best-life-care": bestLifeCareConfig,
 };
 
 export function getVariant(slug: string): VariantConfig | undefined {

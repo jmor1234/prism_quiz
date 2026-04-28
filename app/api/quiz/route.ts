@@ -8,9 +8,51 @@ import { getVariant } from "@/lib/quiz/variants";
 import { buildSubmissionSchema } from "@/lib/quiz/schema";
 import { upsertQuizSubmission, getQuizSubmission } from "@/server/quizSubmissions";
 import { saveQuizResult, getQuizResult } from "@/server/quizResults";
+import {
+  upsertBestLifeSubmission,
+  getBestLifeSubmission,
+} from "@/server/bestLifeSubmissions";
+import {
+  saveBestLifeResult,
+  getBestLifeResult,
+} from "@/server/bestLifeResults";
+import type { QuizAnswers, QuizSubmissionRecord } from "@/lib/quiz/types";
 import { buildQuizPrompt } from "./systemPrompt";
 import { requestRateLimiter, extractIp } from "../agent/lib/rateLimit";
 import { CacheManager } from "../agent/lib/cacheManager";
+
+// Storage resolver — best-life-care has its own fully-isolated namespace.
+// All other variants share the standard quiz storage.
+const BEST_LIFE_SLUG = "best-life-care";
+
+interface QuizStorage {
+  upsert: (args: {
+    variant: string;
+    name: string;
+    answers: QuizAnswers;
+  }) => Promise<QuizSubmissionRecord>;
+  getSubmission: (id: string) => Promise<QuizSubmissionRecord | null>;
+  getResult: (id: string) => Promise<{ report: string } | null>;
+  saveResult: (args: { id: string; report: string }) => Promise<unknown>;
+}
+
+function getStorage(variant: string): QuizStorage {
+  if (variant === BEST_LIFE_SLUG) {
+    return {
+      upsert: ({ name, answers }) =>
+        upsertBestLifeSubmission({ name, answers }),
+      getSubmission: getBestLifeSubmission,
+      getResult: getBestLifeResult,
+      saveResult: saveBestLifeResult,
+    };
+  }
+  return {
+    upsert: upsertQuizSubmission,
+    getSubmission: getQuizSubmission,
+    getResult: getQuizResult,
+    saveResult: saveQuizResult,
+  };
+}
 
 // 120 seconds — tool calls (evidence retrieval) add latency
 export const maxDuration = 120;
@@ -64,6 +106,19 @@ export async function POST(req: Request) {
   const existingSubmissionId =
     typeof body.submissionId === "string" ? body.submissionId : undefined;
 
+  // Variant must be present in every payload (new or retry) so we can route
+  // to the correct storage namespace before any reads.
+  const variantSlug =
+    typeof body.variant === "string" ? body.variant : undefined;
+  if (!variantSlug) {
+    return new Response(
+      JSON.stringify({ error: "Missing variant field" }),
+      { status: 400, headers: { "Content-Type": "application/json" } }
+    );
+  }
+
+  const storage = getStorage(variantSlug);
+
   try {
     let variant: string;
     let name: string;
@@ -72,8 +127,8 @@ export async function POST(req: Request) {
     if (existingSubmissionId) {
       // Retry case: fetch submission and result in parallel
       const [existing, existingResult] = await Promise.all([
-        getQuizSubmission(existingSubmissionId),
-        getQuizResult(existingSubmissionId),
+        storage.getSubmission(existingSubmissionId),
+        storage.getResult(existingSubmissionId),
       ]);
 
       if (!existing) {
@@ -106,16 +161,7 @@ export async function POST(req: Request) {
         `[Quiz] Retrying generation for existing submission: ${recordId}`
       );
     } else {
-      // New submission: resolve variant
-      const variantSlug =
-        typeof body.variant === "string" ? body.variant : undefined;
-      if (!variantSlug) {
-        return new Response(
-          JSON.stringify({ error: "Missing variant field" }),
-          { status: 400, headers: { "Content-Type": "application/json" } }
-        );
-      }
-
+      // New submission: resolve variant config + validate
       const variantConfig = getVariant(variantSlug);
       if (!variantConfig) {
         return new Response(
@@ -142,10 +188,10 @@ export async function POST(req: Request) {
       name = parsed.data.name;
       answers = parsed.data.answers;
 
-      // Save new submission
-      const record = await upsertQuizSubmission({ variant, name, answers });
+      // Save new submission to the correct storage namespace
+      const record = await storage.upsert({ variant, name, answers });
       recordId = record.id;
-      console.log(`[Quiz] New submission saved: ${recordId}`);
+      console.log(`[Quiz] New submission saved: ${recordId} (variant: ${variant})`);
     }
 
     // Resolve variant config for prompt building
@@ -243,8 +289,8 @@ export async function POST(req: Request) {
       `[Quiz] Cost: in: $${(costRead + costWrite + costNoCache).toFixed(4)} · out: $${costOutput.toFixed(4)} · total: $${costTotal.toFixed(4)} · saved: $${savings.toFixed(4)}`
     );
 
-    // Save result
-    await saveQuizResult({
+    // Save result to the correct storage namespace
+    await storage.saveResult({
       id: recordId!,
       report: result.text,
     });

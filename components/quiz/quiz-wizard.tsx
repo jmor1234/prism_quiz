@@ -21,6 +21,7 @@ import type {
   QuestionConfig,
   QuizAnswers,
   YesNoWithFollowUp,
+  YesNoWithText,
 } from "@/lib/quiz/types";
 import { isOtherValue, getOtherText, buildOtherValue } from "@/lib/quiz/otherOption";
 
@@ -29,30 +30,82 @@ import { isOtherValue, getOtherText, buildOtherValue } from "@/lib/quiz/otherOpt
 type SubmitStatus = "idle" | "submitting" | "success" | "error";
 type Direction = "forward" | "back";
 
+// Per-type "fresh" answer value. Used both by buildInitialAnswers (wizard
+// boot) and by updateAnswer's downstream-reset cascade (so changing an
+// upstream answer wipes any stale auto-fills on questions that depend on it).
+function initialAnswerFor(q: QuestionConfig): unknown {
+  switch (q.type) {
+    case "slider":
+      return q.default;
+    case "yes_no":
+      return q.conditionalFollowUp
+        ? { answer: null, followUp: [] }
+        : null;
+    case "multi_select":
+      return [];
+    case "single_select":
+      return null;
+    case "free_text":
+      return "";
+    case "yes_no_with_text":
+      return { answer: null, text: "" };
+  }
+}
+
 function buildInitialAnswers(config: VariantConfig): QuizAnswers {
   const answers: QuizAnswers = {};
   for (const q of config.questions) {
-    switch (q.type) {
-      case "slider":
-        answers[q.id] = q.default;
-        break;
-      case "yes_no":
-        answers[q.id] = q.conditionalFollowUp
-          ? { answer: null, followUp: [] }
-          : null;
-        break;
-      case "multi_select":
-        answers[q.id] = [];
-        break;
-      case "single_select":
-        answers[q.id] = null;
-        break;
-      case "free_text":
-        answers[q.id] = "";
-        break;
-    }
+    answers[q.id] = initialAnswerFor(q);
   }
   return answers;
+}
+
+// True if `q`'s `hideWhen` rule matches the current answers, i.e. the
+// question should be skipped in the wizard. Returns false when the upstream
+// question's answer is undefined (safe default — keeps the question visible).
+function isHiddenAt(q: QuestionConfig, currentAnswers: QuizAnswers): boolean {
+  if (!q.hideWhen) return false;
+  const triggerVal = currentAnswers[q.hideWhen.questionId];
+  if (triggerVal === undefined) return false;
+  const triggers = Array.isArray(q.hideWhen.is) ? q.hideWhen.is : [q.hideWhen.is];
+  return triggers.includes(triggerVal as string);
+}
+
+// Walk forward from `fromStep`, auto-filling any hidden question's answer
+// with its `setAnswerTo` value, until we land on a visible question.
+// Cascades naturally: an auto-filled value can satisfy the next question's
+// hideWhen rule, hiding it too. `step` is null when there are no more
+// visible questions ahead (caller should submit using `updatedAnswers`).
+// `updatedAnswers` is always returned so the caller can persist any
+// auto-fills made along the way, even when there's no visible step to land on.
+function findNextVisibleStep(
+  questions: QuestionConfig[],
+  fromStep: number,
+  answers: QuizAnswers,
+): { step: number | null; updatedAnswers: QuizAnswers } {
+  let s = fromStep;
+  let updated = answers;
+  while (s < questions.length) {
+    const q = questions[s];
+    if (!isHiddenAt(q, updated)) {
+      return { step: s, updatedAnswers: updated };
+    }
+    updated = { ...updated, [q.id]: q.hideWhen!.setAnswerTo };
+    s++;
+  }
+  return { step: null, updatedAnswers: updated };
+}
+
+// Walk backward from `fromStep` past any hidden questions. Returns the
+// first visible step, or -1 if none (caller should return to the intro).
+function findPrevVisibleStep(
+  questions: QuestionConfig[],
+  fromStep: number,
+  answers: QuizAnswers,
+): number {
+  let s = fromStep;
+  while (s >= 0 && isHiddenAt(questions[s], answers)) s--;
+  return s;
 }
 
 function isQuestionValid(q: QuestionConfig, value: unknown): boolean {
@@ -83,6 +136,8 @@ function isQuestionValid(q: QuestionConfig, value: unknown): boolean {
       return q.required !== false
         ? (value as string).trim().length > 0
         : true;
+    case "yes_no_with_text":
+      return (value as YesNoWithText)?.answer !== null;
   }
 }
 
@@ -185,15 +240,18 @@ function generateTestData(config: VariantConfig): {
           Math.floor(Math.random() * (q.max - q.min + 1)) + q.min;
         break;
       case "yes_no": {
-        const answer = randomBool();
+        // Occasionally produce "unsure" when the question allows it
+        const useUnsure = q.allowUnsure && Math.random() < 0.2;
+        const answer: boolean | "unsure" = useUnsure ? "unsure" : randomBool();
         if (q.conditionalFollowUp) {
           answers[q.id] = {
             answer,
-            followUp: answer
-              ? q.conditionalFollowUp.options
-                  .filter(() => Math.random() > 0.5)
-                  .map((o) => o.value)
-              : [],
+            followUp:
+              answer === true
+                ? q.conditionalFollowUp.options
+                    .filter(() => Math.random() > 0.5)
+                    .map((o) => o.value)
+                : [],
           };
         } else {
           answers[q.id] = answer;
@@ -232,6 +290,25 @@ function generateTestData(config: VariantConfig): {
           answers[q.id] = `[Test response for: ${q.question}]`;
         }
         break;
+      case "yes_no_with_text": {
+        const useUnsure = q.allowUnsure && Math.random() < 0.2;
+        const answer: boolean | "unsure" = useUnsure ? "unsure" : randomBool();
+        const sampleTexts = [
+          "Diagnosed with anxiety in my early 20s. Currently managed with talk therapy.",
+          "Dairy and gluten consistently make symptoms worse within an hour of eating.",
+          "Tried magnesium glycinate 400mg nightly for 3 months — moderate help with sleep.",
+          "Hypothyroidism, currently on 50mcg levothyroxine.",
+          "I think dairy might be a trigger but I'm not 100% sure.",
+        ];
+        // Text useful on Yes or Unsure; not on No
+        const showText =
+          (answer === true || answer === "unsure") && Math.random() > 0.3;
+        answers[q.id] = {
+          answer,
+          text: showText ? randomFrom(sampleTexts) : "",
+        };
+        break;
+      }
     }
   }
 
@@ -288,40 +365,62 @@ export function QuizWizard({ config }: { config: VariantConfig }) {
     setIsHydrated(true);
   }, [config.slug, totalSteps]);
 
-  // Navigation
+  // Navigation — skips any questions whose hideWhen rule currently matches.
+  // Forward navigation also auto-fills skipped questions with their
+  // setAnswerTo value so schema validation and the LLM prompt see a complete
+  // set of answers, including when the user submits from the last visible
+  // step (any trailing hidden questions still get their auto-fills persisted).
   function goNext() {
-    if (step < totalSteps - 1) {
+    const next = findNextVisibleStep(config.questions, step + 1, answers);
+    if (next.updatedAnswers !== answers) setAnswers(next.updatedAnswers);
+    if (next.step !== null) {
       setDirection("forward");
-      setStep((s) => s + 1);
+      setStep(next.step);
+    } else {
+      // No visible questions left — submit. Pass the freshly auto-filled
+      // answers explicitly because state hasn't flushed yet (handleSubmit
+      // would otherwise close over the pre-update `answers`).
+      handleSubmit(next.updatedAnswers);
     }
   }
 
   function goBack() {
-    if (step > 0) {
+    const prev = findPrevVisibleStep(config.questions, step - 1, answers);
+    if (prev >= 0) {
       setDirection("back");
-      setStep((s) => s - 1);
+      setStep(prev);
     } else {
       setStarted(false);
     }
   }
 
   // Validation
-  const isLastStep = step === totalSteps - 1;
+  // "Last visible step" = no more visible questions ahead. Drives the Next
+  // vs. Get-Your-Assessment button label and which handler is called.
+  const isLastVisibleStep =
+    findNextVisibleStep(config.questions, step + 1, answers).step === null;
   const isCurrentStepValid = isQuestionValid(config.questions[step], answers[config.questions[step].id]);
   const progressPercent = ((step + 1) / totalSteps) * 100;
 
   // Submit handler
-  const handleSubmit = useCallback(async () => {
+  // `answersToSubmit` overrides the closed-over `answers` — used by goNext
+  // when it auto-fills trailing hidden questions on the way to submitting,
+  // since React's setAnswers hasn't flushed by the time we call this.
+  const handleSubmit = useCallback(async (answersToSubmit?: QuizAnswers) => {
     setStatus("submitting");
     setError(null);
 
-    // Build payload — if retrying, just send submissionId
+    const submitAnswers = answersToSubmit ?? answers;
+
+    // Build payload — variant is always required (drives storage routing).
+    // On retry we additionally send the submissionId so the route fetches
+    // the existing answers instead of re-validating a fresh payload.
     const payload = pendingSubmissionId
-      ? { submissionId: pendingSubmissionId }
+      ? { variant: config.slug, submissionId: pendingSubmissionId }
       : {
           variant: config.slug,
           name: "",
-          answers,
+          answers: submitAnswers,
         };
 
     try {
@@ -363,16 +462,42 @@ export function QuizWizard({ config }: { config: VariantConfig }) {
     }
   }, [pendingSubmissionId, config.slug, answers]);
 
-  // Update a single answer
+  // Update a single answer (called only from the UI — auto-fills go through
+  // setAnswers directly).
+  //
+  // When the user changes an upstream answer, recursively reset any
+  // downstream questions whose hideWhen rule (transitively) references this
+  // one. Their previous values may be stale auto-fills from when the
+  // upstream answer was different; resetting lets the next forward pass
+  // either re-auto-fill (if still hidden) or present a fresh question (if
+  // newly visible).
   function updateAnswer(questionId: string, value: unknown) {
-    setAnswers((prev) => ({ ...prev, [questionId]: value }));
+    setAnswers((prev) => {
+      const next = { ...prev, [questionId]: value };
+      const toCheck = [questionId];
+      const seen = new Set<string>([questionId]);
+      while (toCheck.length > 0) {
+        const upstream = toCheck.shift()!;
+        for (const q of config.questions) {
+          if (q.hideWhen?.questionId === upstream && !seen.has(q.id)) {
+            next[q.id] = initialAnswerFor(q);
+            seen.add(q.id);
+            toCheck.push(q.id);
+          }
+        }
+      }
+      return next;
+    });
   }
 
-  // Fill test data (dev only)
+  // Fill test data (dev only). Lands on the last *visible* step in case
+  // the generated answers happen to satisfy any hideWhen rules.
   function fillTestData() {
     const testData = generateTestData(config);
     setAnswers(testData.answers);
-    setStep(totalSteps - 1);
+    let s = totalSteps - 1;
+    while (s > 0 && isHiddenAt(config.questions[s], testData.answers)) s--;
+    setStep(s);
   }
 
   // --- Render ---
@@ -507,7 +632,7 @@ export function QuizWizard({ config }: { config: VariantConfig }) {
               </Button>
             )}
             <Button
-              onClick={isLastStep ? handleSubmit : goNext}
+              onClick={isLastVisibleStep ? () => handleSubmit() : goNext}
               disabled={!isCurrentStepValid}
               className={cn(
                 "flex-1 h-14 text-base font-semibold rounded-xl shadow-lg transition-all duration-200",
@@ -521,7 +646,7 @@ export function QuizWizard({ config }: { config: VariantConfig }) {
                   <RefreshCw className="h-5 w-5 mr-2" />
                   Retry
                 </>
-              ) : isLastStep ? (
+              ) : isLastVisibleStep ? (
                 "Get Your Assessment"
               ) : (
                 "Next"
