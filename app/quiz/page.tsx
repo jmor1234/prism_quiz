@@ -21,7 +21,7 @@ export const metadata: Metadata = {
 };
 
 export default function QuizIndexPage() {
-  const variants = getAllVariants();
+  const variants = getAllVariants().filter((v) => !v.hidden);
 
   return (
     <div className="min-h-screen quiz-background relative overflow-hidden">

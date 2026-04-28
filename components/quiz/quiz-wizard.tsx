@@ -574,9 +574,13 @@ export function QuizWizard({ config }: { config: VariantConfig }) {
             />
           </div>
           <div className="flex justify-between items-center">
-            <span className="text-sm text-muted-foreground">
-              {step + 1} of {totalSteps}
-            </span>
+            {config.slug === "best-life-care" ? (
+              <span />
+            ) : (
+              <span className="text-sm text-muted-foreground">
+                {step + 1} of {totalSteps}
+              </span>
+            )}
             <div className="flex items-center gap-2">
               {process.env.NODE_ENV === "development" && (
                 <Button

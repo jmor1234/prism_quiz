@@ -140,6 +140,10 @@ export interface VariantConfig {
 
   // Prompt
   promptOverlay: string; // variant-specific guidance injected into system prompt
+
+  // When true, omit from public /quiz index and admin variant filters.
+  // The variant route (/quiz/{slug}) still works; this only affects listings.
+  hidden?: boolean;
 }
 
 // --- Answer types ---

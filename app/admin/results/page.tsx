@@ -1083,7 +1083,7 @@ export default function AdminResultsPage() {
           >
             <option value="">All Variants</option>
             {getAllVariants()
-              .filter((v) => v.slug !== "best-life-care")
+              .filter((v) => !v.hidden)
               .map((v) => (
                 <option key={v.slug} value={v.slug}>{v.name}</option>
               ))}

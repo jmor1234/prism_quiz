@@ -583,4 +583,5 @@ export const bestLifeCareConfig: VariantConfig = {
   ctaUrl: "https://prism.miami/consultation",
 
   promptOverlay: "",
+  hidden: true,
 };
