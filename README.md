@@ -8,15 +8,29 @@ This README covers what the system is, how a user moves through it, and how the 
 
 ## The three pillars
 
-The same core engine — Next.js routes, prompt scaffolding, Exa tools, three-tier caching — serves three distinct audiences:
+The same core engine — Next.js routes, prompt scaffolding, Exa tools, three-tier caching — serves three distinct audiences with three distinct strategies:
 
-| Pillar | Route | Audience | Depth | Storage |
-|---|---|---|---|---|
-| **Quiz** | `/quiz/{variant}` | Warm — already aware of Prism | 11 questions, multi-step agent, optional follow-up chat | `quiz-*` (Upstash) |
-| **Assessment** | `/assessment` | Cold — paid-ad traffic | 5 static questions, single-turn LLM, direct purchase CTA | `assessment-*` (separate Redis DB) |
-| **Best-life-care** | `/quiz/best-life-care` | B2B intake | 38 questions, no chat handoff in v1 | `bestlife-*` (same Redis, isolated keys) |
+| Pillar | Route | Audience | Storage |
+|---|---|---|---|
+| **Standard quizzes** | `/quiz/{variant}` (12 variants) | Warm — already in Prism's orbit | `quiz-*` (Upstash) |
+| **Cold-traffic assessment** | `/assessment` | Cold — first touch from paid ads | `assessment-*` (separate Redis DB) |
+| **Best-life-care intake** | `/quiz/best-life-care` (hidden) | B2B partner client base | `bestlife-*` (same Redis, isolated keys) |
 
-Twelve standard quiz variants exist (root-cause, gut, fatigue, hormones-women, testosterone, sleep, thyroid, brain-fog, weight, skin, anxiety, allergies). Best-life-care is structurally a thirteenth variant but `hidden: true` keeps it off the public listing — it reaches the same engine via direct URL.
+### Standard quizzes — value-first lead gen for a warm audience
+
+Twelve condition-specific variants (root-cause, gut, fatigue, hormones-women, testosterone, sleep, thyroid, brain-fog, weight, skin, anxiety, allergies) for people who already know Prism — typically through founder Dalton's "Analyze and Optimize" content. Strategy: **lead with substantive value**, not a sales pitch. The 11-question intake produces a research-cited assessment that genuinely educates. From there, the user can optionally continue into a follow-up chat that doubles as a personalized consultation: an agent that is both a bioenergetic expert *and* a contextualizer of Prism's services. As patterns surface in the conversation, the agent ties what it's learned about *this specific person* back to which parts of Prism's process and team would be most relevant for them. Booking emerges from understanding, never from pressure.
+
+### Cold-traffic assessment — fast, direct, conversion-focused
+
+A separate flow for paid-ad traffic that doesn't know Prism yet. Strategy: **quick, heavy-hitting value upfront** — no patience window for a 38-question intake or an open-ended chat. Five static questions, single-turn LLM (no tools, no thinking, ~10s generation), and a 2-paragraph assessment built around a "felt-toll → can't-solve-alone → act" arc. Tough-love tone — honest about severity, not hype. Single direct purchase CTA, UTM-tagged. Different reporting and audience profile, so it lives in a separate Redis DB entirely.
+
+### Best-life-care intake — deep B2B partner intake
+
+A 38-question deep health intake built specifically for one of Prism's B2B partners. Hidden from the public `/quiz` listing — only the partner's users reach it via direct URL. Reuses the entire core engine (same model, prompt scaffolding, Exa tools, caching) but with isolated storage and a dedicated admin dashboard at `/admin/best-life-care` so partner submissions never mix with Prism's own lead-gen funnel. No chat handoff in v1 — the partner's flow ends at the assessment + booking CTA.
+
+### Plus: standalone chat as a side door
+
+Alongside the three pillars, the same chat agent is reachable directly at `/chat/{threadId}` — also surfaced as a "Not sure where to start? Chat with our health agent directly" card at the top of the `/quiz` index. Strategy: **lowest-friction entry point** for visitors who don't fit any of the 12 condition-specific quizzes, don't want to commit to a multi-step intake, or just want to ask a question directly. It's the same agent that powers the post-quiz follow-up — same dual job (bioenergetic expert + personalized Prism services contextualizer), same Exa evidence tools — but with a *discovery* posture instead of *deepening*: it starts cold, prompts the user to share what brought them here, and builds understanding from there. A sidebar manages multiple threads so users can keep ongoing conversations. Storage lands in `chat-sessions:{threadId}` and surfaces in `/admin/results` under the Conversations tab. Strategically, it captures intent that would otherwise bounce off the quiz card grid.
 
 ---
 
@@ -28,8 +42,8 @@ Walking the warm-audience path end-to-end:
 2. **Wizard** ([`components/quiz/quiz-wizard.tsx`](./components/quiz/quiz-wizard.tsx)) walks the user through one question per screen. Step transitions use `react-transition-group` + CSS — deliberately not Framer Motion on the hot path (see [`docs/animation-gpu-pitfalls.md`](./docs/animation-gpu-pitfalls.md) for why). State persists to variant-scoped `localStorage` for resume-on-refresh.
 3. **Submit** posts `{ variant, answers }` to [`app/api/quiz/route.ts`](./app/api/quiz/route.ts). The route resolves the storage namespace by variant, validates against a Zod schema generated from the config, saves the submission, then calls Claude Sonnet 4.6 with the Exa search/read tools.
 4. **Generate.** The agent can search literature, read sources, reason, search again — up to 10 steps — before writing the final assessment with inline citations.
-5. **Result** renders in [`components/quiz/quiz-result.tsx`](./components/quiz/quiz-result.tsx). Two CTAs: download a PDF or book a call. Both fire engagement events.
-6. **(Optional) Continue.** Standard variants link to `/explore/{quizId}` ([`app/explore/[quizId]/agent-page.tsx`](./app/explore/[quizId]/agent-page.tsx)) — a streaming agent conversation that already knows the user from their quiz answers. Best-life-care doesn't expose this in v1.
+5. **Result** renders in [`components/quiz/quiz-result.tsx`](./components/quiz/quiz-result.tsx). Three CTAs: book a free call (gold, primary), continue the conversation with the chat agent, or download a PDF. Each fires its own engagement event (`booking_click`, `agent_opened`, `pdf_download`).
+6. **(Optional) Continue.** Standard variants link to `/explore/{quizId}` ([`app/explore/[quizId]/agent-page.tsx`](./app/explore/[quizId]/agent-page.tsx)) — a streaming agent conversation that already knows the user from their quiz answers and assessment. The agent auto-fires a hidden first message so it opens the conversation warmly. Best-life-care doesn't expose this in v1.
 
 The cold assessment flow is shorter: 5 static questions → single-turn LLM (no tools, no thinking) → 2-paragraph copy aimed at conversion → direct purchase CTA.
 
@@ -43,7 +57,7 @@ Claude Sonnet 4.6 with adaptive thinking (low effort), via [AI SDK v6](https://s
 
 ### Prompt structure
 
-Split into a stable **system message** (~21K tokens) and a small **user message** (just the formatted answers). The system message has a deliberate two-tier knowledge framing:
+Split into a stable **system message** (~21K tokens for the full agent prompt) and a **user message**. For the quiz flow, the user message is the formatted answers; for the chat agent, the user messages are the live conversation turns and the quiz context (variant, name, answers, assessment) lands in a *dynamic* system segment that sits alongside the cached *stable* segment. The system message has a deliberate two-tier knowledge framing:
 
 - **Interpretive lens** — `knowledge.md`, `questionaire.md`, `diet_lifestyle_standardized.md`. The framework the model uses to read symptoms.
 - **Mechanistic deep dives** — `metabolism_deep_dive.md`, `gut_deep_dive.md`. Explicitly framed in the prompt as *"use it to think, not to quote."* The goal is internalized reasoning, not regurgitation.
@@ -70,8 +84,10 @@ Measured: **95.3% cache hit rate, ~73% cost reduction** per generation.
 
 A single route — [`app/api/agent/route.ts`](./app/api/agent/route.ts) — serves two surfaces, distinguished by whether `quizId` is in the request body:
 
-- **Post-quiz mode** (`/explore/{quizId}`) — agent is briefed with the user's variant, name, answers, and assessment. Posture is *deepening*. Auto-fires a hidden first message on mount.
-- **Standalone mode** (`/chat/{threadId}`) — agent starts cold. Posture is *discovery*. Sidebar manages multiple threads, persisted to IndexedDB ([`lib/chat/thread-store.ts`](./lib/chat/thread-store.ts)) and mirrored to the server.
+- **Post-quiz mode** (`/explore/{quizId}`) — agent is briefed with the user's variant, name, answers, and full assessment. Posture is *deepening*: take what the assessment surfaced and go further with the user. Auto-fires a hidden first message on mount so the agent opens the conversation warmly using their name.
+- **Standalone mode** (`/chat/{threadId}`) — agent starts cold, no quiz context. Posture is *discovery*: opening question prompts the user to share what brought them here. Sidebar manages multiple threads, persisted to IndexedDB ([`lib/chat/thread-store.ts`](./lib/chat/thread-store.ts)) and mirrored to the server.
+
+Both modes give the agent a deliberate dual job: **bioenergetic expert who explains mechanisms with cited evidence**, *and* **personalized contextualizer of Prism's services**. The system prompt explicitly avoids proactive booking pitches — the agent waits until the user asks "what should I do" or "how does this work," then connects what it's already surfaced about their specific patterns to which parts of Prism's process and team would be most relevant. The booking link only appears when the user opts in. This is what makes the chat function as a soft consultation rather than a sales handoff.
 
 Same model, same tools, same caching, same retry/rate-limit lib. Different prompt builders (`buildAgentPrompt` vs `buildStandalonePrompt` in [`app/api/agent/systemPrompt.ts`](./app/api/agent/systemPrompt.ts)).
 
@@ -97,7 +113,7 @@ The cold-traffic assessment flow deliberately doesn't use tools — speed wins o
 
 ## Config-driven engine
 
-`VariantConfig` ([`lib/quiz/types.ts`](./lib/quiz/types.ts)) is the single source of truth. One object per variant — about 40-100 lines of declarative config — propagates through roughly ten destinations: Zod schema generator, prompt overlay injection, wizard initial state, validation rules, test-data generator, UI dispatcher, SEO metadata, result-page copy, admin display, PDF templates.
+`VariantConfig` ([`lib/quiz/types.ts`](./lib/quiz/types.ts)) is the single source of truth. One object per variant — a few hundred lines of declarative config (most of which is the question list itself) — propagates through roughly ten destinations: Zod schema generator, prompt overlay injection, wizard initial state, validation rules, test-data generator, UI dispatcher, SEO metadata, result-page copy, admin display, PDF templates.
 
 Adding a variant ≈ adding one config file.
 
@@ -140,8 +156,8 @@ Next.js 15 (App Router, Turbopack) · React 19 · TypeScript · Tailwind v4 · A
 
 ```bash
 npm install
-cp .env.local.example .env.local   # if exists; otherwise create .env.local manually
-npm run dev                         # http://localhost:3000
+# Create .env.local with the env vars below
+npm run dev    # http://localhost:3000
 ```
 
 ### Required env vars
@@ -165,7 +181,7 @@ OPENAI_API_KEY=                       # not currently used in user paths
 ENABLE_DETAILED_TRACE_LOGGING=false   # verbose token/cache logs per request
 ```
 
-Without Upstash, both pillars fall back to JSON files in `storage/` — sufficient for local development and testing.
+Without Upstash, all three pillars fall back to JSON files in `storage/` — sufficient for local development and testing.
 
 ### Scripts
 
