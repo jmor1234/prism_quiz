@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { ArrowRight, CheckCircle2, FileDown } from "lucide-react";
+import Link from "next/link";
+import { ArrowRight, CheckCircle2, FileDown, MessageCircle } from "lucide-react";
 import { motion, useReducedMotion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { buildBookingUrl } from "@/lib/utmStorage";
@@ -152,11 +153,39 @@ export function QuizResult({
             </p>
           </motion.div>
 
+          {/* Continue with chat agent — standard variants only (best-life-care has no chat handoff in v1) */}
+          {!isBestLife && (
+            <motion.div
+              initial={shouldReduceMotion ? {} : { opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: staggerDelay * 3 }}
+              className="flex flex-col items-center gap-1"
+            >
+              <Button
+                asChild
+                variant="outline"
+                className="gap-2 transition-all duration-300 hover:-translate-y-0.5"
+              >
+                <Link
+                  href={`/explore/${result.id}`}
+                  prefetch={false}
+                  onClick={() => trackEvent(result.id, "agent_opened", "assessment")}
+                >
+                  <MessageCircle className="h-4 w-4" />
+                  Continue Exploring with Our Health Agent
+                </Link>
+              </Button>
+              <span className="text-xs text-muted-foreground">
+                Continue the conversation with research-backed answers
+              </span>
+            </motion.div>
+          )}
+
           {/* PDF download */}
           <motion.div
             initial={shouldReduceMotion ? {} : { opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: staggerDelay * 3 }}
+            transition={{ duration: 0.5, delay: staggerDelay * 4 }}
             className="flex flex-col items-center gap-1"
           >
             <Button
