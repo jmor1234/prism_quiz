@@ -106,13 +106,15 @@ POST /api/assessment/generate { steps }
 
 ```
 /                           → redirect to /quiz (via next.config)
-/quiz                       → landing page (card grid of all variants + standalone chat link)
+/quiz                       → landing page (card grid of visible variants + standalone chat link)
+                              Filters out variants with `hidden: true` (best-life-care)
 /quiz/[variant]             → intro screen → quiz wizard (server component → client)
-                              Includes /quiz/best-life-care (38-question deep intake)
+                              Includes /quiz/best-life-care (38-question deep intake; reachable via direct URL even when hidden)
 /assessment                 → 5 static questions → AI assessment → purchase CTA
 /admin/assessments          → password-protected assessment submissions dashboard
 /admin/results              → password-protected admin dashboard (Quiz Results | Conversations tabs)
-                              Defensively excludes best-life-care submissions
+                              Variant filter dropdown excludes hidden variants (best-life-care)
+                              API also defensively excludes best-life-care submissions
 /admin/best-life-care       → password-protected dedicated dashboard for best-life-care submissions
                               (same ADMIN_PASSWORD env var, isolated from /admin/results)
 /explore/[quizId]           → post-quiz agent chat (server component → client)
@@ -185,7 +187,8 @@ The central state machine. Driven entirely by `VariantConfig`:
 - **Retry:** if submission fails, stores `submissionId` in localStorage for retry
 - **Persistence:** variant-scoped localStorage (`prism-quiz:{variant}`)
 - **Dev tools:** "Fill Test" button generates random valid data per question type and lands on the last visible step
-- **Animation:** Framer Motion spring transitions + `useReducedMotion` support
+- **Progress UI:** sticky header shows the gold progress bar plus "X of N" counter. Best-life-care hides the counter (long quiz; raw count discourages completion) — counter render is gated on `config.slug !== "best-life-care"`.
+- **Animation:** Step transitions use `react-transition-group` + CSS (`step-transition.tsx`); only the progress bar width and result-page mount fades use Framer Motion (one-shot, no `AnimatePresence` enter/exit lifecycle on the hot path). `useReducedMotion` support throughout.
 
 ### Styling
 
@@ -223,7 +226,8 @@ POST /api/agent                           Streaming agent conversation (Sonnet 4
 POST /api/chat/engagement                 Standalone chat tracking (events + conversations)
 
 GET  /api/admin/results                   Paginated quiz submissions + engagement (password-protected)
-                                          Defensively excludes best-life-care from listings + dropdown
+                                          Defensively excludes best-life-care from listings;
+                                          frontend dropdown filters by VariantConfig.hidden
 POST /api/admin/results/pdf               Admin PDF export (standard storage)
 POST /api/admin/results/summary           AI conversation summary (Sonnet 4.6) [standard]
 GET  /api/admin/assessments               Paginated assessment submissions + engagement (password-protected)
@@ -410,7 +414,9 @@ VariantConfig
 ├── nameField                        Name collection config
 ├── headline, subtitle               Page metadata
 ├── resultBanner, ctaText, ctaUrl    Result display
-└── promptOverlay                    LLM condition-specific guidance
+├── promptOverlay                    LLM condition-specific guidance
+└── hidden?                          Omits variant from /quiz card grid and admin variant
+                                     filters; direct URL still works. Used by best-life-care.
 ```
 
 ### QuestionConfig — 6 types
