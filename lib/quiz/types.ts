@@ -141,6 +141,10 @@ export interface VariantConfig {
   // Prompt
   promptOverlay: string; // variant-specific guidance injected into system prompt
 
+  // Optional UX additions for longer or specialty quizzes.
+  estimatedTime?: string;        // e.g., "About 10 minutes" — rendered on intro screen
+  bookingTransition?: string;    // 1-2 sentence bridge between assessment and booking CTA
+
   // When true, omit from public /quiz index and admin variant filters.
   // The variant route (/quiz/{slug}) still works; this only affects listings.
   hidden?: boolean;

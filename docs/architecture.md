@@ -415,6 +415,10 @@ VariantConfig
 ├── headline, subtitle               Page metadata
 ├── resultBanner, ctaText, ctaUrl    Result display
 ├── promptOverlay                    LLM condition-specific guidance
+├── estimatedTime?                   Shown on intro screen (e.g., "About 10 minutes").
+│                                    Used by best-life-care; omit on shorter variants.
+├── bookingTransition?               1-2 sentence bridge rendered between the assessment
+│                                    and the booking CTA. Used by best-life-care.
 └── hidden?                          Omits variant from /quiz card grid and admin variant
                                      filters; direct URL still works. Used by best-life-care.
 ```

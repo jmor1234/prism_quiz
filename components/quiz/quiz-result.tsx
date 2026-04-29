@@ -30,6 +30,10 @@ export function QuizResult({
   const trackQuizEvent = isBestLife ? trackBestlifeEvent : trackEvent;
   const pdfEndpoint = isBestLife ? "/api/bestlife/pdf" : "/api/quiz/pdf";
 
+  // When a bookingTransition is set, an extra slot lands between the
+  // assessment and the booking CTA. Stagger every CTA after it by one.
+  const transitionShift = variant.bookingTransition ? 1 : 0;
+
   const downloadPdf = useCallback(async () => {
     trackQuizEvent(result.id, "pdf_download", "assessment");
     setIsDownloadingPdf(true);
@@ -120,11 +124,25 @@ export function QuizResult({
             <Response variant="report">{result.report}</Response>
           </motion.div>
 
+          {/* Booking transition — variant-driven bridge between assessment and CTA */}
+          {variant.bookingTransition && (
+            <motion.div
+              initial={shouldReduceMotion ? {} : { opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: staggerDelay * 2 }}
+              className="text-center"
+            >
+              <p className="text-base text-muted-foreground leading-relaxed max-w-xl mx-auto">
+                {variant.bookingTransition}
+              </p>
+            </motion.div>
+          )}
+
           {/* Booking CTA — prominent, right after assessment */}
           <motion.div
             initial={shouldReduceMotion ? {} : { opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: staggerDelay * 2 }}
+            transition={{ duration: 0.5, delay: staggerDelay * (2 + transitionShift) }}
           >
             <a
               href={variant.ctaUrl}
@@ -158,7 +176,7 @@ export function QuizResult({
             <motion.div
               initial={shouldReduceMotion ? {} : { opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: staggerDelay * 3 }}
+              transition={{ duration: 0.5, delay: staggerDelay * (3 + transitionShift) }}
               className="flex flex-col items-center gap-1"
             >
               <Button
@@ -185,7 +203,7 @@ export function QuizResult({
           <motion.div
             initial={shouldReduceMotion ? {} : { opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: staggerDelay * 4 }}
+            transition={{ duration: 0.5, delay: staggerDelay * (4 + transitionShift) }}
             className="flex flex-col items-center gap-1"
           >
             <Button

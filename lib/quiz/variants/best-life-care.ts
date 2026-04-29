@@ -578,9 +578,13 @@ export const bestLifeCareConfig: VariantConfig = {
   headline: "Best Life Care Health Intake",
   subtitle:
     "A deeper look at how you're doing across the systems that drive your health.",
+  estimatedTime: "About 10 minutes",
   resultBanner: "Your personalized intake assessment is ready",
   ctaText: "Book a Free Call With Us",
   ctaUrl: "https://prism.miami/consultation",
+
+  bookingTransition:
+    "At Prism, we help people with symptoms just like this by looking holistically at the systems that run their biology. We encourage you to book a free call with us below at your convenience, where we can walk you through our plans and a path forward.",
 
   promptOverlay: "",
   hidden: true,

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { RefreshCw } from "lucide-react";
+import { Clock, RefreshCw } from "lucide-react";
 import { motion, useReducedMotion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import {
@@ -517,6 +517,12 @@ export function QuizWizard({ config }: { config: VariantConfig }) {
           </h1>
           {config.subtitle && (
             <p className="text-lg text-muted-foreground">{config.subtitle}</p>
+          )}
+          {config.estimatedTime && (
+            <div className="flex items-center justify-center gap-1.5 text-sm text-muted-foreground">
+              <Clock className="h-4 w-4" />
+              <span>{config.estimatedTime}</span>
+            </div>
           )}
           <Button
             onClick={() => setStarted(true)}
