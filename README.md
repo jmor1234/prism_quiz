@@ -1,8 +1,6 @@
 # Prism Quiz
 
-A config-driven health assessment platform built for [Prism Health](https://prism.miami). Users complete a brief structured intake, an LLM agent generates an evidence-cited assessment grounded in Prism's bioenergetic framework, and (for warm audiences) the conversation can continue as a multi-turn agent chat. Three audience pillars share a single engine.
-
-This README covers what the system is, how a user moves through it, and how the agentic + Exa integration actually works. For the full reference, see [`docs/architecture.md`](./docs/architecture.md).
+A config-driven health assessment platform built for [Prism Health](https://prism.miami). Users complete a brief structured intake, an LLM agent generates an evidence-cited assessment grounded in Prism's bioenergetic framework, and the conversation can continue as a multi-turn agent chat. Three audience pillars share a single engine; for the full reference see [`docs/architecture.md`](./docs/architecture.md).
 
 ---
 
@@ -57,7 +55,7 @@ Claude Sonnet 4.6 with adaptive thinking (low effort), via [AI SDK v6](https://s
 
 ### Prompt structure
 
-Split into a stable **system message** (~21K tokens for the full agent prompt) and a **user message**. For the quiz flow, the user message is the formatted answers; for the chat agent, the user messages are the live conversation turns and the quiz context (variant, name, answers, assessment) lands in a *dynamic* system segment that sits alongside the cached *stable* segment. The system message has a deliberate two-tier knowledge framing:
+The system message (~21K tokens for the full agent prompt) carries knowledge + instructions. The user message carries either the formatted quiz answers (quiz route) or the live chat turns (agent route — quiz context lands in a *dynamic* system segment alongside the cached *stable* one). Knowledge has a deliberate two-tier framing:
 
 - **Interpretive lens** — `knowledge.md`, `questionaire.md`, `diet_lifestyle_standardized.md`. The framework the model uses to read symptoms.
 - **Mechanistic deep dives** — `metabolism_deep_dive.md`, `gut_deep_dive.md`. Explicitly framed in the prompt as *"use it to think, not to quote."* The goal is internalized reasoning, not regurgitation.
@@ -103,7 +101,7 @@ Three tools, each with a clear job:
 - **`read`** ([`readTool.ts`](./app/api/agent/tools/readTool.ts)) — query-filtered focused excerpts from a known URL. The model's follow-up move when a search hit looks promising. Used by the quiz route and the agent.
 - **`extract_findings`** ([`depthTool/depthTool.ts`](./app/api/agent/tools/depthTool/depthTool.ts)) — Exa full text → Gemini Flash structured extraction. The "depth" tool, agent-only. Quiz doesn't need it because the quiz is single-shot; the agent uses it during open conversation when the user wants to dig into a paper.
 
-**Why Exa, not open web search.** Exa's `category: "research paper"` filter narrows to peer-reviewed sources, which matches Prism's evidence policy: cite only primary scientific sources, never health blogs or supplement brands. Open Google would surface SEO-optimized wellness content.
+**Why Exa.** Exa is a state-of-the-art web knowledge layer built specifically for LLM agents — not retrofitted from a consumer search product. It understands semantic meaning, so the agent asks precise contextually scoped questions and gets back cleaned, query-filtered highlights (a few hundred tokens of the most relevant prose per source) instead of raw HTML to parse. The agent can stay shallow with semantic search when scanning broadly, or go deep with full-text retrieval and Gemini-Flash extraction when a single paper deserves close reading. The `category: "research paper"` filter is a useful bonus that aligns with Prism's evidence policy of citing only primary scientific sources — but the deeper reason is that Exa is the right *shape* for an agent's context window and reasoning loop in a way that open web search isn't.
 
 **The fabrication guard.** The system prompt explicitly forbids citing sources the tools didn't return — an unsourced explanation is always preferable to a fabricated citation. Citations are threaded as inline markdown links (`[phrase](URL)`) so they read as natural prose, not academic footnotes.
 
@@ -113,22 +111,9 @@ The cold-traffic assessment flow deliberately doesn't use tools — speed wins o
 
 ## Config-driven engine
 
-`VariantConfig` ([`lib/quiz/types.ts`](./lib/quiz/types.ts)) is the single source of truth. One object per variant — a few hundred lines of declarative config (most of which is the question list itself) — propagates through roughly ten destinations: Zod schema generator, prompt overlay injection, wizard initial state, validation rules, test-data generator, UI dispatcher, SEO metadata, result-page copy, admin display, PDF templates.
+`VariantConfig` ([`lib/quiz/types.ts`](./lib/quiz/types.ts)) is the single source of truth. One declarative object per variant propagates through roughly ten destinations (Zod schema, prompt overlay, wizard state + validation, UI dispatch, SEO, result copy, admin display, PDF). Adding a variant ≈ adding one config file.
 
-Adding a variant ≈ adding one config file.
-
-**Six question types**, modeled as a discriminated union with exhaustive switches across the engine:
-
-```
-slider | yes_no | multi_select | single_select | free_text | yes_no_with_text
-```
-
-**Two cross-cutting optionals** that any question type can adopt:
-
-- **`hideWhen`** — declarative skip-and-fill. When an upstream answer matches a trigger value, this question is skipped and auto-filled with `setAnswerTo`. Cascades naturally because the auto-fill can satisfy the next question's `hideWhen` rule.
-- **`allowUnsure`** *(yes_no, yes_no_with_text only)* — adds a third "Unsure" button, widening the answer to `boolean | "unsure"`.
-
-This is why best-life-care, with 38 questions and complex skip logic, didn't require any engine changes that the standard 11-question variants didn't already exercise.
+Six question types as a discriminated union: `slider | yes_no | multi_select | single_select | free_text | yes_no_with_text`. Two cross-cutting optionals any type can adopt: **`hideWhen`** (declarative skip-and-fill that cascades through the answer graph as auto-fills satisfy downstream rules) and **`allowUnsure`** (third "Unsure" button on yes/no questions). This is why best-life-care, with 38 questions and complex skip logic, didn't need engine changes the 11-question variants didn't already exercise.
 
 ---
 
@@ -149,48 +134,6 @@ Storage adapters live in [`server/`](./server/). The `/api/quiz` route picks one
 ## Stack
 
 Next.js 15 (App Router, Turbopack) · React 19 · TypeScript · Tailwind v4 · AI SDK v6 (Anthropic) · `exa-js` v2 · `@ai-sdk/google` (Gemini Flash for extraction) · Upstash Redis · Puppeteer + `@sparticuz/chromium` (PDF) · Dexie (IndexedDB) · `react-transition-group` + Framer Motion · Zod 4 · Radix UI primitives.
-
----
-
-## Quick start
-
-```bash
-npm install
-# Create .env.local with the env vars below
-npm run dev    # http://localhost:3000
-```
-
-### Required env vars
-
-```bash
-ANTHROPIC_API_KEY=                    # Sonnet 4.6 (quiz, agent, assessment)
-EXA_API_KEY=                          # search + read + extract_findings tools
-GOOGLE_GENERATIVE_AI_API_KEY=         # Gemini Flash (extract_findings extraction)
-ADMIN_PASSWORD=                       # gates /admin/*
-PRISM_BOOKING_LINK=                   # CTA destination (UTM-tagged at click time)
-```
-
-### Optional env vars
-
-```bash
-UPSTASH_REDIS_REST_URL=               # quiz + best-life storage (filesystem fallback in dev)
-UPSTASH_REDIS_REST_TOKEN=
-UPSTASH_ASSESSMENT_REDIS_REST_URL=    # separate DB for the assessment pillar
-UPSTASH_ASSESSMENT_REDIS_REST_TOKEN=
-OPENAI_API_KEY=                       # not currently used in user paths
-ENABLE_DETAILED_TRACE_LOGGING=false   # verbose token/cache logs per request
-```
-
-Without Upstash, all three pillars fall back to JSON files in `storage/` — sufficient for local development and testing.
-
-### Scripts
-
-```bash
-npm run dev      # next dev --turbopack
-npm run build    # next build --turbopack
-npm run start    # production server
-npm run lint     # eslint
-```
 
 ---
 
