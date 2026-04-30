@@ -30,9 +30,40 @@ export function QuizResult({
   const trackQuizEvent = isBestLife ? trackBestlifeEvent : trackEvent;
   const pdfEndpoint = isBestLife ? "/api/bestlife/pdf" : "/api/quiz/pdf";
 
-  // When a bookingTransition is set, an extra slot lands between the
-  // assessment and the booking CTA. Stagger every CTA after it by one.
-  const transitionShift = variant.bookingTransition ? 1 : 0;
+  // When a bookingTransition is set, the bridge paragraph and booking CTA
+  // are absorbed into the assessment card so the closing thought and ask
+  // read as part of the report rather than as a separate marketing block.
+  const hasMergedCard = !!variant.bookingTransition;
+
+  const bookingCta = (
+    <div>
+      <a
+        href={variant.ctaUrl}
+        target="_blank"
+        rel="noopener noreferrer"
+        onClick={(e) => {
+          e.preventDefault();
+          trackQuizEvent(result.id, "booking_click", "assessment");
+          const url = buildBookingUrl(variant.ctaUrl);
+          window.open(url, "_blank", "noopener,noreferrer");
+        }}
+        className={cn(
+          "flex items-center justify-center gap-3 w-full px-8 py-4 rounded-xl",
+          "text-base font-semibold",
+          "transition-all duration-300 ease-out",
+          "hover:-translate-y-0.5 hover:shadow-lg active:translate-y-0",
+          ACCENT.base,
+          ACCENT.text
+        )}
+      >
+        Book a Free Call With Us
+        <ArrowRight className="w-5 h-5" />
+      </a>
+      <p className="text-center text-sm text-muted-foreground mt-3">
+        Free intro call to discuss your results and how we can help
+      </p>
+    </div>
+  );
 
   const downloadPdf = useCallback(async () => {
     trackQuizEvent(result.id, "pdf_download", "assessment");
@@ -114,7 +145,9 @@ export function QuizResult({
             Underlined text links to cited research sources and will open in a new tab.
           </p>
 
-          {/* Assessment content */}
+          {/* Assessment content — when a bookingTransition is set, the bridge
+              paragraph and booking CTA are rendered inside the same card so
+              the closing thought and ask flow visually with the report. */}
           <motion.div
             initial={shouldReduceMotion ? {} : { opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -122,61 +155,33 @@ export function QuizResult({
             className="rounded-lg border bg-card p-6 shadow-sm"
           >
             <Response variant="report">{result.report}</Response>
+            {hasMergedCard && (
+              <div className="mt-10 pt-8 border-t border-border/40 space-y-6">
+                <p className="text-base text-muted-foreground leading-relaxed text-center max-w-xl mx-auto">
+                  {variant.bookingTransition}
+                </p>
+                {bookingCta}
+              </div>
+            )}
           </motion.div>
 
-          {/* Booking transition — variant-driven bridge between assessment and CTA */}
-          {variant.bookingTransition && (
+          {/* Standalone booking CTA — used when the variant has no bridge */}
+          {!hasMergedCard && (
             <motion.div
               initial={shouldReduceMotion ? {} : { opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: staggerDelay * 2 }}
-              className="text-center"
             >
-              <p className="text-base text-muted-foreground leading-relaxed max-w-xl mx-auto">
-                {variant.bookingTransition}
-              </p>
+              {bookingCta}
             </motion.div>
           )}
-
-          {/* Booking CTA — prominent, right after assessment */}
-          <motion.div
-            initial={shouldReduceMotion ? {} : { opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: staggerDelay * (2 + transitionShift) }}
-          >
-            <a
-              href={variant.ctaUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={(e) => {
-                e.preventDefault();
-                trackQuizEvent(result.id, "booking_click", "assessment");
-                const url = buildBookingUrl(variant.ctaUrl);
-                window.open(url, "_blank", "noopener,noreferrer");
-              }}
-              className={cn(
-                "flex items-center justify-center gap-3 w-full px-8 py-4 rounded-xl",
-                "text-base font-semibold",
-                "transition-all duration-300 ease-out",
-                "hover:-translate-y-0.5 hover:shadow-lg active:translate-y-0",
-                ACCENT.base,
-                ACCENT.text
-              )}
-            >
-              Book a Free Call With Us
-              <ArrowRight className="w-5 h-5" />
-            </a>
-            <p className="text-center text-sm text-muted-foreground mt-3">
-              Free intro call to discuss your results and how we can help
-            </p>
-          </motion.div>
 
           {/* Continue with chat agent — standard variants only (best-life-care has no chat handoff in v1) */}
           {!isBestLife && (
             <motion.div
               initial={shouldReduceMotion ? {} : { opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: staggerDelay * (3 + transitionShift) }}
+              transition={{ duration: 0.5, delay: staggerDelay * (hasMergedCard ? 2 : 3) }}
               className="flex flex-col items-center gap-1"
             >
               <Button
@@ -203,7 +208,7 @@ export function QuizResult({
           <motion.div
             initial={shouldReduceMotion ? {} : { opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: staggerDelay * (4 + transitionShift) }}
+            transition={{ duration: 0.5, delay: staggerDelay * (hasMergedCard ? 3 : 4) }}
             className="flex flex-col items-center gap-1"
           >
             <Button
