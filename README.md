@@ -1,6 +1,8 @@
 # Prism Quiz
 
-A config-driven health assessment platform built for [Prism Health](https://prism.miami). Users complete a brief structured intake, an LLM agent generates an evidence-cited assessment grounded in Prism's bioenergetic framework, and the conversation can continue as a multi-turn agent chat. Three audience pillars share a single engine; for the full reference see [`docs/architecture.md`](./docs/architecture.md).
+> **Live:** [prism-quiz.vercel.app/quiz](https://prism-quiz.vercel.app/quiz) · Built for [Prism Health](https://prism.miami)
+
+A config-driven health assessment platform. Users complete a brief structured intake, an LLM agent generates an evidence-cited assessment grounded in Prism's bioenergetic framework, and the conversation can continue as a multi-turn agent chat. Three audience pillars share a single engine; for the full reference see [`docs/architecture.md`](./docs/architecture.md).
 
 ---
 
@@ -24,25 +26,33 @@ The same core engine (Next.js routes, prompt scaffolding, Exa tools, three-tier 
 
 | Pillar | Route | Audience | Storage |
 |---|---|---|---|
-| **Standard quizzes** | `/quiz/{variant}` (12 variants) | Warm, already in Prism's orbit | `quiz-*` (Upstash) |
-| **Cold-traffic assessment** | `/assessment` | Cold, first touch from paid ads | `assessment-*` (separate Redis DB) |
-| **Best-life-care intake** | `/quiz/best-life-care` (hidden) | B2B partner client base | `bestlife-*` (same Redis, isolated keys) |
+| **Standard quizzes** | [`/quiz`](https://prism-quiz.vercel.app/quiz) (12 variants) | Warm, already in Prism's orbit | `quiz-*` (Upstash) |
+| **Cold-traffic assessment** | [`/assessment`](https://prism-quiz.vercel.app/assessment) | Cold, first touch from paid ads | `assessment-*` (separate Redis DB) |
+| **Best-life-care intake** | [`/quiz/best-life-care`](https://prism-quiz.vercel.app/quiz/best-life-care) (hidden) | B2B partner client base | `bestlife-*` (same Redis, isolated keys) |
 
 ### Standard quizzes
 
 Twelve condition-specific variants (root-cause, gut, fatigue, hormones-women, testosterone, sleep, thyroid, brain-fog, weight, skin, anxiety, allergies) for users who already know Prism, typically through founder Dalton's "Analyze and Optimize" content. The audience can absorb depth: an 11-question intake produces a research-cited assessment, then optionally hands off to a follow-up chat that doubles as a personalized consultation. The agent does deliberate dual duty (bioenergetic expert *and* contextualizer of Prism's services for *this specific person*) and only surfaces booking when the user opens that door.
 
+→ **Try it live: [prism-quiz.vercel.app/quiz](https://prism-quiz.vercel.app/quiz)**
+
 ### Cold-traffic assessment
 
 A separate flow for paid-ad traffic with no prior brand awareness. No patience window for a 38-question intake or open-ended chat, so the design is stripped: 5 static questions, single-turn LLM (no tools, no thinking, ~10s generation), 2-paragraph assessment with a "felt-toll → can't-solve-alone → act" arc, single direct purchase CTA (UTM-tagged). Lives in a separate Redis DB because reporting and audience profile are entirely different from the standard funnel.
+
+→ **Try it live: [prism-quiz.vercel.app/assessment](https://prism-quiz.vercel.app/assessment)**
 
 ### Best-life-care intake
 
 A 38-question deep health intake built for one of Prism's B2B partners. Hidden from the public `/quiz` listing; only the partner's users reach it via direct URL. Reuses the entire engine with isolated storage (`bestlife-*` keys) and a dedicated admin at `/admin/best-life-care`, so partner submissions never mix with Prism's own funnel. No chat handoff in v1. **Total new engine code to ship this pillar: a `getStorage(variant)` branch in the existing route plus three small parallel server modules. The rest is a single config file.** That marginal cost is the payoff of the config-driven engine.
 
+→ **See it live: [prism-quiz.vercel.app/quiz/best-life-care](https://prism-quiz.vercel.app/quiz/best-life-care)**
+
 ### Plus: standalone chat as a side door
 
 Same chat agent, reachable directly at `/chat/{threadId}` and surfaced as a "Not sure where to start?" card on `/quiz`. Captures intent that would otherwise bounce off the quiz card grid. Same dual-job behavior as post-quiz mode, with a *discovery* posture instead of *deepening*: it starts cold, prompts the user to share what brought them here, and builds understanding from there. Multi-thread sidebar persisted to IndexedDB and mirrored to the server (`chat-sessions:{threadId}`).
+
+→ **Try it live: [prism-quiz.vercel.app/chat](https://prism-quiz.vercel.app/chat)**
 
 ---
 
