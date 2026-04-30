@@ -156,8 +156,8 @@ export function QuizResult({
           >
             <Response variant="report">{result.report}</Response>
             {hasMergedCard && (
-              <div className="mt-10 pt-8 border-t border-border/40 space-y-6">
-                <p className="text-base text-muted-foreground leading-relaxed text-center max-w-xl mx-auto">
+              <div className="mt-8 space-y-6">
+                <p className="text-base leading-relaxed">
                   {variant.bookingTransition}
                 </p>
                 {bookingCta}
