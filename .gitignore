@@ -36,6 +36,12 @@ yarn-error.log*
 # vercel
 .vercel
 
+# local user data (submissions, results, engagement, chat sessions)
+/storage
+
+# local IDE / agent settings (per-user, not shared)
+.claude/settings.local.json
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
