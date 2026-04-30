@@ -144,7 +144,7 @@ The same tool layer is shared between the quiz route (single-shot generation) an
 
 That progression (broad semantic scan → focused read → structured deep extraction) mirrors how a human researcher actually works: scan widely, read what looks relevant, extract from the one source that matters. Exa supports the whole gradient cleanly with consistent primitives, so the agent moves between modes within its 10-step budget without my code having to glue together separate retrieval systems.
 
-### Why Exa over open web search
+### Why Exa
 
 Exa is built specifically for LLM agents, not retrofitted from a consumer search product. The three differences that actually mattered for this codebase:
 
