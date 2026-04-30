@@ -49,6 +49,7 @@ export default async function QuizVariantPage({ params }: Props) {
     resultBanner: config.resultBanner,
     ctaText: config.ctaText,
     ctaUrl: config.ctaUrl,
+    bookingTransition: config.bookingTransition,
     promptOverlay: "",
   };
 
