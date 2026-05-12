@@ -134,7 +134,7 @@ export const brainFogConfig: VariantConfig = {
   subtitle: "Find the roots of your cognitive symptoms",
   resultBanner: "Your personalized cognitive assessment is ready",
   ctaText: "Book a Free Consultation",
-  ctaUrl: "https://prism.miami/consultation",
+  ctaUrl: "https://prism.miami/booking?utm_content=quiz_brain_fog",
 
   promptOverlay: `## Condition Focus: Brain Fog & Cognitive Function
 

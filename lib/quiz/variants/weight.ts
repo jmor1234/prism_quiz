@@ -143,7 +143,7 @@ export const weightConfig: VariantConfig = {
   subtitle: "Uncover why your body resists weight loss",
   resultBanner: "Your personalized weight assessment is ready",
   ctaText: "Book a Free Consultation",
-  ctaUrl: "https://prism.miami/consultation",
+  ctaUrl: "https://prism.miami/booking?utm_content=quiz_weight_loss",
 
   promptOverlay: `## Condition Focus: Weight & Body Composition
 

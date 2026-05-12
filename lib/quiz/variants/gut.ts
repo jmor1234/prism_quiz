@@ -137,7 +137,7 @@ export const gutConfig: VariantConfig = {
   subtitle: "Discover the root causes of your digestive issues",
   resultBanner: "Your personalized gut health assessment is ready",
   ctaText: "Book a Free Consultation",
-  ctaUrl: "https://prism.miami/consultation",
+  ctaUrl: "https://prism.miami/booking?utm_content=quiz_gut",
 
   promptOverlay: `## Condition Focus: Gut Health
 

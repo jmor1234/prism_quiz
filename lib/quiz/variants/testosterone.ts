@@ -142,7 +142,7 @@ export const testosteroneConfig: VariantConfig = {
   subtitle: "Discover what's suppressing your hormonal vitality",
   resultBanner: "Your personalized hormone assessment is ready",
   ctaText: "Book a Free Consultation",
-  ctaUrl: "https://prism.miami/consultation",
+  ctaUrl: "https://prism.miami/booking?utm_content=quiz_testosterone",
 
   promptOverlay: `## Condition Focus: Men's Hormones & Testosterone
 

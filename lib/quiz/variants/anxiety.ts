@@ -161,7 +161,7 @@ export const anxietyConfig: VariantConfig = {
   subtitle: "Discover the biological roots of anxiety",
   resultBanner: "Your personalized mood assessment is ready",
   ctaText: "Book a Free Consultation",
-  ctaUrl: "https://prism.miami/consultation",
+  ctaUrl: "https://prism.miami/booking?utm_content=quiz_anxiety",
 
   promptOverlay: `## Condition Focus: Anxiety & Mood
 

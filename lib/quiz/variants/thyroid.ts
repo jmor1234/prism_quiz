@@ -148,7 +148,7 @@ export const thyroidConfig: VariantConfig = {
   subtitle: "Understand why you still feel hypothyroid",
   resultBanner: "Your personalized thyroid assessment is ready",
   ctaText: "Book a Free Consultation",
-  ctaUrl: "https://prism.miami/consultation",
+  ctaUrl: "https://prism.miami/booking?utm_content=quiz_thyroid",
 
   promptOverlay: `## Condition Focus: Thyroid & Metabolism
 

@@ -169,7 +169,7 @@ export const skinConfig: VariantConfig = {
   subtitle: "Trace skin issues to their internal origins",
   resultBanner: "Your personalized skin health assessment is ready",
   ctaText: "Book a Free Consultation",
-  ctaUrl: "https://prism.miami/consultation",
+  ctaUrl: "https://prism.miami/booking?utm_content=quiz_skin",
 
   promptOverlay: `## Condition Focus: Skin Health
 

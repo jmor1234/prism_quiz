@@ -121,7 +121,7 @@ export const rootCauseConfig: VariantConfig = {
   subtitle: "Trace your symptoms to their root causes",
   resultBanner: "Your personalized assessment is ready",
   ctaText: "Book a Free Consultation",
-  ctaUrl: "https://prism.miami/consultation",
+  ctaUrl: "https://prism.miami/booking?utm_content=quiz_root_cause",
 
   promptOverlay: "",
 };

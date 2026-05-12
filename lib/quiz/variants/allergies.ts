@@ -163,7 +163,7 @@ export const allergiesConfig: VariantConfig = {
     "Discover what's actually driving your allergic symptoms and why they may be getting worse",
   resultBanner: "Your personalized allergy & immune assessment is ready",
   ctaText: "Book a Free Consultation",
-  ctaUrl: "https://prism.miami/consultation",
+  ctaUrl: "https://prism.miami/booking?utm_content=quiz_allergies",
 
   promptOverlay: `## Condition Focus: Allergies & Immune Health
 

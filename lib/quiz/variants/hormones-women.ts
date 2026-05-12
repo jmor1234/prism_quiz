@@ -160,7 +160,7 @@ export const hormonesWomenConfig: VariantConfig = {
   subtitle: "Trace hormonal imbalances to their root causes",
   resultBanner: "Your personalized hormonal assessment is ready",
   ctaText: "Book a Free Consultation",
-  ctaUrl: "https://prism.miami/consultation",
+  ctaUrl: "https://prism.miami/booking?utm_content=quiz_hormones_women",
 
   promptOverlay: `## Condition Focus: Women's Hormonal Health
 

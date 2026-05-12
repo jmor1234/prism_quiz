@@ -137,7 +137,7 @@ export const fatigueConfig: VariantConfig = {
   subtitle: "Uncover the root causes of persistent fatigue",
   resultBanner: "Your personalized energy assessment is ready",
   ctaText: "Book a Free Consultation",
-  ctaUrl: "https://prism.miami/consultation",
+  ctaUrl: "https://prism.miami/booking?utm_content=quiz_fatigue",
 
   promptOverlay: `## Condition Focus: Energy & Fatigue
 

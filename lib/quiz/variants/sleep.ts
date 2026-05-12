@@ -135,7 +135,7 @@ export const sleepConfig: VariantConfig = {
   subtitle: "Identify what's really disrupting your sleep",
   resultBanner: "Your personalized sleep assessment is ready",
   ctaText: "Book a Free Consultation",
-  ctaUrl: "https://prism.miami/consultation",
+  ctaUrl: "https://prism.miami/booking?utm_content=quiz_sleep",
 
   promptOverlay: `## Condition Focus: Sleep
 
