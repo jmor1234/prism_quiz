@@ -43,10 +43,10 @@ export function saveConversationRemote(
   }
 }
 
-// --- Best-life-care tracking (separate engagement namespace) ---
+// --- Best-life-harbor tracking (separate engagement namespace) ---
 
 /**
- * Fire-and-forget engagement event tracking for the best-life-care quiz.
+ * Fire-and-forget engagement event tracking for the best-life-harbor quiz.
  * Posts to /api/bestlife/engagement so events land in the bestlife-engagement
  * Redis namespace (kept fully separate from the standard quiz engagement).
  */
@@ -68,7 +68,7 @@ export function trackBestlifeEvent(
 }
 
 /**
- * Fire-and-forget conversation save for the best-life-care quiz.
+ * Fire-and-forget conversation save for the best-life-harbor quiz.
  */
 export function saveBestlifeConversationRemote(
   quizId: string,

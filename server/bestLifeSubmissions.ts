@@ -1,6 +1,6 @@
 // server/bestLifeSubmissions.ts
 //
-// Storage for the best-life-care quiz variant. Fully isolated from the
+// Storage for the best-life-harbor quiz variant. Fully isolated from the
 // standard quiz storage: separate Redis key prefix (bestlife-*) and separate
 // filesystem directory. Reuses the same Redis env vars as the main quiz so
 // no new infra provisioning is required.
@@ -20,7 +20,7 @@ import { getBestLifeResult } from "./bestLifeResults";
 
 const STORAGE_ROOT = path.join(process.cwd(), "storage", "bestlife-submissions");
 const INDEX_KEY = "bestlife-index";
-const VARIANT_SLUG = "best-life-care";
+const VARIANT_SLUG = "best-life-harbor";
 
 let redisClient: Redis | null = null;
 

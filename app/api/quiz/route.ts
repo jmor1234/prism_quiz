@@ -21,9 +21,12 @@ import { buildQuizPrompt } from "./systemPrompt";
 import { requestRateLimiter, extractIp } from "../agent/lib/rateLimit";
 import { CacheManager } from "../agent/lib/cacheManager";
 
-// Storage resolver — best-life-care has its own fully-isolated namespace.
+// Storage resolver — best-life-harbor has its own fully-isolated namespace.
 // All other variants share the standard quiz storage.
-const BEST_LIFE_SLUG = "best-life-care";
+// Includes legacy "best-life-care" slug so retries of pre-rename submissions
+// (where stored record.variant still says "best-life-care") route to the
+// correct bestlife-* storage.
+const BEST_LIFE_SLUGS = new Set(["best-life-harbor", "best-life-care"]);
 
 interface QuizStorage {
   upsert: (args: {
@@ -37,7 +40,7 @@ interface QuizStorage {
 }
 
 function getStorage(variant: string): QuizStorage {
-  if (variant === BEST_LIFE_SLUG) {
+  if (BEST_LIFE_SLUGS.has(variant)) {
     return {
       upsert: ({ name, answers }) =>
         upsertBestLifeSubmission({ name, answers }),

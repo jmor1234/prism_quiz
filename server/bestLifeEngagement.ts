@@ -1,6 +1,6 @@
 // server/bestLifeEngagement.ts
 //
-// Engagement storage for the best-life-care quiz variant. Mirrors the
+// Engagement storage for the best-life-harbor quiz variant. Mirrors the
 // standard quizEngagement module with bestlife-engagement:* keys and
 // storage/bestlife-engagement/ filesystem fallback.
 

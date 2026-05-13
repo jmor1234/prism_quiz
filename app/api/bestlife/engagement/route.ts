@@ -1,6 +1,6 @@
 // app/api/bestlife/engagement/route.ts
 //
-// Engagement tracking for the best-life-care quiz variant. Mirrors
+// Engagement tracking for the best-life-harbor quiz variant. Mirrors
 // /api/quiz/engagement but writes to the isolated bestlife-engagement
 // storage namespace.
 

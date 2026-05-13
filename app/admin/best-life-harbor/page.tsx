@@ -602,7 +602,7 @@ function EntryRow({
 // Main Page
 // ============================================================================
 
-export default function BestLifeCareAdminPage() {
+export default function BestLifeHarborAdminPage() {
   const [authState, setAuthState] = useState<AuthState>("checking");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -637,7 +637,7 @@ export default function BestLifeCareAdminPage() {
       setError(null);
 
       try {
-        const url = new URL("/api/admin/best-life-care", window.location.origin);
+        const url = new URL("/api/admin/best-life-harbor", window.location.origin);
         url.searchParams.set("key", key);
         if (search) url.searchParams.set("search", search);
         else if (cursor) url.searchParams.set("cursor", cursor);
@@ -748,7 +748,7 @@ export default function BestLifeCareAdminPage() {
     setError(null);
 
     try {
-      const response = await fetch("/api/admin/best-life-care/summary", {
+      const response = await fetch("/api/admin/best-life-harbor/summary", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ quizId, key: savedPassword }),
@@ -790,7 +790,7 @@ export default function BestLifeCareAdminPage() {
 
     try {
       const response = await fetch(
-        `/api/admin/best-life-care/pdf?key=${encodeURIComponent(savedPassword)}`,
+        `/api/admin/best-life-harbor/pdf?key=${encodeURIComponent(savedPassword)}`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -851,7 +851,7 @@ export default function BestLifeCareAdminPage() {
             className="w-full max-w-sm space-y-6"
           >
             <div className="text-center">
-              <h1 className="text-2xl font-bold quiz-question">Best Life Care Admin</h1>
+              <h1 className="text-2xl font-bold quiz-question">Best Life Harbor Admin</h1>
               <p className="text-muted-foreground mt-1">Enter password to continue</p>
             </div>
 
@@ -889,7 +889,7 @@ export default function BestLifeCareAdminPage() {
                     Loading…
                   </>
                 ) : (
-                  "Access Best Life Care"
+                  "Access Best Life Harbor"
                 )}
               </Button>
             </form>
@@ -905,7 +905,7 @@ export default function BestLifeCareAdminPage() {
       <header className="sticky top-0 z-10 bg-background/95 border-b">
         <div className="max-w-4xl mx-auto px-4 py-3 flex items-center gap-4">
           <h1 className="text-lg font-semibold quiz-question shrink-0">
-            Best Life Care
+            Best Life Harbor
           </h1>
 
           <div className="relative flex-1 max-w-xs">
@@ -982,7 +982,7 @@ export default function BestLifeCareAdminPage() {
             >
               {debouncedSearch
                 ? `No submissions found for "${debouncedSearch}"`
-                : "No best-life-care submissions yet"}
+                : "No best-life-harbor submissions yet"}
             </motion.div>
           )}
 

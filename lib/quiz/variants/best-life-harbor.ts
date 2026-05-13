@@ -1,4 +1,4 @@
-// lib/quiz/variants/best-life-care.ts
+// lib/quiz/variants/best-life-harbor.ts
 //
 // Each Likert question carries its own contextual 5-point option set —
 // option `value` stays "1"..."5" so the underlying severity gradient is
@@ -8,9 +8,9 @@
 
 import type { VariantConfig } from "../types";
 
-export const bestLifeCareConfig: VariantConfig = {
-  slug: "best-life-care",
-  name: "Best Life Care Health Intake",
+export const bestLifeHarborConfig: VariantConfig = {
+  slug: "best-life-harbor",
+  name: "Best Life Harbor Health Intake",
   description:
     "A deeper look at how you're doing across the systems that drive your health.",
 
@@ -575,13 +575,13 @@ export const bestLifeCareConfig: VariantConfig = {
     placeholder: "Your name",
   },
 
-  headline: "Best Life Care Health Intake",
+  headline: "Best Life Harbor Health Intake",
   subtitle:
     "A deeper look at how you're doing across the systems that drive your health.",
   estimatedTime: "About 10 minutes",
   resultBanner: "Your personalized intake assessment is ready",
   ctaText: "Book a Free Call With Us",
-  ctaUrl: "https://prism.miami/booking?utm_content=quiz_best_life_care",
+  ctaUrl: "https://prism.miami/booking?utm_content=quiz_best_life_harbor",
 
   bookingTransition:
     "At Prism, we help people with symptoms just like this by looking holistically at the systems that run their biology. We encourage you to book a free call with us below at your convenience, where we can walk you through our plans and a path forward.",

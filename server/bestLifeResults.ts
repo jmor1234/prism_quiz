@@ -1,6 +1,6 @@
 // server/bestLifeResults.ts
 //
-// Result storage for the best-life-care quiz variant. Uses bestlife-results:*
+// Result storage for the best-life-harbor quiz variant. Uses bestlife-results:*
 // keys (Redis) and storage/bestlife-results/ (filesystem fallback) for full
 // isolation from the standard quiz results namespace.
 

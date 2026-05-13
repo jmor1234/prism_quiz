@@ -1,6 +1,6 @@
 // app/api/bestlife/result/route.ts
 //
-// Result fetch for the best-life-care quiz variant. Mirrors /api/quiz/result
+// Result fetch for the best-life-harbor quiz variant. Mirrors /api/quiz/result
 // but reads from the isolated bestlife-results storage namespace.
 
 import { NextRequest, NextResponse } from "next/server";

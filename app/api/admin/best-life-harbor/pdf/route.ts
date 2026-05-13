@@ -1,6 +1,6 @@
-// app/api/admin/best-life-care/pdf/route.ts
+// app/api/admin/best-life-harbor/pdf/route.ts
 //
-// Admin PDF export for a best-life-care submission. Reads from bestlife-*
+// Admin PDF export for a best-life-harbor submission. Reads from bestlife-*
 // storage and reuses the shared adminPdfTemplate (which now handles
 // yes_no_with_text rendering).
 

@@ -6,7 +6,9 @@ import { getEngagementBatch } from "@/server/quizEngagement";
 
 // Variants whose data lives in a separate storage namespace and must never
 // be surfaced through this admin (each has its own dedicated /admin page).
-const EXCLUDED_VARIANTS = new Set(["best-life-care"]);
+// Includes the legacy "best-life-care" slug so any pre-rename records still
+// stored with that variant value remain excluded from this listing.
+const EXCLUDED_VARIANTS = new Set(["best-life-harbor", "best-life-care"]);
 
 /**
  * GET /api/admin/results

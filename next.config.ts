@@ -11,6 +11,16 @@ const nextConfig: NextConfig = {
         destination: "/quiz",
         permanent: false,
       },
+      {
+        source: "/quiz/best-life-care",
+        destination: "/quiz/best-life-harbor",
+        permanent: true,
+      },
+      {
+        source: "/admin/best-life-care",
+        destination: "/admin/best-life-harbor",
+        permanent: false,
+      },
     ];
   },
 };

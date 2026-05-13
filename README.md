@@ -12,7 +12,7 @@ The product bet: in a market crowded with low-evidence content, the most powerfu
 
 - **The agent *is* the consultation, not a chatbot pointing at one.** Deliberate dual-job system prompt (bioenergetic expert *and* personalized contextualizer of services) that only surfaces booking when the user asks. Genuine expertise is what's offered; conversion is a side effect.
 - **One engine, audience-stratified postures.** Cold (paid ads), warm (already in the brand's orbit), and B2B partner all run through the same pipeline. Question count, tone, tool budget, and CTA strength vary as config, not as forks. The engine compounds instead of fragmenting.
-- **Config-driven leverage.** One `VariantConfig` per variant propagates to ~10 destinations (Zod schema, prompts, wizard state, UI dispatch, SEO, admin, PDF). Adding a variant is a config edit. Best-life-care (a structurally different 38-question B2B intake) shipped with a `getStorage(variant)` branch and a few small server modules; the rest is a single config file.
+- **Config-driven leverage.** One `VariantConfig` per variant propagates to ~10 destinations (Zod schema, prompts, wizard state, UI dispatch, SEO, admin, PDF). Adding a variant is a config edit. Best-life-harbor (a structurally different 38-question B2B intake) shipped with a `getStorage(variant)` branch and a few small server modules; the rest is a single config file.
 - **Three-tier prompt caching.** A 21K-token system prompt × up to 10 agentic steps would be prohibitively expensive without it. Anthropic ephemeral caching across tool schemas, system prompt, and history breakpoints (applied via [`cacheManager.ts`](./app/api/agent/lib/cacheManager.ts)) achieves a measured **95.3% hit rate, ~73% cost reduction**. Without this the depth that defines the product would have had to be cut.
 - **Exa as evidence layer.** A semantic knowledge layer purpose-built for LLM agents, returning cleaned highlights in the shape an agent's reasoning loop actually needs. The system prompt's fabrication guard enforces real-or-no citations. This is what makes the evidence-based positioning defensible at runtime, not just at the marketing layer.
 
@@ -28,7 +28,7 @@ The same core engine (Next.js routes, prompt scaffolding, Exa tools, three-tier 
 |---|---|---|---|
 | **Standard quizzes** | [`/quiz`](https://prism-quiz.vercel.app/quiz) (12 variants) | Warm, already in Prism's orbit | `quiz-*` (Upstash) |
 | **Cold-traffic assessment** | [`/assessment`](https://prism-quiz.vercel.app/assessment) | Cold, first touch from paid ads | `assessment-*` (separate Redis DB) |
-| **Best-life-care intake** | [`/quiz/best-life-care`](https://prism-quiz.vercel.app/quiz/best-life-care) (hidden) | B2B partner client base | `bestlife-*` (same Redis, isolated keys) |
+| **Best-life-harbor intake** | [`/quiz/best-life-harbor`](https://prism-quiz.vercel.app/quiz/best-life-harbor) (hidden) | B2B partner client base | `bestlife-*` (same Redis, isolated keys) |
 
 ### Standard quizzes
 
@@ -42,11 +42,11 @@ A separate flow for paid-ad traffic with no prior brand awareness. No patience w
 
 → **Try it live: [prism-quiz.vercel.app/assessment](https://prism-quiz.vercel.app/assessment)**
 
-### Best-life-care intake
+### Best-life-harbor intake
 
-A 38-question deep health intake built for one of Prism's B2B partners. Hidden from the public `/quiz` listing; only the partner's users reach it via direct URL. Reuses the entire engine with isolated storage (`bestlife-*` keys) and a dedicated admin at `/admin/best-life-care`, so partner submissions never mix with Prism's own funnel. No chat handoff in v1. **Total new engine code to ship this pillar: a `getStorage(variant)` branch in the existing route plus three small parallel server modules. The rest is a single config file.** That marginal cost is the payoff of the config-driven engine.
+A 38-question deep health intake built for one of Prism's B2B partners. Hidden from the public `/quiz` listing; only the partner's users reach it via direct URL. Reuses the entire engine with isolated storage (`bestlife-*` keys) and a dedicated admin at `/admin/best-life-harbor`, so partner submissions never mix with Prism's own funnel. No chat handoff in v1. **Total new engine code to ship this pillar: a `getStorage(variant)` branch in the existing route plus three small parallel server modules. The rest is a single config file.** That marginal cost is the payoff of the config-driven engine.
 
-→ **See it live: [prism-quiz.vercel.app/quiz/best-life-care](https://prism-quiz.vercel.app/quiz/best-life-care)**
+→ **See it live: [prism-quiz.vercel.app/quiz/best-life-harbor](https://prism-quiz.vercel.app/quiz/best-life-harbor)**
 
 ### Plus: standalone chat as a side door
 
@@ -65,7 +65,7 @@ Walking the warm-audience path end-to-end:
 3. **Submit** posts `{ variant, answers }` to [`app/api/quiz/route.ts`](./app/api/quiz/route.ts). The route picks the storage namespace via `getStorage(variant)`, validates against a Zod schema generated from the config, saves the submission, then calls Claude Sonnet 4.6 with the Exa search/read tools.
 4. **Generate.** The agent freely interleaves search → read → reasoning → search again, capped at 10 steps, before writing the final assessment with inline citations woven into prose.
 5. **Result** renders in [`components/quiz/quiz-result.tsx`](./components/quiz/quiz-result.tsx). Three CTAs: book a free call (gold, primary), continue the conversation with the chat agent, or download a PDF. Each fires its own engagement event (`booking_click`, `agent_opened`, `pdf_download`).
-6. **(Optional) Continue.** Standard variants link to `/explore/{quizId}` ([`app/explore/[quizId]/agent-page.tsx`](./app/explore/[quizId]/agent-page.tsx)), a streaming agent conversation that already knows the user from their quiz answers and assessment. The agent auto-fires a hidden first message so it opens warmly. Best-life-care doesn't expose this in v1.
+6. **(Optional) Continue.** Standard variants link to `/explore/{quizId}` ([`app/explore/[quizId]/agent-page.tsx`](./app/explore/[quizId]/agent-page.tsx)), a streaming agent conversation that already knows the user from their quiz answers and assessment. The agent auto-fires a hidden first message so it opens warmly. Best-life-harbor doesn't expose this in v1.
 
 The cold assessment flow is shorter: 5 static questions → single-turn LLM (no tools, no thinking) → 2-paragraph copy aimed at conversion → direct purchase CTA.
 
@@ -181,7 +181,7 @@ The cold-traffic assessment flow deliberately doesn't use any tools. For paid-ad
 
 Question types are modeled as a TypeScript discriminated union of six shapes (`slider | yes_no | multi_select | single_select | free_text | yes_no_with_text`) with exhaustive switches at every consumer. The exhaustiveness is the safety mechanism: adding a new question type forces every consumer to handle it before the build passes. The engine grows without orphaning types in stale code paths.
 
-Two cross-cutting optionals any type can adopt: **`hideWhen`** (declarative skip-and-fill that cascades through the answer graph) and **`allowUnsure`** (third "Unsure" button on yes/no questions). Best-life-care (38 questions, complex multi-step skip cascades, conditional textareas) runs on the same engine the 11-question variants do, with no special-casing. The complexity rode entirely in config, which is the test the architecture had to pass.
+Two cross-cutting optionals any type can adopt: **`hideWhen`** (declarative skip-and-fill that cascades through the answer graph) and **`allowUnsure`** (third "Unsure" button on yes/no questions). Best-life-harbor (38 questions, complex multi-step skip cascades, conditional textareas) runs on the same engine the 11-question variants do, with no special-casing. The complexity rode entirely in config, which is the test the architecture had to pass.
 
 ---
 
@@ -192,10 +192,10 @@ Three namespaces, one per pillar. Dual-mode adapter: [Upstash Redis](https://ups
 | Namespace | Used by | Backend |
 |---|---|---|
 | `quiz-*` | 12 standard variants | `UPSTASH_REDIS_REST_URL` |
-| `bestlife-*` | best-life-care | Same Redis instance, isolated key prefix |
+| `bestlife-*` | best-life-harbor | Same Redis instance, isolated key prefix |
 | `assessment-*` | cold assessment | **Separate Redis DB** via `UPSTASH_ASSESSMENT_REDIS_REST_URL` |
 
-Two different isolation patterns, deliberately. **Best-life-care** uses a key prefix on the same Redis instance because the operational cost of full separation wasn't worth it for what's essentially a partner-tenanted slice of the same product. **Assessment** gets its own Redis DB because reporting and audience analytics are entirely different from the standard funnel: different stakeholders, different metrics, different lifecycle. The pattern matches the *business* shape of each pillar, not a one-size-fits-all isolation rule.
+Two different isolation patterns, deliberately. **Best-life-harbor** uses a key prefix on the same Redis instance because the operational cost of full separation wasn't worth it for what's essentially a partner-tenanted slice of the same product. **Assessment** gets its own Redis DB because reporting and audience analytics are entirely different from the standard funnel: different stakeholders, different metrics, different lifecycle. The pattern matches the *business* shape of each pillar, not a one-size-fits-all isolation rule.
 
 Storage adapters live in [`server/`](./server/). The `/api/quiz` route picks one via a small `getStorage(variant)` branch, the only place in the engine that knows about variant-specific storage.
 
@@ -215,7 +215,7 @@ app/                   Next.js App Router
   assessment/          Cold-traffic 5Q flow
   explore/[quizId]/    Post-quiz agent chat (standard variants)
   chat/                Standalone agent chat with sidebar
-  admin/               Password-gated dashboards (results, assessments, best-life-care, chats)
+  admin/               Password-gated dashboards (results, assessments, best-life-harbor, chats)
   api/                 Quiz LLM, agent (dual-mode), assessment generator, PDF, admin endpoints
 
 components/

@@ -1,6 +1,6 @@
-// app/api/admin/best-life-care/route.ts
+// app/api/admin/best-life-harbor/route.ts
 //
-// Admin listing for best-life-care submissions. Reads from the isolated
+// Admin listing for best-life-harbor submissions. Reads from the isolated
 // bestlife-* storage namespace — never touches the standard quiz storage.
 // Same ADMIN_PASSWORD auth pattern as the standard admin.
 

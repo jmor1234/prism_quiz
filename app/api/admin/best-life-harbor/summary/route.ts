@@ -1,10 +1,10 @@
-// app/api/admin/best-life-care/summary/route.ts
+// app/api/admin/best-life-harbor/summary/route.ts
 //
-// AI summary for a best-life-care conversation. Reads/writes the isolated
+// AI summary for a best-life-harbor conversation. Reads/writes the isolated
 // bestlife-* storage namespace. Reuses the same Sonnet 4.6 system prompt
 // as the standard admin summary — context is variant-agnostic.
 //
-// Note: in v1 there is no chat handoff for best-life-care, so engagement
+// Note: in v1 there is no chat handoff for best-life-harbor, so engagement
 // records will rarely have conversation data. This endpoint is here for
 // parity / future use.
 

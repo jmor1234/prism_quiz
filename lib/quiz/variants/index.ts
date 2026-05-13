@@ -13,7 +13,7 @@ import { weightConfig } from "./weight";
 import { skinConfig } from "./skin";
 import { anxietyConfig } from "./anxiety";
 import { allergiesConfig } from "./allergies";
-import { bestLifeCareConfig } from "./best-life-care";
+import { bestLifeHarborConfig } from "./best-life-harbor";
 
 const variants: Record<string, VariantConfig> = {
   "root-cause": rootCauseConfig,
@@ -28,11 +28,18 @@ const variants: Record<string, VariantConfig> = {
   "skin": skinConfig,
   "anxiety": anxietyConfig,
   "allergies": allergiesConfig,
-  "best-life-care": bestLifeCareConfig,
+  "best-life-harbor": bestLifeHarborConfig,
+};
+
+// Legacy slug aliases — keeps old stored records resolvable after a rename.
+// Stored `record.variant` for pre-rename submissions still says "best-life-care";
+// retries and result-page lookups need that string to resolve to the new config.
+const LEGACY_SLUG_ALIASES: Record<string, string> = {
+  "best-life-care": "best-life-harbor",
 };
 
 export function getVariant(slug: string): VariantConfig | undefined {
-  return variants[slug];
+  return variants[slug] ?? variants[LEGACY_SLUG_ALIASES[slug] ?? ""];
 }
 
 export function getAllVariants(): VariantConfig[] {

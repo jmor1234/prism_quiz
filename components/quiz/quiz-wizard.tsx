@@ -580,7 +580,7 @@ export function QuizWizard({ config }: { config: VariantConfig }) {
             />
           </div>
           <div className="flex justify-between items-center">
-            {config.slug === "best-life-care" ? (
+            {config.slug === "best-life-harbor" ? (
               <span />
             ) : (
               <span className="text-sm text-muted-foreground">

@@ -1,6 +1,6 @@
 // app/api/bestlife/pdf/route.ts
 //
-// User-facing PDF export for the best-life-care quiz variant. Mirrors
+// User-facing PDF export for the best-life-harbor quiz variant. Mirrors
 // /api/quiz/pdf but reads from the isolated bestlife-results storage.
 // Reuses the variant-agnostic buildQuizHtml template.
 
@@ -39,7 +39,7 @@ export async function POST(req: Request) {
     const fullHtml = await buildQuizHtml(htmlContent);
     const pdfBuffer = await generatePdf(fullHtml);
 
-    const filename = `prism-best-life-care-${quizId.slice(0, 8)}.pdf`;
+    const filename = `prism-best-life-harbor-${quizId.slice(0, 8)}.pdf`;
 
     console.log(`[BestLife PDF] Export complete: ${filename} (${pdfBuffer.length} bytes)\n`);
 

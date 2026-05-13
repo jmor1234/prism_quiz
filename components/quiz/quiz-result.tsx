@@ -25,8 +25,8 @@ export function QuizResult({
   const staggerDelay = shouldReduceMotion ? 0 : 0.15;
   const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
 
-  // best-life-care uses fully separate engagement + PDF endpoints
-  const isBestLife = variant.slug === "best-life-care";
+  // best-life-harbor uses fully separate engagement + PDF endpoints
+  const isBestLife = variant.slug === "best-life-harbor";
   const trackQuizEvent = isBestLife ? trackBestlifeEvent : trackEvent;
   const pdfEndpoint = isBestLife ? "/api/bestlife/pdf" : "/api/quiz/pdf";
 
@@ -176,7 +176,7 @@ export function QuizResult({
             </motion.div>
           )}
 
-          {/* Continue with chat agent — standard variants only (best-life-care has no chat handoff in v1) */}
+          {/* Continue with chat agent — standard variants only (best-life-harbor has no chat handoff in v1) */}
           {!isBestLife && (
             <motion.div
               initial={shouldReduceMotion ? {} : { opacity: 0, y: 20 }}
