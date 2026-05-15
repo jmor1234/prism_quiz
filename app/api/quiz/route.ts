@@ -32,6 +32,7 @@ interface QuizStorage {
   upsert: (args: {
     variant: string;
     name: string;
+    email?: string;
     answers: QuizAnswers;
   }) => Promise<QuizSubmissionRecord>;
   getSubmission: (id: string) => Promise<QuizSubmissionRecord | null>;
@@ -42,8 +43,8 @@ interface QuizStorage {
 function getStorage(variant: string): QuizStorage {
   if (BEST_LIFE_SLUGS.has(variant)) {
     return {
-      upsert: ({ name, answers }) =>
-        upsertBestLifeSubmission({ name, answers }),
+      upsert: ({ name, email, answers }) =>
+        upsertBestLifeSubmission({ name, email, answers }),
       getSubmission: getBestLifeSubmission,
       getResult: getBestLifeResult,
       saveResult: saveBestLifeResult,
@@ -125,6 +126,7 @@ export async function POST(req: Request) {
   try {
     let variant: string;
     let name: string;
+    let email: string;
     let answers: Record<string, unknown>;
 
     if (existingSubmissionId) {
@@ -158,6 +160,7 @@ export async function POST(req: Request) {
       // Use stored submission data for generation
       variant = existing.variant;
       name = existing.name;
+      email = existing.email ?? "";
       answers = existing.answers;
       recordId = existingSubmissionId;
       console.log(
@@ -172,6 +175,13 @@ export async function POST(req: Request) {
           { status: 400, headers: { "Content-Type": "application/json" } }
         );
       }
+
+      // Normalize the body's variant to the canonical slug before validation.
+      // `getVariant` resolves legacy aliases (e.g., "best-life-care" →
+      // "best-life-harbor"), but `z.literal(variant.slug)` only accepts the
+      // canonical form. Without this, stale browser tabs loaded pre-rename
+      // 400 on submit, losing the user's in-progress answers.
+      body.variant = variantConfig.slug;
 
       // Validate against variant-specific schema
       const schema = buildSubmissionSchema(variantConfig);
@@ -189,10 +199,11 @@ export async function POST(req: Request) {
 
       variant = parsed.data.variant;
       name = parsed.data.name;
+      email = parsed.data.email ?? "";
       answers = parsed.data.answers;
 
       // Save new submission to the correct storage namespace
-      const record = await storage.upsert({ variant, name, answers });
+      const record = await storage.upsert({ variant, name, email, answers });
       recordId = record.id;
       console.log(`[Quiz] New submission saved: ${recordId} (variant: ${variant})`);
     }

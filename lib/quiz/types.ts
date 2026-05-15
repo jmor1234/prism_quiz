@@ -148,6 +148,17 @@ export interface VariantConfig {
   // When true, omit from public /quiz index and admin variant filters.
   // The variant route (/quiz/{slug}) still works; this only affects listings.
   hidden?: boolean;
+
+  // When true, the wizard renders a required name+email intake step between
+  // the intro and the first question. Variants without this flag behave as
+  // before (no intake, name sent as ""). Pair with `emailField` to provide
+  // the form copy.
+  requireIntake?: boolean;
+  emailField?: {
+    question: string;
+    hint: string;
+    placeholder?: string;
+  };
 }
 
 // --- Answer types ---
@@ -173,6 +184,7 @@ export type QuizAnswers = Record<string, unknown>;
 export interface QuizSubmissionPayload {
   variant: string;
   name: string;
+  email?: string; // present only when the variant has `requireIntake`
   answers: QuizAnswers;
 }
 
@@ -183,6 +195,7 @@ export interface QuizSubmissionRecord {
   createdAt: string;
   variant: string;
   name: string;
+  email?: string; // pre-rollout records may not have this field
   answers: QuizAnswers;
 }
 
@@ -191,6 +204,7 @@ export interface QuizEntry {
   createdAt: string;
   variant: string;
   name: string;
+  email?: string;
   answers: QuizAnswers;
   report: string | null;
 }

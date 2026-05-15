@@ -3,12 +3,15 @@
 
 const STORAGE_KEY_PREFIX = "prism-quiz";
 const LEGACY_KEY = "prism-quiz"; // v1 key (pre-variant)
-const SCHEMA_VERSION = 2;
+const SCHEMA_VERSION = 3;
+
+export type QuizIntake = { name: string; email: string };
 
 export type QuizStorageData = {
   v: typeof SCHEMA_VERSION;
   id: string;
   report: string | null; // null = submission exists but generation failed
+  intake?: QuizIntake;   // present only for variants that gate on intake
 };
 
 // Cached values per variant
@@ -19,7 +22,7 @@ function storageKey(variant: string): string {
 }
 
 /**
- * Migrate v1 (pre-variant) storage to v2 variant-scoped key.
+ * Migrate v1 (pre-variant) storage to current v3 schema.
  * Only applicable for root-cause since that was the only variant in v1.
  */
 function migrateV1(variant: string): QuizStorageData | null {
@@ -32,7 +35,6 @@ function migrateV1(variant: string): QuizStorageData | null {
     const parsed = JSON.parse(raw);
     if (parsed.v !== 1) return null;
 
-    // Migrate: write to v2 key, delete v1 key
     const migrated: QuizStorageData = {
       v: SCHEMA_VERSION,
       id: parsed.id,
@@ -46,6 +48,16 @@ function migrateV1(variant: string): QuizStorageData | null {
   }
 }
 
+// Accept v2 reads as-is: id + report are still valid; intake is simply absent
+// for older entries. Writes always emit v3, so v2 entries upgrade silently on
+// the next setQuizStorage call.
+function upgradeFromV2(parsed: { v: number; id: string; report: string | null }):
+  | QuizStorageData
+  | null {
+  if (parsed.v !== 2) return null;
+  return { v: SCHEMA_VERSION, id: parsed.id, report: parsed.report ?? null };
+}
+
 export function getQuizStorage(variant: string): QuizStorageData | null {
   if (typeof window === "undefined") return null;
 
@@ -53,19 +65,22 @@ export function getQuizStorage(variant: string): QuizStorageData | null {
   if (cached !== undefined) return cached;
 
   try {
-    // Try v2 key first
     const raw = localStorage.getItem(storageKey(variant));
     if (raw) {
-      const parsed = JSON.parse(raw) as QuizStorageData;
+      const parsed = JSON.parse(raw) as QuizStorageData & { v: number };
       if (parsed.v === SCHEMA_VERSION) {
         cache.set(variant, parsed);
         return parsed;
       }
-      // Wrong version — clear it
+      const upgraded = upgradeFromV2(parsed as { v: number; id: string; report: string | null });
+      if (upgraded) {
+        cache.set(variant, upgraded);
+        return upgraded;
+      }
+      // Unknown version — clear it
       localStorage.removeItem(storageKey(variant));
     }
 
-    // Try v1 migration for root-cause
     const migrated = migrateV1(variant);
     if (migrated) {
       cache.set(variant, migrated);

@@ -1,8 +1,8 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowRight, CheckCircle2, FileDown, MessageCircle } from "lucide-react";
+import { ArrowRight, CheckCircle2, FileDown, Link2, MessageCircle } from "lucide-react";
 import { motion, useReducedMotion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { buildBookingUrl } from "@/lib/utmStorage";
@@ -12,6 +12,7 @@ import { Response } from "@/components/ai-elements/response";
 import { Loader } from "@/components/ai-elements/loader";
 import { Button } from "@/components/ui/button";
 import { ModeToggle } from "@/components/ui/mode-toggle";
+import { getBestLifeResultUrl } from "@/lib/quiz/resultUrl";
 import type { VariantConfig } from "@/lib/quiz/types";
 
 export function QuizResult({
@@ -24,11 +25,32 @@ export function QuizResult({
   const shouldReduceMotion = useReducedMotion();
   const staggerDelay = shouldReduceMotion ? 0 : 0.15;
   const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
 
   // best-life-harbor uses fully separate engagement + PDF endpoints
   const isBestLife = variant.slug === "best-life-harbor";
   const trackQuizEvent = isBestLife ? trackBestlifeEvent : trackEvent;
   const pdfEndpoint = isBestLife ? "/api/bestlife/pdf" : "/api/quiz/pdf";
+
+  const copyResultLink = useCallback(async () => {
+    const url = getBestLifeResultUrl(result.id);
+    try {
+      await navigator.clipboard.writeText(url);
+      setLinkCopied(true);
+    } catch {
+      // Older browsers / blocked clipboard — fall back to a prompt so the
+      // user can still copy by hand. No toast library needed.
+      window.prompt("Copy this link to come back to your results later:", url);
+    }
+  }, [result.id]);
+
+  // Reset the "Copied!" label after 2s. Effect-driven so the timer is
+  // cleaned up if the component unmounts mid-toast.
+  useEffect(() => {
+    if (!linkCopied) return;
+    const timer = setTimeout(() => setLinkCopied(false), 2000);
+    return () => clearTimeout(timer);
+  }, [linkCopied]);
 
   // When a bookingTransition is set, the bridge paragraph and booking CTA
   // are absorbed into the assessment card so the closing thought and ask
@@ -233,6 +255,29 @@ export function QuizResult({
               Download a PDF copy to reference or share
             </span>
           </motion.div>
+
+          {/* Durable result link — best-life-harbor only (a public viewer
+              route exists at /quiz/best-life-harbor/result/{id}) */}
+          {isBestLife && (
+            <motion.div
+              initial={shouldReduceMotion ? {} : { opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: staggerDelay * (hasMergedCard ? 4 : 5) }}
+              className="flex flex-col items-center gap-1"
+            >
+              <Button
+                variant="outline"
+                onClick={copyResultLink}
+                className="gap-2 transition-all duration-300 hover:-translate-y-0.5"
+              >
+                <Link2 className="h-4 w-4" />
+                {linkCopied ? "Copied!" : "Copy link to your results"}
+              </Button>
+              <span className="text-xs text-muted-foreground">
+                Save this link to come back to your results from any device
+              </span>
+            </motion.div>
+          )}
         </div>
       </main>
     </div>

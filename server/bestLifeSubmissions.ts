@@ -55,9 +55,11 @@ const isNotFoundError = (error: unknown): error is NodeJS.ErrnoException => {
 
 export async function upsertBestLifeSubmission({
   name,
+  email,
   answers,
 }: {
   name: string;
+  email?: string;
   answers: QuizAnswers;
 }): Promise<QuizSubmissionRecord> {
   const id = randomUUID();
@@ -68,6 +70,7 @@ export async function upsertBestLifeSubmission({
     createdAt: timestamp,
     variant: VARIANT_SLUG,
     name,
+    email: email ?? "",
     answers,
   };
 
@@ -130,6 +133,7 @@ function toQuizEntry(
     createdAt: record.createdAt,
     variant: record.variant,
     name: record.name,
+    email: record.email ?? "",
     answers: record.answers,
     report,
   };

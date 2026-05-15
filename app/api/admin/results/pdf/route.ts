@@ -72,6 +72,7 @@ export async function POST(request: NextRequest) {
       createdAt: submission.createdAt,
       variant: submission.variant,
       name: submission.name,
+      email: submission.email,
       answers: submission.answers,
       reportHtml,
       summary: engagement?.summary ?? null,

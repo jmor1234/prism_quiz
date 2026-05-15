@@ -67,9 +67,23 @@ export function buildSubmissionSchema(variant: VariantConfig) {
     answerFields[q.id] = questionToZodField(q);
   }
 
+  // When a variant opts into intake, name + email are required at the server
+  // boundary too — not just the client form. Otherwise both fields default to
+  // empty strings (legacy behavior). Keeping a single schema shape lets the
+  // API route access `parsed.data.email` without type-level branching.
+  // Max-length caps are defensive: the body itself is already bounded by
+  // Next.js, but storing a megabyte-long "name" in Redis is a footgun.
+  const nameSchema = variant.requireIntake
+    ? z.string().min(1).max(200)
+    : z.string().max(200).optional().default("");
+  const emailSchema = variant.requireIntake
+    ? z.string().email().max(254)
+    : z.string().max(254).optional().default("");
+
   return z.object({
     variant: z.literal(variant.slug),
-    name: z.string().optional().default(""),
+    name: nameSchema,
+    email: emailSchema,
     answers: z.object(answerFields),
   });
 }

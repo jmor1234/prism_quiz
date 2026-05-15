@@ -43,6 +43,8 @@ export default async function QuizVariantPage({ params }: Props) {
     description: "",
     questions: config.questions,
     nameField: config.nameField,
+    emailField: config.emailField,
+    requireIntake: config.requireIntake,
     headline: config.headline,
     subtitle: config.subtitle,
     estimatedTime: config.estimatedTime,

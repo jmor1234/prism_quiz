@@ -9,6 +9,7 @@ interface AdminPdfData {
   createdAt: string;
   variant: string;
   name: string;
+  email?: string;
   answers: Record<string, unknown>;
   reportHtml: string;
   summary?: string | null;
@@ -23,12 +24,12 @@ interface AdminPdfData {
  * 3. AI Assessment (markdown converted to HTML)
  */
 export function buildAdminPdfHtml(data: AdminPdfData): string {
-  const { quizId, createdAt, variant, name, answers, reportHtml, summary } = data;
+  const { quizId, createdAt, variant, name, email, answers, reportHtml, summary } = data;
 
   const config = getVariant(variant);
   const variantName = config?.name ?? variant;
 
-  const header = buildHeader(name, variantName, createdAt, quizId);
+  const header = buildHeader(name, email ?? "", variantName, createdAt, quizId);
   const answersSection = config
     ? buildAnswersSection(config.questions, answers)
     : buildFallbackAnswersSection(answers);
@@ -45,7 +46,7 @@ export function buildAdminPdfHtml(data: AdminPdfData): string {
   `;
 }
 
-function buildHeader(name: string, variantName: string, createdAt: string, quizId: string): string {
+function buildHeader(name: string, email: string, variantName: string, createdAt: string, quizId: string): string {
   const date = new Date(createdAt).toLocaleDateString("en-US", {
     year: "numeric",
     month: "long",
@@ -57,6 +58,7 @@ function buildHeader(name: string, variantName: string, createdAt: string, quizI
       <h1>Quiz Assessment Report</h1>
       <div class="admin-header-meta">
         <div class="admin-header-client">${escapeHtml(name)}</div>
+        ${email ? `<div class="admin-header-email">${escapeHtml(email)}</div>` : ""}
         <div class="admin-header-details">
           <span>${escapeHtml(variantName)}</span>
           <span>${date}</span>

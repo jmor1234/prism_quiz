@@ -575,6 +575,13 @@ export const bestLifeHarborConfig: VariantConfig = {
     placeholder: "Your name",
   },
 
+  requireIntake: true,
+  emailField: {
+    question: "What's your email?",
+    hint: "So we can follow up with you about your results",
+    placeholder: "you@example.com",
+  },
+
   headline: "Best Life Harbor Health Intake",
   subtitle:
     "A deeper look at how you're doing across the systems that drive your health.",

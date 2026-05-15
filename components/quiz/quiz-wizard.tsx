@@ -16,6 +16,7 @@ import { StepTransition } from "@/components/assessment/step-transition";
 import { QuestionStep } from "./question-step";
 import { QuizLoading } from "./quiz-loading";
 import { QuizResult } from "./quiz-result";
+import { IntakeStep } from "./intake-step";
 import type {
   VariantConfig,
   QuestionConfig,
@@ -340,6 +341,16 @@ export function QuizWizard({ config }: { config: VariantConfig }) {
   const [step, setStep] = useState(0);
   const [direction, setDirection] = useState<Direction>("forward");
 
+  // Intake state (only used when config.requireIntake). `intakeDone` gates
+  // the transition from intake form → first question; `intake` holds the
+  // collected name/email and is persisted to localStorage so a mid-quiz
+  // refresh re-populates the form.
+  const [intake, setIntake] = useState<{ name: string; email: string }>({
+    name: "",
+    email: "",
+  });
+  const [intakeDone, setIntakeDone] = useState(false);
+
   // Accessibility
   const shouldReduceMotion = useReducedMotion();
 
@@ -350,6 +361,10 @@ export function QuizWizard({ config }: { config: VariantConfig }) {
     const stored = getQuizStorage(config.slug);
     if (stored) {
       setStarted(true);
+      if (stored.intake) {
+        setIntake(stored.intake);
+        setIntakeDone(true);
+      }
       if (stored.report) {
         setResult({ id: stored.id, report: stored.report });
         setStatus("success");
@@ -389,6 +404,10 @@ export function QuizWizard({ config }: { config: VariantConfig }) {
     if (prev >= 0) {
       setDirection("back");
       setStep(prev);
+    } else if (config.requireIntake) {
+      // Step backwards out of the question list returns to the intake form
+      // (which lives between intro and Q1 when requireIntake is set).
+      setIntakeDone(false);
     } else {
       setStarted(false);
     }
@@ -411,6 +430,9 @@ export function QuizWizard({ config }: { config: VariantConfig }) {
     setError(null);
 
     const submitAnswers = answersToSubmit ?? answers;
+    const intakePayload = config.requireIntake
+      ? { name: intake.name, email: intake.email }
+      : { name: "" };
 
     // Build payload — variant is always required (drives storage routing).
     // On retry we additionally send the submissionId so the route fetches
@@ -419,9 +441,11 @@ export function QuizWizard({ config }: { config: VariantConfig }) {
       ? { variant: config.slug, submissionId: pendingSubmissionId }
       : {
           variant: config.slug,
-          name: "",
+          ...intakePayload,
           answers: submitAnswers,
         };
+
+    const persistIntake = config.requireIntake ? intake : undefined;
 
     try {
       const res = await fetch("/api/quiz", {
@@ -445,12 +469,17 @@ export function QuizWizard({ config }: { config: VariantConfig }) {
           setQuizStorage(config.slug, {
             id: data.submissionId,
             report: null,
+            intake: persistIntake,
           });
         }
         throw new Error(data.error || "Failed to submit quiz");
       }
 
-      setQuizStorage(config.slug, { id: data.id, report: data.report });
+      setQuizStorage(config.slug, {
+        id: data.id,
+        report: data.report,
+        intake: persistIntake,
+      });
       setPendingSubmissionId(null);
       setResult(data);
       setStatus("success");
@@ -460,7 +489,7 @@ export function QuizWizard({ config }: { config: VariantConfig }) {
       setError(message);
       setStatus("error");
     }
-  }, [pendingSubmissionId, config.slug, answers]);
+  }, [pendingSubmissionId, config.slug, config.requireIntake, answers, intake]);
 
   // Update a single answer (called only from the UI — auto-fills go through
   // setAnswers directly).
@@ -543,9 +572,29 @@ export function QuizWizard({ config }: { config: VariantConfig }) {
     );
   }
 
-  // Result view
+  // Result view (rehydrated or freshly generated)
   if (result) {
     return <QuizResult result={result} variant={config} />;
+  }
+
+  // Intake form (variants opting into requireIntake — sits between intro and Q1).
+  // Skipped on retry: the server already has the stored submission and just
+  // needs the submissionId to regenerate, so re-prompting for intake would
+  // collect data the route would then ignore.
+  if (config.requireIntake && !intakeDone && !pendingSubmissionId) {
+    return (
+      <IntakeStep
+        config={config}
+        initialName={intake.name}
+        initialEmail={intake.email}
+        onSubmit={(values) => {
+          setIntake(values);
+          setIntakeDone(true);
+          setDirection("forward");
+        }}
+        onBack={() => setStarted(false)}
+      />
+    );
   }
 
   // Loading view

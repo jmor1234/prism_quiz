@@ -103,10 +103,12 @@ function normalizeRecord(raw: Record<string, unknown>): QuizSubmissionRecord {
 export async function upsertQuizSubmission({
   variant,
   name,
+  email,
   answers,
 }: {
   variant: string;
   name: string;
+  email?: string;
   answers: QuizAnswers;
 }): Promise<QuizSubmissionRecord> {
   const id = randomUUID();
@@ -117,6 +119,7 @@ export async function upsertQuizSubmission({
     createdAt: timestamp,
     variant,
     name,
+    email: email ?? "",
     answers,
   };
 
@@ -189,6 +192,7 @@ function toQuizEntry(
     createdAt: record.createdAt,
     variant: record.variant,
     name: record.name,
+    email: record.email ?? "",
     answers: record.answers,
     report,
   };

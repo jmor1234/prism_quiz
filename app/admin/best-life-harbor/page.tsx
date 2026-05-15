@@ -57,6 +57,7 @@ interface QuizEntry {
   createdAt: string;
   variant: string;
   name: string;
+  email?: string;
   answers: Record<string, unknown>;
   report: string | null;
   engagement: EngagementRecord | null;
@@ -529,7 +530,14 @@ function EntryRow({
           >
             <ChevronRight className="h-4 w-4 text-[var(--quiz-gold-dark)] shrink-0" />
           </motion.div>
-          <span className="font-medium flex-1">{entry.name || "Anonymous"}</span>
+          <span className="font-medium flex-1 truncate">
+            {entry.name || "Anonymous"}
+            {entry.email && (
+              <span className="ml-2 font-normal text-xs text-muted-foreground">
+                {entry.email}
+              </span>
+            )}
+          </span>
           <EngagementBadges engagement={entry.engagement} />
           <span className="text-sm text-muted-foreground">{formatDate(entry.createdAt)}</span>
           <span className="text-xs text-muted-foreground font-mono">{entry.id.slice(0, 8)}</span>
