@@ -3,6 +3,7 @@
 import Exa from "exa-js";
 import { tool } from "ai";
 import { z } from "zod";
+import { reportFailure } from "../agent/lib/toolFailure";
 
 // --- Exa client ---
 
@@ -72,7 +73,8 @@ const searchTool = tool({
   execute: async ({ query, includeText, excludeText }) => {
     const start = Date.now();
 
-    const results = await rateLimited(async () => {
+    const results = await reportFailure("Search", `"${query.slice(0, 80)}"`, () =>
+      rateLimited(async () => {
       const response = await exa.search(query, {
         type: "auto",
         numResults: 3,
@@ -93,7 +95,8 @@ const searchTool = tool({
         publishedDate: r.publishedDate ?? null,
         author: r.author ?? null,
       }));
-    });
+      })
+    );
 
     const ms = Date.now() - start;
     const tok = estimateTokens(results);
@@ -132,23 +135,25 @@ const readTool = tool({
   execute: async ({ url, query }) => {
     const start = Date.now();
 
-    const result = await rateLimited(async () => {
-      const response = await exa.getContents([url], {
-        highlights: {
-          query,
-          maxCharacters: 10_000,
-        },
-      });
+    const result = await reportFailure("Read", url, () =>
+      rateLimited(async () => {
+        const response = await exa.getContents([url], {
+          highlights: {
+            query,
+            maxCharacters: 10_000,
+          },
+        });
 
-      const r = response.results[0];
-      if (!r) return { url, title: null, highlights: [] as string[] };
+        const r = response.results[0];
+        if (!r) return { url, title: null, highlights: [] as string[] };
 
-      return {
-        url: r.url,
-        title: r.title,
-        highlights: r.highlights as string[],
-      };
-    });
+        return {
+          url: r.url,
+          title: r.title,
+          highlights: r.highlights as string[],
+        };
+      })
+    );
 
     const ms = Date.now() - start;
     const chars = result.highlights.join("").length;

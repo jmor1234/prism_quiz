@@ -4,6 +4,7 @@ import { tool } from "ai";
 import { z } from "zod";
 import { getContents } from "../exaSearch/exaClient";
 import { extractFromDocument } from "./extraction/agent";
+import { reportFailure } from "../../lib/toolFailure";
 import type { DepthToolOutput } from "./types";
 
 const dateFormatter = new Intl.DateTimeFormat("en-US", {
@@ -31,11 +32,12 @@ export const extractFindingsTool = tool({
       /* */
     }
 
+    // getContents already reports its own failures via the Exa client. The
+    // Gemini extraction is a separate dependency with its own failure modes,
+    // so it needs its own.
     const fullText = await getContents(url);
-    const extraction = await extractFromDocument(
-      fullText,
-      objective,
-      currentDate
+    const extraction = await reportFailure("Depth Extract", domain || url, () =>
+      extractFromDocument(fullText, objective, currentDate)
     );
 
     const output = { ...extraction, url };
