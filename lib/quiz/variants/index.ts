@@ -1,6 +1,7 @@
 // lib/quiz/variants/index.ts
 
 import type { VariantConfig } from "../types";
+import { SLUG_ALIASES } from "../slugAliases";
 import { rootCauseConfig } from "./root-cause";
 import { gutConfig } from "./gut";
 import { fatigueConfig } from "./fatigue";
@@ -31,22 +32,29 @@ const variants: Record<string, VariantConfig> = {
   "prism-assessment": prismAssessmentConfig,
 };
 
-// Slug aliases — keeps records stored under an earlier slug resolvable after a
-// rename. Stored `record.variant` for pre-rename submissions still carries the
-// old string, and retries plus result-page lookups need it to resolve to the
-// current config.
-//
-// Resolution is a SINGLE hop (see getVariant), so every entry must point
-// directly at a canonical registry key, never at another alias. Chaining
-// "best-life-care" -> "best-life-harbor" -> "prism-assessment" would silently
-// return undefined for the oldest slug — and live records at that slug exist.
-const SLUG_ALIASES: Record<string, string> = {
-  "best-life-harbor": "prism-assessment",
-  "best-life-care": "prism-assessment",
-};
+// Slug aliases keep records stored under an earlier slug resolvable after a
+// rename: stored `record.variant` is never rewritten, so retries and
+// result-page lookups need the old string to resolve to the current config.
+// The table lives in ./slugAliases so the client-side storage module can share
+// it without importing every variant config.
 
+/**
+ * Resolve a slug — current or historical — to its config.
+ *
+ * Lookups are own-property guarded. A bare `variants[slug]` returns a truthy
+ * non-config for keys inherited from Object.prototype ("__proto__",
+ * "constructor"), which then passes an `if (!config)` guard at the call site
+ * and fails much later with a confusing error.
+ */
 export function getVariant(slug: string): VariantConfig | undefined {
-  return variants[slug] ?? variants[SLUG_ALIASES[slug] ?? ""];
+  if (Object.hasOwn(variants, slug)) return variants[slug];
+
+  const aliased = Object.hasOwn(SLUG_ALIASES, slug)
+    ? SLUG_ALIASES[slug]
+    : undefined;
+  if (aliased && Object.hasOwn(variants, aliased)) return variants[aliased];
+
+  return undefined;
 }
 
 /**

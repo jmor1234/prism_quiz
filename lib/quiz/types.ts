@@ -197,7 +197,11 @@ export interface QuizSubmissionRecord {
   variant: string;
   name: string;
   email?: string; // pre-rollout records may not have this field
-  source?: string; // absent on records written before attribution shipped
+  // Partner attribution. Written only by the partner-assessment storage
+  // module: the standard quiz writer accepts the field and drops it, so
+  // standard-variant records never carry it. Also absent on partner records
+  // written before attribution shipped.
+  source?: string;
   answers: QuizAnswers;
 }
 

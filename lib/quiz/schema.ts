@@ -77,12 +77,19 @@ const SOURCE_MAX_LENGTH = 64;
  * construction wherever it is later rendered (admin UI, PDF templates),
  * rather than relying on the client's normalization or on escaping downstream.
  */
-function normalizeSource(raw: unknown): string | undefined {
+export function normalizeSource(raw: unknown): string | undefined {
   if (typeof raw !== "string") return undefined;
   const cleaned = raw
     .toLowerCase()
-    .replace(/[^a-z0-9_-]/g, "")
-    .slice(0, SOURCE_MAX_LENGTH);
+    // Collapse runs of disallowed characters to a single "-" rather than
+    // deleting them, so one partner's variations converge instead of
+    // splitting: "based supps" and "based-supps" both become "based-supps".
+    // Deleting separators would also collide distinct partners, mapping
+    // "acme.health" onto an existing "acmehealth".
+    .replace(/[^a-z0-9_-]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, SOURCE_MAX_LENGTH)
+    .replace(/-+$/, ""); // re-trim in case the slice landed mid-separator
   return cleaned || undefined;
 }
 

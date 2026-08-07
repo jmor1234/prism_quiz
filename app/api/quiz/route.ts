@@ -213,8 +213,13 @@ export async function POST(req: Request) {
       // Save new submission to the correct storage namespace
       const record = await storage.upsert({ variant, name, email, source, answers });
       recordId = record.id;
+
+      // Log the record's source, not the request's. Only the partner-assessment
+      // storage module persists attribution; the standard writer accepts the
+      // field and drops it. Logging the input would assert a save that did not
+      // happen for every standard variant.
       console.log(
-        `[Quiz] New submission saved: ${recordId} (variant: ${variant}${source ? `, source: ${source}` : ""})`
+        `[Quiz] New submission saved: ${recordId} (variant: ${variant}${record.source ? `, source: ${record.source}` : ""})`
       );
     }
 

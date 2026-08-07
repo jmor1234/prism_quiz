@@ -443,9 +443,13 @@ export function QuizWizard({ config }: { config: VariantConfig }) {
     // a hand-built link is more likely to use the shorter spelling.
     // Sliced only to bound the payload — the server does the real
     // normalization, and is the only thing that decides what gets stored.
+    // `||` not `??`: URLSearchParams.get returns "" for a present-but-empty
+    // param, which is not nullish. A link template that renders an unfilled
+    // merge tag (?source=&utm_source=acme) would otherwise short-circuit on
+    // the empty string and drop attribution that utm_source was carrying.
     const params = new URLSearchParams(window.location.search);
     const source =
-      (params.get("source") ?? params.get("utm_source"))?.slice(0, 200) ??
+      (params.get("source") || params.get("utm_source"))?.slice(0, 200) ||
       undefined;
 
     // Build payload — variant is always required (drives storage routing).

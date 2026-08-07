@@ -1,18 +1,11 @@
 // lib/quizStorage.ts
 // localStorage persistence for quiz state, scoped per variant
 
+import { getPriorSlugs } from "./quiz/slugAliases";
+
 const STORAGE_KEY_PREFIX = "prism-quiz";
 const LEGACY_KEY = "prism-quiz"; // v1 key (pre-variant)
 const SCHEMA_VERSION = 3;
-
-// Slugs a variant was previously stored under. Mirrors SLUG_ALIASES in
-// lib/quiz/variants/index.ts, deliberately duplicated rather than imported:
-// this module is client-side, and importing the registry would pull all 13
-// variant configs into the bundle. One-time migration — safe to delete once
-// pre-rename browsers have cycled.
-const PRIOR_VARIANT_SLUGS: Record<string, string[]> = {
-  "prism-assessment": ["best-life-harbor", "best-life-care"],
-};
 
 export type QuizIntake = { name: string; email: string };
 
@@ -98,7 +91,7 @@ function parseStored(raw: string): QuizStorageData | null {
 function migrateFromPriorSlug(variant: string): QuizStorageData | null {
   if (typeof window === "undefined") return null;
 
-  for (const priorSlug of PRIOR_VARIANT_SLUGS[variant] ?? []) {
+  for (const priorSlug of getPriorSlugs(variant)) {
     const priorKey = storageKey(priorSlug);
     const raw = localStorage.getItem(priorKey);
     if (!raw) continue;

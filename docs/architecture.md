@@ -106,10 +106,29 @@ POST /api/assessment/generate { steps }
 
 ```
 /                           → redirect to /quiz (via next.config)
+
+Slug redirects (next.config.ts) — a SECOND continuity mechanism, distinct from
+SLUG_ALIASES. Aliases resolve stored variant strings at runtime; these keep
+already-distributed URLs working. Removing them breaks every partner link
+already sent, including shareable result links:
+  /quiz/best-life-care            → /quiz/best-life-harbor        308 (pre-existing)
+  /quiz/best-life-harbor          → /quiz/prism-assessment        307
+  /quiz/best-life-harbor/result/:quizId
+                                  → /quiz/prism-assessment/result/:quizId  307
+  /admin/best-life-care           → /admin/best-life-harbor       307 (pre-existing)
+The two 307s are intentionally temporary; see the comment in next.config.ts.
+
 /quiz                       → landing page (card grid of visible variants + standalone chat link)
                               Filters out variants with `hidden: true` (prism-assessment)
 /quiz/[variant]             → intro screen → quiz wizard (server component → client)
                               Includes /quiz/prism-assessment (38-question deep intake; reachable via direct URL even when hidden)
+/quiz/prism-assessment/result/[quizId]
+                            → PUBLIC, unauthenticated viewer for a stored partner report
+                              (noindex). This is the shareable "copy link to your results"
+                              target built by lib/quiz/resultUrl.ts.
+                              Old links at /quiz/best-life-harbor/result/{id} survive ONLY
+                              via the next.config redirect listed above — there is no app
+                              route at the old path.
 /assessment                 → 5 static questions → AI assessment → purchase CTA
 /admin/assessments          → password-protected assessment submissions dashboard
 /admin/results              → password-protected admin dashboard (Quiz Results | Conversations tabs)
@@ -131,7 +150,7 @@ app/quiz/page.tsx                    Server component — landing page
 
 app/quiz/[variant]/page.tsx          Server component
   └─ generateMetadata()              Per-variant SEO (title, description, OG, Twitter)
-  └─ generateStaticParams()          Pre-renders all 12 variant routes
+  └─ generateStaticParams()          Pre-renders all 13 variant routes (incl. the hidden partner one)
   └─ Strips server-only fields       promptOverlay, description
 app/quiz/[variant]/opengraph-image.tsx  Dynamic OG image (edge, 1200x630)
 app/quiz/[variant]/twitter-image.tsx    Re-exports OG image for Twitter
@@ -410,7 +429,16 @@ Internal names were deliberately **not** renamed along with it. The Redis key pr
 - Resolution is a **single hop** (`variants[slug] ?? variants[ALIASES[slug]]`). Every alias must therefore point *directly* at the canonical slug. Chaining `best-life-care → best-life-harbor → prism-assessment` would silently return `undefined` for the oldest slug, and live records at that slug exist.
 - Records written after the rename carry `prism-assessment`, so the keyspace holds a mix. This is inert as long as nothing hardcodes a slug list.
 
-**Never compare slug strings directly** to decide whether something belongs to this pillar — use `isPrismAssessmentSlug()`, which resolves aliases and derives the answer from the registry. It is what `getStorage()` in `/api/quiz` and the exclusion filter in `/api/admin/results` both call. The failure mode it prevents is silent: `getStorage()` has no error branch, so a slug it fails to recognize falls through to the standard `quiz-*` keyspace, writing partner PII where the pillar's admin will never look for it and the standard admin actively filters it out. The lead would simply appear to vanish.
+**Any *stored* `record.variant` value must go through `isPrismAssessmentSlug()`** — never a direct string comparison. Stored values can be any of the three historical slugs, so only alias-aware resolution answers correctly. This is what `getStorage()` in `/api/quiz` and the exclusion filter in `/api/admin/results` both call. The failure mode it prevents is silent: `getStorage()` has no error branch, so a slug it fails to recognize falls through to the standard `quiz-*` keyspace, writing partner PII where the pillar's admin will never look for it and the standard admin actively filters it out. The lead would simply appear to vanish.
+
+Comparing `VariantConfig.slug` is a different case and is safe, because a config's slug is canonical by construction — it can never hold a legacy value. Two UI branches do this deliberately:
+
+| Site | Effect if it silently goes false |
+|---|---|
+| `components/quiz/quiz-result.tsx` (`isPrismAssessment`) | engagement events and PDF requests hit the standard endpoints, so the PDF 404s on a bestlife-only id, the copy-result-link disappears, and the chat CTA this pillar hides reappears |
+| `components/quiz/quiz-wizard.tsx` (progress-counter gate) | the "X of 38" counter comes back on a long intake where it discourages completion |
+
+Both are **rename touchpoints**: a future rename must update them alongside `SLUG_ALIASES`, and neither fails loudly. If that lockstep ever feels risky, the durable fix is a flag on `VariantConfig` (e.g. `isolatedStorage`) so the behavior derives from config instead of a slug literal.
 
 **Backward compatibility:** `normalizeRecord()` on every standard quiz read converts pre-variant submissions to the new shape. No data migration needed. Old entries only exist in the global index. The bestlife storage modules don't need this since the namespace is new.
 
@@ -647,6 +675,8 @@ hooks/
 lib/
 ├── quiz/
 │   ├── types.ts                        Core type definitions
+│   ├── slugAliases.ts                  Slug rename history (leaf module — no imports,
+│   │                                   shared by the registry and client storage)
 │   ├── schema.ts                       Dynamic Zod schema builder
 │   ├── formatAnswers.ts                Answer formatter for prompts
 │   └── variants/
