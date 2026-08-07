@@ -3,8 +3,16 @@
 // Result fetch for the best-life-harbor quiz variant. Mirrors /api/quiz/result
 // but reads from the isolated bestlife-results storage namespace.
 
+// GET only, deliberately. A PATCH handler here previously let any caller
+// overwrite a stored report, authenticated by nothing but the quizId — the
+// same id the public "copy link to your results" URL hands out. It had no
+// callers anywhere in the app. Removed rather than gated: an edit path that
+// nothing uses is not worth an auth surface. If report editing is ever
+// wanted, it belongs behind ADMIN_PASSWORD like the other admin writes, and
+// results have no version history to restore from if overwritten.
+
 import { NextRequest, NextResponse } from "next/server";
-import { getBestLifeResult, saveBestLifeResult } from "@/server/bestLifeResults";
+import { getBestLifeResult } from "@/server/bestLifeResults";
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
@@ -29,44 +37,6 @@ export async function GET(request: NextRequest) {
     console.error("[BestLife Result] Failed to retrieve:", error);
     return NextResponse.json(
       { error: "Failed to retrieve result" },
-      { status: 500 }
-    );
-  }
-}
-
-export async function PATCH(request: NextRequest) {
-  try {
-    const body = (await request.json()) as { quizId?: string; report?: string };
-    const { quizId, report } = body;
-
-    if (!quizId || typeof quizId !== "string") {
-      return NextResponse.json(
-        { error: "quizId is required and must be a string" },
-        { status: 400 }
-      );
-    }
-
-    if (!report || typeof report !== "string") {
-      return NextResponse.json(
-        { error: "report is required and must be a string" },
-        { status: 400 }
-      );
-    }
-
-    const existing = await getBestLifeResult(quizId);
-    if (!existing) {
-      return NextResponse.json({ error: "Result not found" }, { status: 404 });
-    }
-
-    await saveBestLifeResult({ id: quizId, report });
-
-    console.log(`[BestLife Result] Report updated for quiz: ${quizId}`);
-
-    return NextResponse.json({ success: true, quizId });
-  } catch (error) {
-    console.error("[BestLife Result] Failed to update:", error);
-    return NextResponse.json(
-      { error: "Failed to update result" },
       { status: 500 }
     );
   }

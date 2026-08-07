@@ -2,6 +2,7 @@
 
 import Exa from "exa-js";
 import { exaRateLimiter } from "./rateLimiter";
+import { reportFailure } from "../../lib/toolFailure";
 import type {
   ExaSearchResponse,
   ExaSearchResult,
@@ -14,7 +15,8 @@ export async function searchExa(
   query: string,
   options?: SearchOptions
 ): Promise<ExaSearchResponse> {
-  return exaRateLimiter.schedule(async () => {
+  return reportFailure("Exa Search", `"${query.slice(0, 80)}"`, () =>
+    exaRateLimiter.schedule(async () => {
     const response = await exa.search(query, {
       type: "auto",
       numResults: options?.numResults ?? 3,
@@ -53,26 +55,29 @@ export async function searchExa(
         ? response.costDollars.total
         : 0;
 
-    return { results, costDollars: cost };
-  });
+      return { results, costDollars: cost };
+    })
+  );
 }
 
 export async function getContents(
   url: string,
   maxCharacters: number = 400_000
 ): Promise<string> {
-  return exaRateLimiter.schedule(async () => {
-    const response = await exa.getContents([url], {
-      text: { maxCharacters },
-    });
+  return reportFailure("Exa Contents", url, () =>
+    exaRateLimiter.schedule(async () => {
+      const response = await exa.getContents([url], {
+        text: { maxCharacters },
+      });
 
-    const result = response.results[0];
-    if (!result?.text) {
-      throw new Error(`No content retrieved from ${url}`);
-    }
+      const result = response.results[0];
+      if (!result?.text) {
+        throw new Error(`No content retrieved from ${url}`);
+      }
 
-    return result.text;
-  });
+      return result.text;
+    })
+  );
 }
 
 export async function getHighlights(
@@ -80,17 +85,19 @@ export async function getHighlights(
   query: string,
   maxCharacters: number = 10_000
 ): Promise<{ url: string; title: string; highlights: string[] }> {
-  return exaRateLimiter.schedule(async () => {
-    const response = await exa.getContents([url], {
-      highlights: { maxCharacters, query },
-    });
+  return reportFailure("Exa Highlights", url, () =>
+    exaRateLimiter.schedule(async () => {
+      const response = await exa.getContents([url], {
+        highlights: { maxCharacters, query },
+      });
 
-    const result = response.results[0];
+      const result = response.results[0];
 
-    return {
-      url: result.url,
-      title: result.title ?? "",
-      highlights: result.highlights ?? [],
-    };
-  });
+      return {
+        url: result.url,
+        title: result.title ?? "",
+        highlights: result.highlights ?? [],
+      };
+    })
+  );
 }
