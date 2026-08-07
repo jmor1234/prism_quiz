@@ -1,4 +1,9 @@
-// lib/quiz/variants/best-life-harbor.ts
+// lib/quiz/variants/prism-assessment.ts
+//
+// The generic partner intake. Originally built for one B2B partner under the
+// slug "best-life-harbor" (and before that "best-life-care"); both resolve
+// here through SLUG_ALIASES. Storage still uses the bestlife-* key prefix —
+// see docs/architecture.md for why the internal names diverge.
 //
 // Each Likert question carries its own contextual 5-point option set —
 // option `value` stays "1"..."5" so the underlying severity gradient is
@@ -8,9 +13,9 @@
 
 import type { VariantConfig } from "../types";
 
-export const bestLifeHarborConfig: VariantConfig = {
-  slug: "best-life-harbor",
-  name: "Best Life Harbor Health Intake",
+export const prismAssessmentConfig: VariantConfig = {
+  slug: "prism-assessment",
+  name: "Prism Health Assessment",
   description:
     "A deeper look at how you're doing across the systems that drive your health.",
 
@@ -582,13 +587,13 @@ export const bestLifeHarborConfig: VariantConfig = {
     placeholder: "you@example.com",
   },
 
-  headline: "Best Life Harbor Health Intake",
+  headline: "Prism Health Assessment",
   subtitle:
     "A deeper look at how you're doing across the systems that drive your health.",
   estimatedTime: "About 10 minutes",
   resultBanner: "Your personalized intake assessment is ready",
   ctaText: "Book a Free Call With Us",
-  ctaUrl: "https://prism.miami/booking?utm_content=quiz_best_life_harbor",
+  ctaUrl: "https://prism.miami/booking?utm_content=quiz_prism_assessment",
 
   bookingTransition:
     "At Prism, we help people with symptoms just like this by looking holistically at the systems that run their biology. We encourage you to book a free call with us below at your convenience, where we can walk you through our plans and a path forward.",

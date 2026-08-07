@@ -434,6 +434,20 @@ export function QuizWizard({ config }: { config: VariantConfig }) {
       ? { name: intake.name, email: intake.email }
       : { name: "" };
 
+    // Partner attribution. Read straight off the URL rather than persisted:
+    // the wizard never navigates (steps are React state), so the query string
+    // the user landed with is still here at submit, and it survives a refresh.
+    //
+    // `source` wins over `utm_source` when both are present. Accepting both
+    // matters because partner email platforms emit utm_source natively, while
+    // a hand-built link is more likely to use the shorter spelling.
+    // Sliced only to bound the payload — the server does the real
+    // normalization, and is the only thing that decides what gets stored.
+    const params = new URLSearchParams(window.location.search);
+    const source =
+      (params.get("source") ?? params.get("utm_source"))?.slice(0, 200) ??
+      undefined;
+
     // Build payload — variant is always required (drives storage routing).
     // On retry we additionally send the submissionId so the route fetches
     // the existing answers instead of re-validating a fresh payload.
@@ -442,6 +456,7 @@ export function QuizWizard({ config }: { config: VariantConfig }) {
       : {
           variant: config.slug,
           ...intakePayload,
+          ...(source ? { source } : {}),
           answers: submitAnswers,
         };
 
@@ -629,7 +644,7 @@ export function QuizWizard({ config }: { config: VariantConfig }) {
             />
           </div>
           <div className="flex justify-between items-center">
-            {config.slug === "best-life-harbor" ? (
+            {config.slug === "prism-assessment" ? (
               <span />
             ) : (
               <span className="text-sm text-muted-foreground">

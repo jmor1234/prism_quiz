@@ -3,12 +3,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { listQuizEntries, searchQuizEntriesByName } from "@/server/quizSubmissions";
 import { getEngagementBatch } from "@/server/quizEngagement";
+import { isPrismAssessmentSlug } from "@/lib/quiz/variants";
 
-// Variants whose data lives in a separate storage namespace and must never
-// be surfaced through this admin (each has its own dedicated /admin page).
-// Includes the legacy "best-life-care" slug so any pre-rename records still
-// stored with that variant value remain excluded from this listing.
-const EXCLUDED_VARIANTS = new Set(["best-life-harbor", "best-life-care"]);
+// The prism-assessment pillar lives in a separate storage namespace and has
+// its own /admin page, so it must never surface through this one.
+//
+// `isPrismAssessmentSlug` resolves aliases, which matters here because this
+// matches on the STORED record.variant — pre-rename records carry
+// "best-life-harbor" or "best-life-care" and must stay excluded too.
 
 /**
  * GET /api/admin/results
@@ -50,7 +52,7 @@ export async function GET(request: NextRequest) {
 
     // Reject variant filters pointing at excluded namespaces (their data
     // doesn't live in this storage anyway, but be explicit).
-    if (variant && EXCLUDED_VARIANTS.has(variant)) {
+    if (variant && isPrismAssessmentSlug(variant)) {
       return NextResponse.json({ entries: [], nextCursor: null });
     }
 
@@ -70,7 +72,7 @@ export async function GET(request: NextRequest) {
     // Defensive exclusion: even if an excluded variant somehow ended up in
     // the standard quiz storage (legacy data, manual write, etc.), strip it
     // from the response so it can never leak into this admin.
-    entries = entries.filter((e) => !EXCLUDED_VARIANTS.has(e.variant));
+    entries = entries.filter((e) => !isPrismAssessmentSlug(e.variant));
 
     // Batch-fetch engagement data for all entries
     const engagementMap = await getEngagementBatch(entries.map((e: { id: string }) => e.id));

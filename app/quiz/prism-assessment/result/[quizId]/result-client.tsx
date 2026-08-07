@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { bestLifeHarborConfig } from "@/lib/quiz/variants/best-life-harbor";
+import { prismAssessmentConfig } from "@/lib/quiz/variants/prism-assessment";
 
 // Skip SSR for QuizResult entirely. Inside the wizard, QuizResult only ever
 // renders after a client-side state transition (no SSR pass), so framer-motion
@@ -16,7 +16,7 @@ const QuizResult = dynamic(
   { ssr: false }
 );
 
-export function BestLifeHarborResultClient({
+export function PrismAssessmentResultClient({
   quizId,
   report,
 }: {
@@ -26,7 +26,7 @@ export function BestLifeHarborResultClient({
   return (
     <QuizResult
       result={{ id: quizId, report }}
-      variant={bestLifeHarborConfig}
+      variant={prismAssessmentConfig}
     />
   );
 }

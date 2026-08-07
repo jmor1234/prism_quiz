@@ -1094,7 +1094,7 @@ export default function AdminResultsPage() {
               href="/admin/best-life-harbor"
               className="text-xs text-muted-foreground hover:text-[var(--quiz-gold-dark)] underline-offset-2 hover:underline"
             >
-              Best Life Harbor →
+              Prism Assessment →
             </a>
             <Button
               variant="ghost"

@@ -13,7 +13,7 @@ import { weightConfig } from "./weight";
 import { skinConfig } from "./skin";
 import { anxietyConfig } from "./anxiety";
 import { allergiesConfig } from "./allergies";
-import { bestLifeHarborConfig } from "./best-life-harbor";
+import { prismAssessmentConfig } from "./prism-assessment";
 
 const variants: Record<string, VariantConfig> = {
   "root-cause": rootCauseConfig,
@@ -28,18 +28,39 @@ const variants: Record<string, VariantConfig> = {
   "skin": skinConfig,
   "anxiety": anxietyConfig,
   "allergies": allergiesConfig,
-  "best-life-harbor": bestLifeHarborConfig,
+  "prism-assessment": prismAssessmentConfig,
 };
 
-// Legacy slug aliases — keeps old stored records resolvable after a rename.
-// Stored `record.variant` for pre-rename submissions still says "best-life-care";
-// retries and result-page lookups need that string to resolve to the new config.
-const LEGACY_SLUG_ALIASES: Record<string, string> = {
-  "best-life-care": "best-life-harbor",
+// Slug aliases — keeps records stored under an earlier slug resolvable after a
+// rename. Stored `record.variant` for pre-rename submissions still carries the
+// old string, and retries plus result-page lookups need it to resolve to the
+// current config.
+//
+// Resolution is a SINGLE hop (see getVariant), so every entry must point
+// directly at a canonical registry key, never at another alias. Chaining
+// "best-life-care" -> "best-life-harbor" -> "prism-assessment" would silently
+// return undefined for the oldest slug — and live records at that slug exist.
+const SLUG_ALIASES: Record<string, string> = {
+  "best-life-harbor": "prism-assessment",
+  "best-life-care": "prism-assessment",
 };
 
 export function getVariant(slug: string): VariantConfig | undefined {
-  return variants[slug] ?? variants[LEGACY_SLUG_ALIASES[slug] ?? ""];
+  return variants[slug] ?? variants[SLUG_ALIASES[slug] ?? ""];
+}
+
+/**
+ * True when `slug` names the Prism assessment pillar under any of its past or
+ * present slugs. The pillar has its own isolated storage namespace, so this
+ * decides which keyspace a submission reads and writes.
+ *
+ * Derived from the registry rather than kept as a hardcoded slug list: a list
+ * has to be updated in lockstep at every rename, and a miss fails silently by
+ * routing partner data into the shared quiz-* keyspace where the standard
+ * admin filters it out — the lead would look like it vanished.
+ */
+export function isPrismAssessmentSlug(slug: string): boolean {
+  return getVariant(slug)?.slug === prismAssessmentConfig.slug;
 }
 
 export function getAllVariants(): VariantConfig[] {

@@ -185,6 +185,7 @@ export interface QuizSubmissionPayload {
   variant: string;
   name: string;
   email?: string; // present only when the variant has `requireIntake`
+  source?: string; // partner attribution, captured from ?source= / ?utm_source=
   answers: QuizAnswers;
 }
 
@@ -196,6 +197,7 @@ export interface QuizSubmissionRecord {
   variant: string;
   name: string;
   email?: string; // pre-rollout records may not have this field
+  source?: string; // absent on records written before attribution shipped
   answers: QuizAnswers;
 }
 
@@ -205,6 +207,7 @@ export interface QuizEntry {
   variant: string;
   name: string;
   email?: string;
+  source?: string;
   answers: QuizAnswers;
   report: string | null;
 }

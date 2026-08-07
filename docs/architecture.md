@@ -6,7 +6,7 @@ A config-driven health assessment platform with three pillars:
 
 - **Quiz flow** (`/quiz/{variant}`) — warm audiences with condition-specific quizzes (12 variants) leading to booking calls. Standard storage namespace (`quiz-*`).
 - **Assessment flow** (`/assessment`) — cold traffic from paid ads, 5-question intake, brief personalized 2-paragraph assessment, direct purchase CTA. Separate Redis database via `UPSTASH_ASSESSMENT_REDIS_REST_URL`.
-- **Best-life-harbor intake** (`/quiz/best-life-harbor`) — extended 38-question deep health intake with fully isolated storage namespace (`bestlife-*` keys, same Redis instance) and dedicated admin (`/admin/best-life-harbor`). Reuses the same `/api/quiz` route, prompt scaffolding, Exa tools, and 3-tier caching as standard variants — the route branches storage by variant. No chat handoff in v1.
+- **Partner assessment** (`/quiz/prism-assessment`) — extended 38-question deep health intake with fully isolated storage namespace (`bestlife-*` keys, same Redis instance) and dedicated admin (`/admin/best-life-harbor`). Reuses the same `/api/quiz` route, prompt scaffolding, Exa tools, and 3-tier caching as standard variants — the route branches storage by variant. No chat handoff in v1.
 
 **Stack:** Next.js 15 (App Router), TypeScript, TailwindCSS v4, Framer Motion, Claude Sonnet 4.6 (adaptive thinking, low effort), AI SDK v6, Exa v2 (semantic search), Gemini Flash (extraction), Upstash Redis, Puppeteer (PDF), Dexie (IndexedDB)
 
@@ -26,13 +26,13 @@ QuizWizard renders questions from config
 hideWhen rule matches; back navigation skips backward likewise)
     │
     ▼
-User answers N questions per variant config (11 for standard, 38 for best-life-harbor)
+User answers N questions per variant config (11 for standard, 38 for prism-assessment)
     │
     ▼
 POST /api/quiz { variant, answers, [submissionId for retry] }
     │
     ├─► Resolve storage namespace by variant
-    │     ├─► best-life-harbor → bestlife-* keyspace
+    │     ├─► prism-assessment → bestlife-* keyspace
     │     └─► all others     → standard quiz-* keyspace
     ├─► Validate against dynamic Zod schema (built from config)
     ├─► Save submission to Redis/filesystem
@@ -53,7 +53,7 @@ POST /api/quiz { variant, answers, [submissionId for retry] }
     /api/{quiz|bestlife}/pdf        Opens booking URL (UTM-tagged)
             │
             ▼
-    /explore/{quizId} (standard variants only — not best-life-harbor in v1)
+    /explore/{quizId} (standard variants only — not prism-assessment in v1)
             │
             ▼
     Multi-turn streaming agent conversation
@@ -107,18 +107,18 @@ POST /api/assessment/generate { steps }
 ```
 /                           → redirect to /quiz (via next.config)
 /quiz                       → landing page (card grid of visible variants + standalone chat link)
-                              Filters out variants with `hidden: true` (best-life-harbor)
+                              Filters out variants with `hidden: true` (prism-assessment)
 /quiz/[variant]             → intro screen → quiz wizard (server component → client)
-                              Includes /quiz/best-life-harbor (38-question deep intake; reachable via direct URL even when hidden)
+                              Includes /quiz/prism-assessment (38-question deep intake; reachable via direct URL even when hidden)
 /assessment                 → 5 static questions → AI assessment → purchase CTA
 /admin/assessments          → password-protected assessment submissions dashboard
 /admin/results              → password-protected admin dashboard (Quiz Results | Conversations tabs)
-                              Variant filter dropdown excludes hidden variants (best-life-harbor)
-                              API also defensively excludes best-life-harbor submissions
-/admin/best-life-harbor       → password-protected dedicated dashboard for best-life-harbor submissions
+                              Variant filter dropdown excludes hidden variants (prism-assessment)
+                              API also defensively excludes prism-assessment submissions
+/admin/best-life-harbor       → password-protected dedicated dashboard for prism-assessment submissions
                               (same ADMIN_PASSWORD env var, isolated from /admin/results)
 /explore/[quizId]           → post-quiz agent chat (server component → client)
-                              Standard variants only — best-life-harbor has no chat handoff in v1
+                              Standard variants only — prism-assessment has no chat handoff in v1
 /chat                       → redirect to latest thread or create new
 /chat/[threadId]            → standalone agent chat with sidebar (server → client)
 ```
@@ -149,7 +149,7 @@ app/quiz/[variant]/twitter-image.tsx    Re-exports OG image for Twitter
             ├─ QuizLoading           SVG progress ring + pulsing dots
             └─ QuizResult            Assessment display + gold booking CTA + PDF download
                                      Variant-aware: tracking + PDF endpoint branch on variant.slug
-                                     (best-life-harbor → /api/bestlife/*, others → /api/quiz/*)
+                                     (prism-assessment → /api/bestlife/*, others → /api/quiz/*)
 
 app/assessment/page.tsx              Server component (metadata, passes bookingUrl from env)
   └─ AssessmentClient                "use client" orchestrator
@@ -187,7 +187,7 @@ The central state machine. Driven entirely by `VariantConfig`:
 - **Retry:** if submission fails, stores `submissionId` in localStorage for retry
 - **Persistence:** variant-scoped localStorage (`prism-quiz:{variant}`)
 - **Dev tools:** "Fill Test" button generates random valid data per question type and lands on the last visible step
-- **Progress UI:** sticky header shows the gold progress bar plus "X of N" counter. Best-life-harbor hides the counter (long quiz; raw count discourages completion) — counter render is gated on `config.slug !== "best-life-harbor"`.
+- **Progress UI:** sticky header shows the gold progress bar plus "X of N" counter. The partner assessment hides the counter (long quiz; raw count discourages completion) — counter render is gated on `config.slug !== "prism-assessment"`.
 - **Animation:** Step transitions use `react-transition-group` + CSS (`step-transition.tsx`); only the progress bar width and result-page mount fades use Framer Motion (one-shot, no `AnimatePresence` enter/exit lifecycle on the hot path). `useReducedMotion` support throughout.
 
 ### Styling
@@ -205,16 +205,16 @@ The central state machine. Driven entirely by `VariantConfig`:
 
 ```
 POST /api/quiz                            Quiz submission + LLM generation (rate-limited, cached)
-                                          Branches storage by variant: best-life-harbor → bestlife-*,
+                                          Branches storage by variant: prism-assessment → bestlife-*,
                                           all others → standard quiz-*. Same prompt/tools/caching
                                           for every variant.
 GET  /api/quiz/result?quizId=             Fetch stored result (standard quiz storage)
 POST /api/quiz/pdf                        Generate user-facing PDF (standard quiz storage)
 POST /api/quiz/engagement                 Engagement tracking (events + conversations) [standard]
 
-POST /api/bestlife/result                 Fetch stored result (best-life-harbor storage)
-POST /api/bestlife/pdf                    Generate user-facing PDF (best-life-harbor storage)
-POST /api/bestlife/engagement             Engagement tracking [best-life-harbor]
+POST /api/bestlife/result                 Fetch stored result (prism-assessment storage)
+POST /api/bestlife/pdf                    Generate user-facing PDF (prism-assessment storage)
+POST /api/bestlife/engagement             Engagement tracking [prism-assessment]
                                           (parallel routes exist because /api/quiz/{result,pdf,engagement}
                                           only receive quizId — they can't know which keyspace to read)
 
@@ -226,14 +226,14 @@ POST /api/agent                           Streaming agent conversation (Sonnet 4
 POST /api/chat/engagement                 Standalone chat tracking (events + conversations)
 
 GET  /api/admin/results                   Paginated quiz submissions + engagement (password-protected)
-                                          Defensively excludes best-life-harbor from listings;
+                                          Defensively excludes prism-assessment from listings;
                                           frontend dropdown filters by VariantConfig.hidden
 POST /api/admin/results/pdf               Admin PDF export (standard storage)
 POST /api/admin/results/summary           AI conversation summary (Sonnet 4.6) [standard]
 GET  /api/admin/assessments               Paginated assessment submissions + engagement (password-protected)
-GET  /api/admin/best-life-harbor            Paginated best-life-harbor submissions + engagement
-POST /api/admin/best-life-harbor/pdf        Admin PDF export (best-life-harbor storage)
-POST /api/admin/best-life-harbor/summary    AI conversation summary [best-life-harbor, parity for future use]
+GET  /api/admin/best-life-harbor            Paginated prism-assessment submissions + engagement
+POST /api/admin/best-life-harbor/pdf        Admin PDF export (prism-assessment storage)
+POST /api/admin/best-life-harbor/summary    AI conversation summary [prism-assessment, parity for future use]
 GET  /api/admin/chats                     Standalone chat sessions (password-protected)
 POST /api/admin/chats/summary             Generate standalone chat summary (Sonnet 4.6)
 ```
@@ -367,16 +367,50 @@ Index:          quiz-index                  → sorted set (timestamp → uuid) 
 
 On save, submissions are dual-indexed to both the global and per-variant sorted sets. Listing with a variant filter uses the per-variant index (Redis) or filters in-memory (filesystem).
 
-**Best-life-harbor storage** (fully isolated, same Redis instance, separate key prefix):
+**Partner assessment storage** (fully isolated, same Redis instance, separate key prefix):
 ```
-Submissions:    bestlife-submissions:{uuid}  → { id, createdAt, variant, name, answers }
+Submissions:    bestlife-submissions:{uuid}  → { id, createdAt, variant, name, email, source?, answers }
 Results:        bestlife-results:{uuid}      → { id, report, createdAt }
 Engagement:     bestlife-engagement:{uuid}   → { quizId, events, conversation, summary, updatedAt }
 Index:          bestlife-index               → sorted set (timestamp → uuid)
 ```
 Filesystem fallback: `storage/bestlife-{submissions,results,engagement}/{uuid}.json`.
 
-Same `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` env vars as the standard quiz — no new infrastructure required. The `/api/quiz` route branches storage by variant via a small `getStorage(variant)` helper. The `/admin/results` API defensively filters out `best-life-harbor` records (belt-and-suspenders since they should never land in `quiz-*` keys anyway).
+Same `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` env vars as the standard quiz — no new infrastructure required. The `/api/quiz` route branches storage by variant via a small `getStorage(variant)` helper. The `/admin/results` API defensively filters out `prism-assessment` records (belt-and-suspenders since they should never land in `quiz-*` keys anyway).
+
+### Partner attribution (`source`)
+
+Because one assessment now serves many partners, each submission records which partner sent the lead. Partners are onboarded by handing them a link — no code change per partner, and no allowlist.
+
+```
+/quiz/prism-assessment?source=basedsupps
+/quiz/prism-assessment?utm_source=basedsupps     equivalent
+```
+
+`source` takes precedence over `utm_source` when both appear. Both spellings are accepted because partner email platforms emit `utm_source` natively while hand-built links tend to use the shorter form.
+
+The wizard reads the parameter off `window.location.search` at submit time rather than persisting it. That works because the wizard never navigates — steps are React state, so the landing URL is still current at submit, and it survives a refresh. It is intentionally **not** sourced from `lib/utmStorage.ts`: that capture is first-touch and site-wide, so a visitor who previously arrived from a Prism ad would carry that ad's `utm_source` instead of the partner's.
+
+Normalization happens server-side in `buildSubmissionSchema` (lowercase, stripped to `[a-z0-9_-]`, capped at 64 chars) and is **total** — every input maps to a string or to `undefined`, and nothing rejects. The submission schema is one flat object, so a field that could fail validation would discard a completed 38-answer intake over a tracking value. Normalizing to a fixed charset server-side also makes the value safe by construction wherever it is later rendered.
+
+Records written before this shipped have no `source` and display blank in the admin.
+
+### Slug history and the `bestlife` naming divergence
+
+This pillar has been renamed twice at the public layer as it generalized from one partner to any partner:
+
+```
+best-life-care  →  best-life-harbor  →  prism-assessment
+```
+
+Internal names were deliberately **not** renamed along with it. The Redis key prefix (`bestlife-*`), the storage modules (`server/bestLife*.ts`), and the internal route paths (`/api/bestlife/*`, `/api/admin/best-life-harbor/*`) all still carry the old naming, because they hold live partner data and renaming keys would mean a migration that buys nothing a user can see. Expect to find `lib/quiz/variants/prism-assessment.ts` writing to `bestlife-*` keys through routes named `best-life-harbor`. That is intentional.
+
+**Old slugs stay resolvable.** Stored `record.variant` values are never rewritten, so pre-rename submissions still carry `best-life-harbor` or `best-life-care`; retries and result lookups need those strings to resolve to the current config. `SLUG_ALIASES` in `lib/quiz/variants/index.ts` maps them:
+
+- Resolution is a **single hop** (`variants[slug] ?? variants[ALIASES[slug]]`). Every alias must therefore point *directly* at the canonical slug. Chaining `best-life-care → best-life-harbor → prism-assessment` would silently return `undefined` for the oldest slug, and live records at that slug exist.
+- Records written after the rename carry `prism-assessment`, so the keyspace holds a mix. This is inert as long as nothing hardcodes a slug list.
+
+**Never compare slug strings directly** to decide whether something belongs to this pillar — use `isPrismAssessmentSlug()`, which resolves aliases and derives the answer from the registry. It is what `getStorage()` in `/api/quiz` and the exclusion filter in `/api/admin/results` both call. The failure mode it prevents is silent: `getStorage()` has no error branch, so a slug it fails to recognize falls through to the standard `quiz-*` keyspace, writing partner PII where the pillar's admin will never look for it and the standard admin actively filters it out. The lead would simply appear to vanish.
 
 **Backward compatibility:** `normalizeRecord()` on every standard quiz read converts pre-variant submissions to the new shape. No data migration needed. Old entries only exist in the global index. The bestlife storage modules don't need this since the namespace is new.
 
@@ -416,11 +450,11 @@ VariantConfig
 ├── resultBanner, ctaText, ctaUrl    Result display
 ├── promptOverlay                    LLM condition-specific guidance
 ├── estimatedTime?                   Shown on intro screen (e.g., "About 10 minutes").
-│                                    Used by best-life-harbor; omit on shorter variants.
+│                                    Used by prism-assessment; omit on shorter variants.
 ├── bookingTransition?               1-2 sentence bridge rendered between the assessment
-│                                    and the booking CTA. Used by best-life-harbor.
+│                                    and the booking CTA. Used by prism-assessment.
 └── hidden?                          Omits variant from /quiz card grid and admin variant
-                                     filters; direct URL still works. Used by best-life-harbor.
+                                     filters; direct URL still works. Used by prism-assessment.
 ```
 
 ### QuestionConfig — 6 types
@@ -436,9 +470,9 @@ VariantConfig
 
 **Cross-cutting optional fields** (available on every type):
 
-- **`hideWhen?: { questionId, is, setAnswerTo }`** — declarative conditional skip. When the upstream question's answer matches `is` (string or string[]), the wizard skips this question and auto-fills its answer with `setAnswerTo`. Cascades naturally through the answer graph. Schema-, prompt-, and admin-compatible (auto-filled values render normally everywhere). Used in best-life-harbor to hide the wake-up cascade (Q3-Q5) when the user reports they don't wake up, and to hide Q11 when Q10 is N/A.
+- **`hideWhen?: { questionId, is, setAnswerTo }`** — declarative conditional skip. When the upstream question's answer matches `is` (string or string[]), the wizard skips this question and auto-fills its answer with `setAnswerTo`. Cascades naturally through the answer graph. Schema-, prompt-, and admin-compatible (auto-filled values render normally everywhere). Used in prism-assessment to hide the wake-up cascade (Q3-Q5) when the user reports they don't wake up, and to hide Q11 when Q10 is N/A.
 
-- **`allowUnsure?: boolean`** *(yes_no and yes_no_with_text only)* — adds a third "Unsure" button between Yes and No. Answer type widens to `boolean | "unsure"`. For `yes_no_with_text`, the textarea shows on Yes OR Unsure (hidden only on No), since notes are useful when the user is uncertain. Used in best-life-harbor on Q23 (mental health history), Q24 (white tongue coating), Q28 (trigger foods).
+- **`allowUnsure?: boolean`** *(yes_no and yes_no_with_text only)* — adds a third "Unsure" button between Yes and No. Answer type widens to `boolean | "unsure"`. For `yes_no_with_text`, the textarea shows on Yes OR Unsure (hidden only on No), since notes are useful when the user is uncertain. Used in prism-assessment on Q23 (mental health history), Q24 (white tongue coating), Q28 (trigger foods).
 
 ### How config flows through the system
 
@@ -466,9 +500,9 @@ getAllVariants()          → VariantConfig[]
 getAllVariantSlugs()      → string[]
 ```
 
-13 variants registered: `root-cause`, `gut`, `fatigue`, `hormones-women`, `testosterone`, `sleep`, `thyroid`, `brain-fog`, `weight`, `skin`, `anxiety`, `allergies`, `best-life-harbor`.
+13 variants registered: `root-cause`, `gut`, `fatigue`, `hormones-women`, `testosterone`, `sleep`, `thyroid`, `brain-fog`, `weight`, `skin`, `anxiety`, `allergies`, `prism-assessment`.
 
-`best-life-harbor` is structurally a registered variant (so it gets the same routing, SEO, prompt, tools, caching, and wizard engine as the others) but is treated as a separate pillar at the storage and admin layers. Its 38 questions include the engine's full feature set: contextual Likert options (per-question phrasing instead of generic "bothersome"), 4 `hideWhen` cascades for skip-and-fill flow, 3 `allowUnsure` opt-ins, 4 `yes_no_with_text` questions for yes/no-plus-elaboration prompts.
+`prism-assessment` is structurally a registered variant (so it gets the same routing, SEO, prompt, tools, caching, and wizard engine as the others) but is treated as a separate pillar at the storage and admin layers. Its 38 questions include the engine's full feature set: contextual Likert options (per-question phrasing instead of generic "bothersome"), 4 `hideWhen` cascades for skip-and-fill flow, 3 `allowUnsure` opt-ins, 4 `yes_no_with_text` questions for yes/no-plus-elaboration prompts.
 
 ---
 
@@ -504,7 +538,7 @@ app/
 │   ├── assessments/
 │   │   └── page.tsx                    Assessment admin dashboard (submissions + engagement)
 │   └── best-life-harbor/
-│       └── page.tsx                    Dedicated best-life-harbor admin (no chat tab, no variant filter)
+│       └── page.tsx                    Dedicated prism-assessment admin (no chat tab, no variant filter)
 └── api/
     ├── quiz/
     │   ├── route.ts                    Submission + LLM generation (with tools)
@@ -522,7 +556,7 @@ app/
     │   │   └── prompt.ts               Assessment prompt + 3 knowledge file loader
     │   └── engagement/
     │       └── route.ts                Assessment engagement tracking endpoint
-    ├── bestlife/                       Parallel routes for best-life-harbor (variant-naive endpoints)
+    ├── bestlife/                       Parallel routes for prism-assessment (variant-naive endpoints)
     │   ├── result/route.ts             Result fetch from bestlife-results storage
     │   ├── pdf/route.ts                User-facing PDF (reuses shared template builder)
     │   └── engagement/route.ts         Engagement tracking → bestlife-engagement
@@ -552,7 +586,7 @@ app/
         │       └── lib/adminPdfTemplate.ts
         ├── assessments/
         │   └── route.ts                Admin assessment listing (+ engagement join)
-        ├── best-life-harbor/             Dedicated admin endpoints for best-life-harbor
+        ├── best-life-harbor/             Dedicated admin endpoints for prism-assessment
         │   ├── route.ts                Listing (+ engagement join from bestlife storage)
         │   ├── summary/route.ts        AI summary (parity with /admin/results — used if chat is added later)
         │   └── pdf/route.ts            Admin PDF export (reuses shared adminPdfTemplate)
@@ -617,7 +651,7 @@ lib/
 │   ├── formatAnswers.ts                Answer formatter for prompts
 │   └── variants/
 │       ├── index.ts                    Registry (13 variants)
-│       ├── best-life-harbor.ts           38-question deep intake (uses hideWhen, allowUnsure,
+│       ├── prism-assessment.ts           38-question deep intake (uses hideWhen, allowUnsure,
 │       │                               yes_no_with_text, contextual Likert options)
 │       └── [12 standard variant configs]
 ├── agent/
@@ -652,9 +686,9 @@ server/
 ├── quizSubmissions.ts                  Quiz submission storage (Redis + filesystem)
 ├── quizResults.ts                      Quiz result storage (Redis + filesystem)
 ├── quizEngagement.ts                   Quiz engagement storage (Redis + filesystem)
-├── bestLifeSubmissions.ts              Best-life-harbor submission storage (bestlife-* keys, same Redis)
-├── bestLifeResults.ts                  Best-life-harbor result storage (bestlife-* keys)
-├── bestLifeEngagement.ts               Best-life-harbor engagement storage (bestlife-* keys)
+├── bestLifeSubmissions.ts              Partner assessment submission storage (bestlife-* keys, same Redis)
+├── bestLifeResults.ts                  Partner assessment result storage (bestlife-* keys)
+├── bestLifeEngagement.ts               Partner assessment engagement storage (bestlife-* keys)
 ├── assessmentResults.ts                Assessment storage — name, steps, report (separate Redis DB + filesystem)
 ├── assessmentEngagement.ts             Assessment engagement — booking clicks (separate Redis DB + filesystem)
 └── chatSessions.ts                     Standalone chat storage (Redis + filesystem)

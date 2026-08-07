@@ -58,6 +58,7 @@ interface QuizEntry {
   variant: string;
   name: string;
   email?: string;
+  source?: string; // partner attribution; absent on pre-attribution records
   answers: Record<string, unknown>;
   report: string | null;
   engagement: EngagementRecord | null;
@@ -538,6 +539,14 @@ function EntryRow({
               </span>
             )}
           </span>
+          {entry.source && (
+            <span
+              title="Partner source"
+              className="shrink-0 rounded-full border border-[var(--quiz-gold-dark)]/40 px-2 py-0.5 text-xs font-medium text-[var(--quiz-gold-dark)]"
+            >
+              {entry.source}
+            </span>
+          )}
           <EngagementBadges engagement={entry.engagement} />
           <span className="text-sm text-muted-foreground">{formatDate(entry.createdAt)}</span>
           <span className="text-xs text-muted-foreground font-mono">{entry.id.slice(0, 8)}</span>
@@ -859,7 +868,7 @@ export default function BestLifeHarborAdminPage() {
             className="w-full max-w-sm space-y-6"
           >
             <div className="text-center">
-              <h1 className="text-2xl font-bold quiz-question">Best Life Harbor Admin</h1>
+              <h1 className="text-2xl font-bold quiz-question">Prism Assessment Admin</h1>
               <p className="text-muted-foreground mt-1">Enter password to continue</p>
             </div>
 
@@ -897,7 +906,7 @@ export default function BestLifeHarborAdminPage() {
                     Loading…
                   </>
                 ) : (
-                  "Access Best Life Harbor"
+                  "Access Prism Assessment"
                 )}
               </Button>
             </form>
@@ -913,7 +922,7 @@ export default function BestLifeHarborAdminPage() {
       <header className="sticky top-0 z-10 bg-background/95 border-b">
         <div className="max-w-4xl mx-auto px-4 py-3 flex items-center gap-4">
           <h1 className="text-lg font-semibold quiz-question shrink-0">
-            Best Life Harbor
+            Prism Assessment
           </h1>
 
           <div className="relative flex-1 max-w-xs">
@@ -990,7 +999,7 @@ export default function BestLifeHarborAdminPage() {
             >
               {debouncedSearch
                 ? `No submissions found for "${debouncedSearch}"`
-                : "No best-life-harbor submissions yet"}
+                : "No Prism Assessment submissions yet"}
             </motion.div>
           )}
 

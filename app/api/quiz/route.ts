@@ -4,7 +4,7 @@ import { anthropic } from "@ai-sdk/anthropic";
 import { generateText, stepCountIs } from "ai";
 import { quizTools } from "./tools";
 
-import { getVariant } from "@/lib/quiz/variants";
+import { getVariant, isPrismAssessmentSlug } from "@/lib/quiz/variants";
 import { buildSubmissionSchema } from "@/lib/quiz/schema";
 import { upsertQuizSubmission, getQuizSubmission } from "@/server/quizSubmissions";
 import { saveQuizResult, getQuizResult } from "@/server/quizResults";
@@ -21,30 +21,33 @@ import { buildQuizPrompt } from "./systemPrompt";
 import { requestRateLimiter, extractIp } from "../agent/lib/rateLimit";
 import { CacheManager } from "../agent/lib/cacheManager";
 
-// Storage resolver — best-life-harbor has its own fully-isolated namespace.
-// All other variants share the standard quiz storage.
-// Includes legacy "best-life-care" slug so retries of pre-rename submissions
-// (where stored record.variant still says "best-life-care") route to the
-// correct bestlife-* storage.
-const BEST_LIFE_SLUGS = new Set(["best-life-harbor", "best-life-care"]);
+// Storage resolver — the prism-assessment pillar has its own fully-isolated
+// namespace; all other variants share the standard quiz storage.
+//
+// `isPrismAssessmentSlug` resolves aliases, so a retry carrying a pre-rename
+// slug (stored record.variant may say "best-life-harbor" or "best-life-care")
+// routes to the same bestlife-* storage its submission was written to.
+
+interface UpsertArgs {
+  variant: string;
+  name: string;
+  email?: string;
+  source?: string;
+  answers: QuizAnswers;
+}
 
 interface QuizStorage {
-  upsert: (args: {
-    variant: string;
-    name: string;
-    email?: string;
-    answers: QuizAnswers;
-  }) => Promise<QuizSubmissionRecord>;
+  upsert: (args: UpsertArgs) => Promise<QuizSubmissionRecord>;
   getSubmission: (id: string) => Promise<QuizSubmissionRecord | null>;
   getResult: (id: string) => Promise<{ report: string } | null>;
   saveResult: (args: { id: string; report: string }) => Promise<unknown>;
 }
 
 function getStorage(variant: string): QuizStorage {
-  if (BEST_LIFE_SLUGS.has(variant)) {
+  if (isPrismAssessmentSlug(variant)) {
     return {
-      upsert: ({ name, email, answers }) =>
-        upsertBestLifeSubmission({ name, email, answers }),
+      upsert: ({ name, email, source, answers }) =>
+        upsertBestLifeSubmission({ name, email, source, answers }),
       getSubmission: getBestLifeSubmission,
       getResult: getBestLifeResult,
       saveResult: saveBestLifeResult,
@@ -177,8 +180,8 @@ export async function POST(req: Request) {
       }
 
       // Normalize the body's variant to the canonical slug before validation.
-      // `getVariant` resolves legacy aliases (e.g., "best-life-care" →
-      // "best-life-harbor"), but `z.literal(variant.slug)` only accepts the
+      // `getVariant` resolves slug aliases (e.g., "best-life-harbor" →
+      // "prism-assessment"), but `z.literal(variant.slug)` only accepts the
       // canonical form. Without this, stale browser tabs loaded pre-rename
       // 400 on submit, losing the user's in-progress answers.
       body.variant = variantConfig.slug;
@@ -202,10 +205,17 @@ export async function POST(req: Request) {
       email = parsed.data.email ?? "";
       answers = parsed.data.answers;
 
+      // Partner attribution — already normalized by the schema transform.
+      // Read from parsed.data, never body: zod strips unknown keys, so
+      // body.source would bypass normalization.
+      const source = parsed.data.source;
+
       // Save new submission to the correct storage namespace
-      const record = await storage.upsert({ variant, name, email, answers });
+      const record = await storage.upsert({ variant, name, email, source, answers });
       recordId = record.id;
-      console.log(`[Quiz] New submission saved: ${recordId} (variant: ${variant})`);
+      console.log(
+        `[Quiz] New submission saved: ${recordId} (variant: ${variant}${source ? `, source: ${source}` : ""})`
+      );
     }
 
     // Resolve variant config for prompt building

@@ -1,6 +1,8 @@
 // server/bestLifeSubmissions.ts
 //
-// Storage for the best-life-harbor quiz variant. Fully isolated from the
+// Storage for the prism-assessment pillar (formerly best-life-harbor — the
+// bestlife-* names are retained deliberately; see docs/architecture.md).
+// Fully isolated from the
 // standard quiz storage: separate Redis key prefix (bestlife-*) and separate
 // filesystem directory. Reuses the same Redis env vars as the main quiz so
 // no new infra provisioning is required.
@@ -20,7 +22,11 @@ import { getBestLifeResult } from "./bestLifeResults";
 
 const STORAGE_ROOT = path.join(process.cwd(), "storage", "bestlife-submissions");
 const INDEX_KEY = "bestlife-index";
-const VARIANT_SLUG = "best-life-harbor";
+// Stamped into every record this module writes. Records written before the
+// rename carry "best-life-harbor" (or "best-life-care"); both resolve to the
+// same config through SLUG_ALIASES, and no consumer keeps a hardcoded slug
+// list, so the mixed values in the keyspace are inert.
+const VARIANT_SLUG = "prism-assessment";
 
 let redisClient: Redis | null = null;
 
@@ -56,10 +62,17 @@ const isNotFoundError = (error: unknown): error is NodeJS.ErrnoException => {
 export async function upsertBestLifeSubmission({
   name,
   email,
+  source,
   answers,
 }: {
   name: string;
   email?: string;
+  // Required key, nullable value — not `source?:`. Threading attribution
+  // through the storage resolver in /api/quiz is otherwise type-silent: an
+  // optional property that the caller forgets to pass compiles cleanly and
+  // records a blank source for the exact pillar the feature exists for.
+  // Making the key required turns that omission into a build error.
+  source: string | undefined;
   answers: QuizAnswers;
 }): Promise<QuizSubmissionRecord> {
   const id = randomUUID();
@@ -71,6 +84,10 @@ export async function upsertBestLifeSubmission({
     variant: VARIANT_SLUG,
     name,
     email: email ?? "",
+    // Omitted from the serialized record when undefined — JSON.stringify
+    // drops undefined values, so pre-attribution records and unattributed
+    // ones share the same shape.
+    source,
     answers,
   };
 
@@ -134,6 +151,7 @@ function toQuizEntry(
     variant: record.variant,
     name: record.name,
     email: record.email ?? "",
+    source: record.source,
     answers: record.answers,
     report,
   };

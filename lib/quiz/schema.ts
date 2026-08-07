@@ -61,6 +61,31 @@ function questionToZodField(q: QuestionConfig): z.ZodTypeAny {
   }
 }
 
+const SOURCE_MAX_LENGTH = 64;
+
+/**
+ * Normalize partner attribution to a safe, comparable token.
+ *
+ * Deliberately total: every input maps to a string or to undefined, and
+ * nothing rejects. `buildSubmissionSchema` returns one flat object, so a
+ * field that *can* fail would discard a completed 38-answer intake over a
+ * tracking value — the same class of bug the variant-normalization comment in
+ * app/api/quiz/route.ts records having already shipped once. Attribution
+ * annotates a submission; it must never be able to destroy one.
+ *
+ * Stripping to [a-z0-9_-] server-side also makes the value safe by
+ * construction wherever it is later rendered (admin UI, PDF templates),
+ * rather than relying on the client's normalization or on escaping downstream.
+ */
+function normalizeSource(raw: unknown): string | undefined {
+  if (typeof raw !== "string") return undefined;
+  const cleaned = raw
+    .toLowerCase()
+    .replace(/[^a-z0-9_-]/g, "")
+    .slice(0, SOURCE_MAX_LENGTH);
+  return cleaned || undefined;
+}
+
 export function buildSubmissionSchema(variant: VariantConfig) {
   const answerFields: Record<string, z.ZodTypeAny> = {};
   for (const q of variant.questions) {
@@ -84,6 +109,7 @@ export function buildSubmissionSchema(variant: VariantConfig) {
     variant: z.literal(variant.slug),
     name: nameSchema,
     email: emailSchema,
+    source: z.unknown().optional().transform(normalizeSource),
     answers: z.object(answerFields),
   });
 }

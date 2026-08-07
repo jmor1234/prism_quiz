@@ -12,7 +12,7 @@ import { Response } from "@/components/ai-elements/response";
 import { Loader } from "@/components/ai-elements/loader";
 import { Button } from "@/components/ui/button";
 import { ModeToggle } from "@/components/ui/mode-toggle";
-import { getBestLifeResultUrl } from "@/lib/quiz/resultUrl";
+import { getPrismAssessmentResultUrl } from "@/lib/quiz/resultUrl";
 import type { VariantConfig } from "@/lib/quiz/types";
 
 export function QuizResult({
@@ -27,13 +27,13 @@ export function QuizResult({
   const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
 
-  // best-life-harbor uses fully separate engagement + PDF endpoints
-  const isBestLife = variant.slug === "best-life-harbor";
-  const trackQuizEvent = isBestLife ? trackBestlifeEvent : trackEvent;
-  const pdfEndpoint = isBestLife ? "/api/bestlife/pdf" : "/api/quiz/pdf";
+  // The prism-assessment pillar uses fully separate engagement + PDF endpoints
+  const isPrismAssessment = variant.slug === "prism-assessment";
+  const trackQuizEvent = isPrismAssessment ? trackBestlifeEvent : trackEvent;
+  const pdfEndpoint = isPrismAssessment ? "/api/bestlife/pdf" : "/api/quiz/pdf";
 
   const copyResultLink = useCallback(async () => {
-    const url = getBestLifeResultUrl(result.id);
+    const url = getPrismAssessmentResultUrl(result.id);
     try {
       await navigator.clipboard.writeText(url);
       setLinkCopied(true);
@@ -198,8 +198,8 @@ export function QuizResult({
             </motion.div>
           )}
 
-          {/* Continue with chat agent — standard variants only (best-life-harbor has no chat handoff in v1) */}
-          {!isBestLife && (
+          {/* Continue with chat agent — standard variants only (the prism-assessment pillar has no chat handoff in v1) */}
+          {!isPrismAssessment && (
             <motion.div
               initial={shouldReduceMotion ? {} : { opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -256,9 +256,9 @@ export function QuizResult({
             </span>
           </motion.div>
 
-          {/* Durable result link — best-life-harbor only (a public viewer
-              route exists at /quiz/best-life-harbor/result/{id}) */}
-          {isBestLife && (
+          {/* Durable result link — prism-assessment only (a public viewer
+              route exists at /quiz/prism-assessment/result/{id}) */}
+          {isPrismAssessment && (
             <motion.div
               initial={shouldReduceMotion ? {} : { opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}

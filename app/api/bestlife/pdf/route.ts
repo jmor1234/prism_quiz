@@ -39,7 +39,7 @@ export async function POST(req: Request) {
     const fullHtml = await buildQuizHtml(htmlContent);
     const pdfBuffer = await generatePdf(fullHtml);
 
-    const filename = `prism-best-life-harbor-${quizId.slice(0, 8)}.pdf`;
+    const filename = `prism-assessment-${quizId.slice(0, 8)}.pdf`;
 
     console.log(`[BestLife PDF] Export complete: ${filename} (${pdfBuffer.length} bytes)\n`);
 
